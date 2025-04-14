@@ -11,105 +11,128 @@ const RegisterView = {
      * Inicializa la vista de registro
      */
     init() {
-        // Obtener el nombre personalizado para "Entidad"
-        const config = StorageService.getConfig();
-        if (config && config.entityName) {
-            this.entityName = config.entityName;
+        try {
+            // Obtener el nombre personalizado para "Entidad"
+            const config = StorageService.getConfig();
+            if (config && config.entityName) {
+                this.entityName = config.entityName;
+            }
+            
+            // Verificar que el elemento principal existe
+            let mainContent = document.querySelector('.main-content');
+            if (!mainContent) {
+                console.warn("Elemento .main-content no encontrado en RegisterView, creándolo...");
+                const container = document.querySelector('.container') || document.body;
+                mainContent = document.createElement('div');
+                mainContent.className = 'main-content mt-4';
+                container.appendChild(mainContent);
+            }
+            
+            this.render();
+            this.setupEventListeners();
+            this.loadRecentRecords();
+        } catch (error) {
+            console.error("Error al inicializar RegisterView:", error);
+            UIUtils.showAlert('Error al inicializar la vista de registros', 'danger');
         }
-        
-        // Verificar que el elemento principal existe
-        const mainContent = document.querySelector('.main-content');
-        if (!mainContent) {
-            console.error("Elemento .main-content no encontrado");
-            return;
-        }
-        
-        this.render();
-        this.setupEventListeners();
-        this.loadRecentRecords();
     },
     
     /**
      * Renderiza el contenido de la vista
      */
     render() {
-        const mainContent = document.querySelector('.main-content');
-        if (!mainContent) {
-            console.error("Elemento .main-content no encontrado en render()");
-            return;
-        }
-        
-        const entities = EntityModel.getAll() || [];
-        
-        const entityButtons = entities.map(entity => 
-            `<button class="btn btn-outline-primary entity-btn mb-2 me-2" data-entity-id="${entity.id}">${entity.name}</button>`
-        ).join('');
-        
-        const noEntitiesMessage = entities.length === 0 ? 
-            `<div class="alert alert-warning">No hay ${this.entityName.toLowerCase()}s configuradas. Cree algunas en la sección de Administración.</div>` : '';
-        
-        mainContent.innerHTML = `
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5>Nuevo registro</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="register-form">
-                                <div class="mb-3">
-                                    <label class="form-label">Seleccione ${this.entityName}</label>
-                                    <div class="d-flex flex-wrap">
-                                        ${entityButtons}
-                                    </div>
-                                    ${noEntitiesMessage}
-                                    <input type="hidden" id="selected-entity-id" value="">
-                                </div>
-                                
-                                <div id="dynamic-fields-container">
-                                    <!-- Los campos se cargan dinámicamente -->
-                                </div>
-                                
-                                <div id="submit-container" style="display: none;">
-                                    <div class="form-check mb-3">
-                                        <input class="form-check-input" type="checkbox" id="yesterday-check">
-                                        <label class="form-check-label" for="yesterday-check">
-                                            Registrar como de ayer
-                                        </label>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Guardar</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5>Registros recientes</h5>
-                        </div>
-                        <div class="card-body">
-                            <div id="no-records-message" style="display: none;">
-                                <p class="text-muted">No hay registros recientes.</p>
+        try {
+            let mainContent = document.querySelector('.main-content');
+            if (!mainContent) {
+                console.error("Elemento .main-content no encontrado en render()");
+                // Intentar crearlo como último recurso
+                const container = document.querySelector('.container') || document.body;
+                mainContent = document.createElement('div');
+                mainContent.className = 'main-content mt-4';
+                container.appendChild(mainContent);
+            }
+            
+            const entities = EntityModel.getAll() || [];
+            
+            const entityButtons = entities.map(entity => 
+                `<button class="btn btn-outline-primary entity-btn mb-2 me-2" data-entity-id="${entity.id}">${entity.name}</button>`
+            ).join('');
+            
+            const noEntitiesMessage = entities.length === 0 ? 
+                `<div class="alert alert-warning">No hay ${this.entityName.toLowerCase()}s configuradas. Cree algunas en la sección de Administración.</div>` : '';
+            
+            mainContent.innerHTML = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Nuevo registro</h5>
                             </div>
-                            
-                            <table id="recent-records-table" class="table table-striped table-hover" style="display: none;">
-                                <thead>
-                                    <tr>
-                                        <th>${this.entityName}</th>
-                                        <th>Fecha</th>
-                                        <th>Datos</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recent-records-list"></tbody>
-                            </table>
+                            <div class="card-body">
+                                <form id="register-form">
+                                    <div class="mb-3">
+                                        <label class="form-label">Seleccione ${this.entityName}</label>
+                                        <div class="d-flex flex-wrap">
+                                            ${entityButtons}
+                                        </div>
+                                        ${noEntitiesMessage}
+                                        <input type="hidden" id="selected-entity-id" value="">
+                                    </div>
+                                    
+                                    <div id="dynamic-fields-container">
+                                        <!-- Los campos se cargan dinámicamente -->
+                                    </div>
+                                    
+                                    <div id="submit-container" style="display: none;">
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="checkbox" id="yesterday-check">
+                                            <label class="form-check-label" for="yesterday-check">
+                                                Registrar como de ayer
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Guardar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Registros recientes</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="no-records-message" style="display: none;">
+                                    <p class="text-muted">No hay registros recientes.</p>
+                                </div>
+                                
+                                <table id="recent-records-table" class="table table-striped table-hover" style="display: none;">
+                                    <thead>
+                                        <tr>
+                                            <th>${this.entityName}</th>
+                                            <th>Fecha</th>
+                                            <th>Datos</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recent-records-list"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        } catch (error) {
+            console.error("Error al renderizar RegisterView:", error);
+            // Mostrar mensaje de error en algún lugar visible
+            const errorContainer = document.querySelector('.container') || document.body;
+            errorContainer.innerHTML += `
+                <div class="alert alert-danger mt-3">
+                    Error al cargar la vista. Por favor recarga la página.
+                </div>
+            `;
+        }
     },
     
     /**
@@ -364,83 +387,87 @@ const RegisterView = {
      * Carga y muestra los registros recientes
      */
     loadRecentRecords() {
-        const recentRecordsList = document.getElementById('recent-records-list');
-        const noRecordsMessage = document.getElementById('no-records-message');
-        const recentRecordsTable = document.getElementById('recent-records-table');
-        
-        if (!recentRecordsList || !noRecordsMessage || !recentRecordsTable) {
-            console.error("Elementos DOM no encontrados para mostrar registros recientes");
-            return;
-        }
-        
-        const recentRecords = RecordModel.getRecent(10) || [];
-        
-        // Mostrar mensaje si no hay registros
-        if (recentRecords.length === 0) {
-            noRecordsMessage.style.display = 'block';
-            recentRecordsTable.style.display = 'none';
-            return;
-        }
-        
-        // Mostrar tabla si hay registros
-        noRecordsMessage.style.display = 'none';
-        recentRecordsTable.style.display = 'table';
-        
-        // Limpiar lista
-        recentRecordsList.innerHTML = '';
-        
-        // Renderizar cada registro
-        recentRecords.forEach(record => {
-            const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
-            const fields = FieldModel.getByIds(Object.keys(record.data || {})) || [];
+        try {
+            const recentRecordsList = document.getElementById('recent-records-list');
+            const noRecordsMessage = document.getElementById('no-records-message');
+            const recentRecordsTable = document.getElementById('recent-records-table');
             
-            // Crear fila para el registro
-            const row = document.createElement('tr');
+            if (!recentRecordsList || !noRecordsMessage || !recentRecordsTable) {
+                console.error("Elementos DOM no encontrados para mostrar registros recientes");
+                return;
+            }
             
-            // Preparar datos para mostrar (limitados a 3 campos)
-            const dataFields = [];
-            for (const fieldId in record.data) {
-                const field = fields.find(f => f && f.id === fieldId);
-                if (field) {
-                    dataFields.push(`${field.name}: ${record.data[fieldId]}`);
+            const recentRecords = RecordModel.getRecent(10) || [];
+            
+            // Mostrar mensaje si no hay registros
+            if (recentRecords.length === 0) {
+                noRecordsMessage.style.display = 'block';
+                recentRecordsTable.style.display = 'none';
+                return;
+            }
+            
+            // Mostrar tabla si hay registros
+            noRecordsMessage.style.display = 'none';
+            recentRecordsTable.style.display = 'table';
+            
+            // Limpiar lista
+            recentRecordsList.innerHTML = '';
+            
+            // Renderizar cada registro
+            recentRecords.forEach(record => {
+                const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
+                const fields = FieldModel.getByIds(Object.keys(record.data || {})) || [];
+                
+                // Crear fila para el registro
+                const row = document.createElement('tr');
+                
+                // Preparar datos para mostrar (limitados a 3 campos)
+                const dataFields = [];
+                for (const fieldId in record.data) {
+                    const field = fields.find(f => f && f.id === fieldId);
+                    if (field) {
+                        dataFields.push(`${field.name}: ${record.data[fieldId]}`);
+                    }
                 }
-            }
-            
-            // Limitar a 3 campos y agregar elipsis si hay más
-            let displayData = dataFields.slice(0, 3).join(', ');
-            if (dataFields.length > 3) {
-                displayData += '...';
-            }
-            
-            row.innerHTML = `
-                <td>${entity.name}</td>
-                <td>${UIUtils.formatDate(record.timestamp)}</td>
-                <td>${displayData}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary view-record" data-record-id="${record.id}">
-                        Ver
-                    </button>
-                </td>
-            `;
-            
-            // Aplicar efecto de highlight si es un nuevo registro
-            const isNew = Date.now() - new Date(record.timestamp).getTime() < 10000; // 10 segundos
-            if (isNew) {
-                UIUtils.highlightNewElement(row);
-            }
-            
-            recentRecordsList.appendChild(row);
-        });
-        
-        // Configurar event listeners para ver detalles
-        const viewButtons = recentRecordsList.querySelectorAll('.view-record');
-        if (viewButtons) {
-            viewButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const recordId = e.target.getAttribute('data-record-id');
-                    this.showRecordDetails(recordId);
-                });
+                
+                // Limitar a 3 campos y agregar elipsis si hay más
+                let displayData = dataFields.slice(0, 3).join(', ');
+                if (dataFields.length > 3) {
+                    displayData += '...';
+                }
+                
+                row.innerHTML = `
+                    <td>${entity.name}</td>
+                    <td>${UIUtils.formatDate(record.timestamp)}</td>
+                    <td>${displayData}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary view-record" data-record-id="${record.id}">
+                            Ver
+                        </button>
+                    </td>
+                `;
+                
+                // Aplicar efecto de highlight si es un nuevo registro
+                const isNew = Date.now() - new Date(record.timestamp).getTime() < 10000; // 10 segundos
+                if (isNew) {
+                    UIUtils.highlightNewElement(row);
+                }
+                
+                recentRecordsList.appendChild(row);
             });
+            
+            // Configurar event listeners para ver detalles
+            const viewButtons = recentRecordsList.querySelectorAll('.view-record');
+            if (viewButtons) {
+                viewButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const recordId = e.target.getAttribute('data-record-id');
+                        this.showRecordDetails(recordId);
+                    });
+                });
+            }
+        } catch (error) {
+            console.error("Error al cargar registros recientes:", error);
         }
     },
     
@@ -653,6 +680,11 @@ const RegisterView = {
      */
     update() {
         try {
+            // Solo intentar actualizar si estamos en la vista activa
+            if (Router.currentRoute !== 'register') {
+                return;
+            }
+            
             // Recargar elementos dinámicos sin recargar toda la vista
             const selectedEntityIdInput = document.getElementById('selected-entity-id');
             if (selectedEntityIdInput) {

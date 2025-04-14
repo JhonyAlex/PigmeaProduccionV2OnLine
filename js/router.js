@@ -26,8 +26,12 @@ const Router = {
             const mainContent = document.querySelector('.main-content');
             if (!mainContent) {
                 console.error("Elemento .main-content no encontrado");
-                UIUtils.showAlert('Error: No se encontró el contenedor principal.', 'danger');
-                return;
+                // Crear el elemento si no existe
+                const container = document.querySelector('.container') || document.body;
+                const newMainContent = document.createElement('div');
+                newMainContent.className = 'main-content mt-4';
+                container.appendChild(newMainContent);
+                console.log("Elemento .main-content creado dinámicamente");
             }
 
             // Configurar listener para los links de navegación
@@ -41,7 +45,11 @@ const Router = {
             
             // Determinar la ruta inicial
             const initialRoute = window.location.hash.substring(1) || 'register';
-            this.navigateTo(initialRoute);
+            
+            // Pequeño retraso para asegurar que el DOM esté listo
+            setTimeout(() => {
+                this.navigateTo(initialRoute);
+            }, 100);
         } catch (error) {
             console.error("Error al inicializar Router:", error);
             UIUtils.showAlert('Error al inicializar la navegación. Por favor recarga la página.', 'danger');
@@ -82,9 +90,13 @@ const Router = {
             }
             
             // Verificar que el contenedor principal existe
-            const mainContent = document.querySelector('.main-content');
+            let mainContent = document.querySelector('.main-content');
             if (!mainContent) {
-                throw new Error("Elemento .main-content no encontrado");
+                console.warn("Elemento .main-content no encontrado en navigateTo, creándolo...");
+                const container = document.querySelector('.container') || document.body;
+                mainContent = document.createElement('div');
+                mainContent.className = 'main-content mt-4';
+                container.appendChild(mainContent);
             }
 
             // Actualizar estado de la aplicación
@@ -101,8 +113,10 @@ const Router = {
                 activeLink.classList.add('active');
             }
             
-            // Inicializar la vista
-            this.routes[route].init();
+            // Inicializar la vista con un pequeño retraso para asegurar que el DOM está listo
+            setTimeout(() => {
+                this.routes[route].init();
+            }, 0);
         } catch (error) {
             console.error(`Error al navegar a ${route}:`, error);
             UIUtils.showAlert(`Error al cargar la vista ${route}. Por favor intenta nuevamente.`, 'danger');

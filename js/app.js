@@ -2,6 +2,9 @@
  * Punto de entrada principal de la aplicación
  */
 document.addEventListener('DOMContentLoaded', () => {
+    // Verificar y crear la estructura básica del DOM
+    const domElements = DOMUtils.ensureBasicStructure();
+    
     // Mostrar indicador de carga
     const loadingIndicator = document.createElement('div');
     loadingIndicator.className = 'loading-indicator';
