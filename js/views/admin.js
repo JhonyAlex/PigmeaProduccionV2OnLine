@@ -1209,7 +1209,7 @@ const AdminView = {
         item.setAttribute('data-field-id', field.id);
         
         // Mostrar tipo de campo formateado
-        let fieldType = this.getFieldTypeLabel(field.type);
+        let fieldType = this._getFieldTypeLabel(field.type);
         
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
@@ -1225,7 +1225,43 @@ const AdminView = {
         
         return item;
     },
-    
+
+    /**
+     * Obtiene la etiqueta legible para un tipo de campo
+     * @param {string} type Tipo de campo
+     * @returns {string} Etiqueta del tipo
+     */
+    _getFieldTypeLabel(type) {
+        switch (type) {
+            case 'text': return 'Texto';
+            case 'number': return 'Número';
+            case 'select': return 'Selección';
+            default: return type;
+        }
+    },
+
+    /**
+     * Alterna la selección de un campo en el modal de asignación
+     * @param {HTMLElement} item Elemento del campo
+     * @param {string} listType Tipo de lista ('available' o 'assigned')
+     */
+    toggleFieldSelection(item, listType) {
+        const fieldId = item.getAttribute('data-field-id');
+        const targetList = listType === 'available' ? 'assigned-fields-list' : 'available-fields-list';
+        const targetContainer = document.getElementById(targetList);
+        
+        if (!targetContainer) {
+            console.error('Contenedor de lista no encontrado:', targetList);
+            return;
+        }
+        
+        // Mover elemento a la lista opuesta
+        targetContainer.appendChild(item);
+        
+        // Actualizar clases
+        item.classList.toggle('selected');
+    },
+
     /**
  * Actualiza las referencias visibles a "Entidad" con el nuevo nombre
  * @param {string} newEntityName El nuevo nombre para "Entidad"
