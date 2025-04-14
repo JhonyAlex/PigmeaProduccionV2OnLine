@@ -22,6 +22,14 @@ const Router = {
      */
     init() {
         try {
+            // Asegurarse de que el contenedor principal existe
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent) {
+                console.error("Elemento .main-content no encontrado");
+                UIUtils.showAlert('Error: No se encontró el contenedor principal.', 'danger');
+                return;
+            }
+
             // Configurar listener para los links de navegación
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', (e) => {
@@ -73,6 +81,12 @@ const Router = {
                 route = 'register'; // Ruta por defecto
             }
             
+            // Verificar que el contenedor principal existe
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent) {
+                throw new Error("Elemento .main-content no encontrado");
+            }
+
             // Actualizar estado de la aplicación
             this.currentRoute = route;
             window.location.hash = route;

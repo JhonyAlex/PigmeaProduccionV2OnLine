@@ -92,12 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Configurar actualización en tiempo real de la UI
             document.addEventListener('firebase-data-changed', (event) => {
-                // Solo recargaremos si estamos en una vista que necesita actualizarse
-                // y si el cambio no fue originado por este cliente
-                const currentRoute = Router.currentRoute;
-                if (currentRoute && Router.routes[currentRoute] && 
-                    typeof Router.routes[currentRoute].update === 'function') {
-                    Router.routes[currentRoute].update();
+                try {
+                    // Solo recargaremos si estamos en una vista que necesita actualizarse
+                    const currentRoute = Router.currentRoute;
+                    if (currentRoute && Router.routes[currentRoute] && 
+                        typeof Router.routes[currentRoute].update === 'function') {
+                        Router.routes[currentRoute].update();
+                    }
+                } catch (error) {
+                    console.error("Error al procesar cambios en tiempo real:", error);
                 }
             });
 

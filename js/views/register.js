@@ -17,6 +17,13 @@ const RegisterView = {
             this.entityName = config.entityName;
         }
         
+        // Verificar que el elemento principal existe
+        const mainContent = document.querySelector('.main-content');
+        if (!mainContent) {
+            console.error("Elemento .main-content no encontrado");
+            return;
+        }
+        
         this.render();
         this.setupEventListeners();
         this.loadRecentRecords();
@@ -27,6 +34,11 @@ const RegisterView = {
      */
     render() {
         const mainContent = document.querySelector('.main-content');
+        if (!mainContent) {
+            console.error("Elemento .main-content no encontrado en render()");
+            return;
+        }
+        
         const entities = EntityModel.getAll() || [];
         
         const entityButtons = entities.map(entity => 
@@ -104,19 +116,40 @@ const RegisterView = {
      * Establece los event listeners para la vista
      */
     setupEventListeners() {
+        // Verificar que los elementos necesarios existen
+        const form = document.getElementById('register-form');
+        if (!form) {
+            console.error("Formulario de registro no encontrado");
+            return;
+        }
+        
         // Botones de entidad
         document.querySelectorAll('.entity-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const clickedButton = e.target;
                 const entityId = clickedButton.getAttribute('data-entity-id');
-                const currentEntityId = document.getElementById('selected-entity-id').value;
-                const isToggle = entityId === currentEntityId && document.getElementById('dynamic-fields-container').innerHTML !== '';
+                const selectedEntityIdInput = document.getElementById('selected-entity-id');
+                
+                if (!selectedEntityIdInput) {
+                    console.error("Elemento selected-entity-id no encontrado");
+                    return;
+                }
+                
+                const currentEntityId = selectedEntityIdInput.value;
+                const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+                
+                if (!dynamicFieldsContainer) {
+                    console.error("Contenedor de campos dinámicos no encontrado");
+                    return;
+                }
+                
+                const isToggle = entityId === currentEntityId && dynamicFieldsContainer.innerHTML !== '';
                 
                 // Si es toggle, deseleccionar el botón y limpiar campos
                 if (isToggle) {
                     clickedButton.classList.remove('btn-primary');
                     clickedButton.classList.add('btn-outline-primary');
-                    document.getElementById('selected-entity-id').value = '';
+                    selectedEntityIdInput.value = '';
                     this.loadDynamicFields(''); // Pasamos string vacío para limpiar
                 } else {
                     // Quitar clase activa de todos los botones
@@ -130,7 +163,7 @@ const RegisterView = {
                     clickedButton.classList.add('btn-primary');
                     
                     // Guardar ID de entidad seleccionada
-                    document.getElementById('selected-entity-id').value = entityId;
+                    selectedEntityIdInput.value = entityId;
                     
                     // Cargar campos dinámicos
                     this.loadDynamicFields(entityId);
@@ -139,7 +172,7 @@ const RegisterView = {
         });
         
         // Envío del formulario
-        document.getElementById('register-form').addEventListener('submit', (e) => {
+        form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveRecord();
         });
@@ -152,6 +185,11 @@ const RegisterView = {
     loadDynamicFields(entityId) {
         const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
         const submitContainer = document.getElementById('submit-container');
+        
+        if (!dynamicFieldsContainer || !submitContainer) {
+            console.error("Elementos DOM necesarios para cargar campos dinámicos no encontrados");
+            return;
+        }
         
         // Limpiar contenedor
         dynamicFieldsContainer.innerHTML = '';
@@ -231,7 +269,8 @@ const RegisterView = {
         const form = document.getElementById('register-form');
         const entityId = document.getElementById('selected-entity-id').value;
         
-        if (!entityId) {
+        if (!form || !entityId) {
+            console.error("Formulario o ID de entidad no encontrado");
             UIUtils.showAlert(`Debe seleccionar una ${this.entityName.toLowerCase()}`, 'warning', document.querySelector('.card-body'));
             return;
         }
@@ -325,7 +364,6 @@ const RegisterView = {
      * Carga y muestra los registros recientes
      */
     loadRecentRecords() {
-        const recentRecords = RecordModel.getRecent(10) || [];
         const recentRecordsList = document.getElementById('recent-records-list');
         const noRecordsMessage = document.getElementById('no-records-message');
         const recentRecordsTable = document.getElementById('recent-records-table');
@@ -334,6 +372,8 @@ const RegisterView = {
             console.error("Elementos DOM no encontrados para mostrar registros recientes");
             return;
         }
+        
+        const recentRecords = RecordModel.getRecent(10) || [];
         
         // Mostrar mensaje si no hay registros
         if (recentRecords.length === 0) {
@@ -352,7 +392,7 @@ const RegisterView = {
         // Renderizar cada registro
         recentRecords.forEach(record => {
             const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
-            const fields = FieldModel.getByIds(Object.keys(record.data));
+            const fields = FieldModel.getByIds(Object.keys(record.data || {})) || [];
             
             // Crear fila para el registro
             const row = document.createElement('tr');
@@ -360,7 +400,7 @@ const RegisterView = {
             // Preparar datos para mostrar (limitados a 3 campos)
             const dataFields = [];
             for (const fieldId in record.data) {
-                const field = fields.find(f => f.id === fieldId);
+                const field = fields.find(f => f && f.id === fieldId);
                 if (field) {
                     dataFields.push(`${field.name}: ${record.data[fieldId]}`);
                 }
@@ -393,12 +433,15 @@ const RegisterView = {
         });
         
         // Configurar event listeners para ver detalles
-        recentRecordsList.querySelectorAll('.view-record').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const recordId = e.target.getAttribute('data-record-id');
-                this.showRecordDetails(recordId);
+        const viewButtons = recentRecordsList.querySelectorAll('.view-record');
+        if (viewButtons) {
+            viewButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const recordId = e.target.getAttribute('data-record-id');
+                    this.showRecordDetails(recordId);
+                });
             });
-        });
+        }
     },
     
     /**
@@ -414,6 +457,11 @@ const RegisterView = {
         
         const modal = UIUtils.initModal('viewRecordModal');
         const recordDetails = document.getElementById('record-details');
+        
+        if (!modal || !recordDetails) {
+            console.error("Elementos DOM necesarios para mostrar detalles del registro no encontrados");
+            return;
+        }
         
         // Preparar contenido del modal
         const detailsHTML = `
@@ -451,6 +499,11 @@ const RegisterView = {
         
         // Añadir botones y sus listeners
         const footerDiv = document.querySelector('#viewRecordModal .modal-footer');
+        if (!footerDiv) {
+            console.error("Elemento footer del modal no encontrado");
+            return;
+        }
+        
         footerDiv.innerHTML = `
             <button type="button" class="btn btn-danger me-auto" id="deleteRecordBtn">Eliminar registro</button>
             <button type="button" class="btn btn-warning" id="editDateBtn">Editar fecha</button>
@@ -458,82 +511,111 @@ const RegisterView = {
         `;
         
         // Listener para el botón de eliminar registro
-        document.getElementById('deleteRecordBtn').addEventListener('click', () => {
-            // Configurar el modal de confirmación
-            const confirmModal = UIUtils.initModal('confirmModal');
-            document.getElementById('confirm-message').textContent = 
-                '¿Está seguro de que desea eliminar este registro? Esta acción no se puede deshacer.';
+        const deleteRecordBtn = document.getElementById('deleteRecordBtn');
+        if (deleteRecordBtn) {
+            deleteRecordBtn.addEventListener('click', () => {
+                // Configurar el modal de confirmación
+                const confirmModal = UIUtils.initModal('confirmModal');
+                const confirmMessage = document.getElementById('confirm-message');
+                const confirmActionBtn = document.getElementById('confirmActionBtn');
                 
-            const confirmBtn = document.getElementById('confirmActionBtn');
-            
-            // Limpiar listeners anteriores
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-            
-            // Añadir nuevo listener
-            newConfirmBtn.addEventListener('click', () => {
-                const deleted = RecordModel.delete(recordId);
-                confirmModal.hide();
-                modal.hide();
-                
-                if (deleted) {
-                    this.loadRecentRecords(); // Corregido: era this.renderRecords()
-                    UIUtils.showAlert('Registro eliminado correctamente', 'success', document.querySelector('.card-body'));
-                } else {
-                    UIUtils.showAlert('Error al eliminar el registro', 'danger', document.querySelector('.card-body'));
-                }
-            });
-            
-            // Mostrar modal de confirmación
-            confirmModal.show();
-        });
-        
-        // Listener para el botón de editar fecha
-        document.getElementById('editDateBtn').addEventListener('click', () => {
-            // Crear un input para la fecha y hora
-            const timestampSpan = document.getElementById('record-timestamp');
-            const currentTimestamp = new Date(record.timestamp);
-            
-            // Formatear la fecha para el input datetime-local
-            const formattedDate = currentTimestamp.toISOString().slice(0, 16);
-            
-            // Reemplazar el texto por un input
-            timestampSpan.innerHTML = `
-                <div class="input-group">
-                    <input type="datetime-local" id="new-timestamp" class="form-control form-control-sm" value="${formattedDate}">
-                    <button class="btn btn-sm btn-primary" id="save-timestamp">Guardar</button>
-                    <button class="btn btn-sm btn-secondary" id="cancel-timestamp">Cancelar</button>
-                </div>
-            `;
-            
-            // Listener para guardar la nueva fecha
-            document.getElementById('save-timestamp').addEventListener('click', () => {
-                const newTimestamp = document.getElementById('new-timestamp').value;
-                
-                if (!newTimestamp) {
-                    UIUtils.showAlert('Debe seleccionar una fecha válida', 'warning', recordDetails);
+                if (!confirmModal || !confirmMessage || !confirmActionBtn) {
+                    console.error("Elementos del modal de confirmación no encontrados");
                     return;
                 }
                 
-                // Convertir a formato ISO
-                const newDate = new Date(newTimestamp).toISOString();
-                const updatedRecord = RecordModel.updateDate(recordId, newDate);
+                confirmMessage.textContent = 
+                    '¿Está seguro de que desea eliminar este registro? Esta acción no se puede deshacer.';
+                    
+                // Limpiar listeners anteriores
+                const newConfirmBtn = confirmActionBtn.cloneNode(true);
+                confirmActionBtn.parentNode.replaceChild(newConfirmBtn, confirmActionBtn);
                 
-                if (updatedRecord) {
-                    // Actualizar la vista
-                    timestampSpan.textContent = UIUtils.formatDate(newDate);
-                    this.loadRecentRecords(); // Actualizar lista de registros
-                    UIUtils.showAlert('Fecha actualizada correctamente', 'success', recordDetails);
-                } else {
-                    UIUtils.showAlert('Error al actualizar la fecha', 'danger', recordDetails);
+                // Añadir nuevo listener
+                newConfirmBtn.addEventListener('click', () => {
+                    const deleted = RecordModel.delete(recordId);
+                    confirmModal.hide();
+                    modal.hide();
+                    
+                    if (deleted) {
+                        this.loadRecentRecords();
+                        UIUtils.showAlert('Registro eliminado correctamente', 'success', document.querySelector('.card-body'));
+                    } else {
+                        UIUtils.showAlert('Error al eliminar el registro', 'danger', document.querySelector('.card-body'));
+                    }
+                });
+                
+                // Mostrar modal de confirmación
+                confirmModal.show();
+            });
+        }
+        
+        // Listener para el botón de editar fecha
+        const editDateBtn = document.getElementById('editDateBtn');
+        if (editDateBtn) {
+            editDateBtn.addEventListener('click', () => {
+                // Crear un input para la fecha y hora
+                const timestampSpan = document.getElementById('record-timestamp');
+                const currentTimestamp = new Date(record.timestamp);
+                
+                if (!timestampSpan) {
+                    console.error("Elemento record-timestamp no encontrado");
+                    return;
+                }
+                
+                // Formatear la fecha para el input datetime-local
+                const formattedDate = currentTimestamp.toISOString().slice(0, 16);
+                
+                // Reemplazar el texto por un input
+                timestampSpan.innerHTML = `
+                    <div class="input-group">
+                        <input type="datetime-local" id="new-timestamp" class="form-control form-control-sm" value="${formattedDate}">
+                        <button class="btn btn-sm btn-primary" id="save-timestamp">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" id="cancel-timestamp">Cancelar</button>
+                    </div>
+                `;
+                
+                // Listener para guardar la nueva fecha
+                const saveTimestampBtn = document.getElementById('save-timestamp');
+                if (saveTimestampBtn) {
+                    saveTimestampBtn.addEventListener('click', () => {
+                        const newTimestampInput = document.getElementById('new-timestamp');
+                        if (!newTimestampInput) {
+                            console.error("Elemento new-timestamp no encontrado");
+                            return;
+                        }
+                        
+                        const newTimestamp = newTimestampInput.value;
+                        
+                        if (!newTimestamp) {
+                            UIUtils.showAlert('Debe seleccionar una fecha válida', 'warning', recordDetails);
+                            return;
+                        }
+                        
+                        // Convertir a formato ISO
+                        const newDate = new Date(newTimestamp).toISOString();
+                        const updatedRecord = RecordModel.updateDate(recordId, newDate);
+                        
+                        if (updatedRecord) {
+                            // Actualizar la vista
+                            timestampSpan.textContent = UIUtils.formatDate(newDate);
+                            this.loadRecentRecords(); // Actualizar lista de registros
+                            UIUtils.showAlert('Fecha actualizada correctamente', 'success', recordDetails);
+                        } else {
+                            UIUtils.showAlert('Error al actualizar la fecha', 'danger', recordDetails);
+                        }
+                    });
+                }
+                
+                // Listener para cancelar la edición
+                const cancelTimestampBtn = document.getElementById('cancel-timestamp');
+                if (cancelTimestampBtn) {
+                    cancelTimestampBtn.addEventListener('click', () => {
+                        timestampSpan.textContent = UIUtils.formatDate(record.timestamp);
+                    });
                 }
             });
-            
-            // Listener para cancelar la edición
-            document.getElementById('cancel-timestamp').addEventListener('click', () => {
-                timestampSpan.textContent = UIUtils.formatDate(record.timestamp);
-            });
-        });
+        }
         
         modal.show();
     },
@@ -570,11 +652,18 @@ const RegisterView = {
      * Actualiza la vista cuando hay cambios en los datos
      */
     update() {
-        // Recargar elementos dinámicos sin recargar toda la vista
-        const entityId = document.getElementById('selected-entity-id')?.value;
-        if (entityId) {
-            this.loadDynamicFields(entityId);
+        try {
+            // Recargar elementos dinámicos sin recargar toda la vista
+            const selectedEntityIdInput = document.getElementById('selected-entity-id');
+            if (selectedEntityIdInput) {
+                const entityId = selectedEntityIdInput.value;
+                if (entityId) {
+                    this.loadDynamicFields(entityId);
+                }
+            }
+            this.loadRecentRecords();
+        } catch (error) {
+            console.error("Error al actualizar la vista de registros:", error);
         }
-        this.loadRecentRecords();
     }
 };

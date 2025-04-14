@@ -1,5 +1,5 @@
 /**
- * Modelo para la gestión de campos personalizados
+ * Modelo para campos personalizados
  */
 const FieldModel = {
     /**
@@ -7,7 +7,8 @@ const FieldModel = {
      * @returns {Array} Lista de campos
      */
     getAll() {
-        return StorageService.getData().fields;
+        const data = StorageService.getData();
+        return data && data.fields ? data.fields : [];
     },
     
     /**
@@ -21,13 +22,17 @@ const FieldModel = {
     },
     
     /**
-     * Obtiene campos por IDs
-     * @param {Array} ids Lista de IDs de campos
+     * Obtiene varios campos por sus IDs
+     * @param {Array} ids Array de IDs de campos
      * @returns {Array} Lista de campos encontrados
      */
     getByIds(ids) {
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return [];
+        }
+        
         const fields = this.getAll();
-        return fields.filter(field => ids.includes(field.id));
+        return fields.filter(field => field && ids.includes(field.id));
     },
     
     /**
@@ -114,25 +119,15 @@ const FieldModel = {
     },
     
     /**
-     * Obtiene los campos numéricos compartidos entre entidades
-     * @returns {Array} Lista de campos numéricos compartidos
+     * Obtiene campos numéricos que se pueden usar en reportes compartidos
+     * @returns {Array} Lista de campos numéricos para reportes
      */
     getSharedNumericFields() {
-        const data = StorageService.getData();
-        const numericFields = data.fields.filter(field => field.type === 'number');
-        const fieldUsage = {};
-        
-        // Contar las entidades que usan cada campo
-        data.entities.forEach(entity => {
-            entity.fields.forEach(fieldId => {
-                if (!fieldUsage[fieldId]) {
-                    fieldUsage[fieldId] = 0;
-                }
-                fieldUsage[fieldId]++;
-            });
-        });
-        
-        // Filtrar campos numéricos que están en más de una entidad
-        return numericFields.filter(field => (fieldUsage[field.id] || 0) > 1);
+        const fields = this.getAll() || [];
+        return fields.filter(field => 
+            field && 
+            field.type === 'number' && 
+            field.useForComparativeReports
+        );
     }
 };
