@@ -16,246 +16,188 @@ const AdminView = {
      * Renderiza el contenido de la vista
      */
     render() {
-        const mainContent = document.getElementById('main-content');
-        const config = StorageService.getConfig();
-        const entityName = config.entityName || 'Entidad';
-        const entities = EntityModel.getAll();
-        
-        const template = `
-            <div class="container mt-4">
-	<h2>Administración del Sistema</h2>
-
-	<!-- Configuración General -->
-	<div class="card mb-4">
-		<div class="card-header bg-primary text-white">
-			<h5 class="mb-0">Configuración General</h5>
-		</div>
-		<div class="card-body">
-			<form id="config-form">
-				<div class="mb-3">
-					<label for="app-title" class="form-label">Título</label>
-					<input type="text" class="form-control" id="app-title" value="${config.title}" required>
-					<small class="text-muted">Este será el título del sitio</small>
-				</div>
-				<div class="mb-3">
-					<label for="app-description" class="form-label">Descripción</label>
-					<textarea class="form-control" id="app-description" rows="2">${config.description}</textarea>
-					<small class="text-muted">Este es la descripción general</small>
-				</div>
-				<div class="mb-3">
-					<label for="entity-name-config" class="form-label">Nombre de Entidad</label>
-					<input type="text" class="form-control" id="entity-name-config" value="${config.entityName || 'Entidad'}" required>
-					<small class="text-muted">Este nombre reemplazará la palabra "Entidad" en todo el sistema</small>
-				</div>
-				<div class="mb-3">
-					<label for="navbar-title" class="form-label">Título del Sistema</label>
-					<input type="text" class="form-control" id="navbar-title" value="${config.navbarTitle || 'Sistema de Registro Flexible'}" required>
-					<small class="text-muted">Este título aparecerá en la barra de navegación</small>
-				</div>
-				<button type="submit" class="btn btn-primary">Guardar Configuración</button>
-			</form>
-		</div>
-	</div>
-
-	<!-- Entidades Principales -->
-	<div class="card mb-4">
-		<div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-			<h5 class="mb-0">${entityName}s Principales</h5>
-			<button class="btn btn-light btn-sm" id="add-entity-btn">
-                            <i class="bi bi-plus-circle"></i> Agregar ${entityName}
-                        </button>
-		</div>
-		<div class="card-body">
-			<div id="entities-container">
-				<div class="text-center py-4" id="no-entities-message">
-					<p class="text-muted">No hay ${entityName.toLowerCase()}s registradas. Agregue una nueva ${entityName.toLowerCase()}.</p>
-				</div>
-				<div class="table-responsive" id="entities-table-container" style="display: none;">
-					<table class="table table-hover">
-						<thead>
-							<tr>
-								<th>Nombre</th>
-								<th>Campos Asignados</th>
-								<th>Acciones</th>
-							</tr>
-						</thead>
-						<tbody id="entities-list">
-							<!-- Entidades se cargarán aquí -->
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- Campos Personalizados -->
-	<div class="card mb-4">
-		<div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-			<h5 class="mb-0">Importación Masiva de Registros</h5>
-		</div>
-		<div class="card-body">
-			<p class="mb-3">Desde aquí puede importar registros masivamente a través de archivos CSV o Excel.</p>
-
-			<div class="row g-3">
-				<div class="col-md-6">
-					<div class="card h-100">
-						<div class="card-header bg-light">
-							<h6 class="mb-0">Descargar Plantilla</h6>
-						</div>
-						<div class="card-body">
-							<p class="small text-muted">Descargue una plantilla con los campos de la entidad seleccionada:</p>
-
-							<div class="mb-3">
-								<label for="template-entity" class="form-label">Entidad para plantilla</label>
-								<select class="form-select" id="template-entity">
-                                <option value="">Todas las entidades</option>
-                                ${entities.map(entity =>
-                                    `<option value="${entity.id}">${entity.name}</option>`
-                                ).join('')}
-                            </select>
-							</div>
-
-							<button type="button" class="btn btn-outline-primary" id="download-template-btn">
-                            <i class="bi bi-download"></i> Descargar Plantilla
-                        </button>
-						</div>
-					</div>
-				</div>
-
-				<div class="col-md-6">
-					<div class="card h-100">
-						<div class="card-header bg-light">
-							<h6 class="mb-0">Importar Datos</h6>
-						</div>
-						<div class="card-body">
-							<p class="small text-muted">Seleccione un archivo CSV o Excel con los datos a importar:</p>
-
-							<div class="mb-3">
-								<label for="import-file" class="form-label">Archivo a importar</label>
-								<input class="form-control" type="file" id="import-file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-								<div class="form-text">Formatos soportados: CSV, Excel (.xlsx, .xls)</div>
-							</div>
-
-							<button type="button" class="btn btn-primary" id="process-import-btn" disabled>
-                            <i class="bi bi-upload"></i> Procesar Archivo
-                        </button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-	<!-- Campos Personalizados -->
-	<div class="card mb-4">
-		<div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-			<h5 class="mb-0">Campos Personalizados</h5>
-			<button class="btn btn-light btn-sm" id="add-field-btn">
-            <i class="bi bi-plus-circle"></i> Agregar Campo
-        </button>
-		</div>
-		<div class="card-body">
-			<div id="fields-container">
-				<div class="text-center py-4" id="no-fields-message">
-					<p class="text-muted">No hay campos personalizados. Agregue campos para personalizar sus formularios.</p>
-				</div>
-				<div class="table-responsive" id="fields-table-container" style="display: none;">
-					<table class="table table-hover">
-						<thead>
-							<tr>
-								<th>Nombre</th>
-								<th>Tipo</th>
-								<th>Requerido</th>
-								<th>Opciones</th>
-								<th>Para Reportes</th>
-								<th>Para Tabla</th>
-								<th>Acciones</th>
-							</tr>
-						</thead>
-						<tbody id="fields-list">
-							<!-- Los campos se cargarán aquí -->
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
-	</div>
-
-
-
-
-
-
-
-
-
-	<!-- Importación Masiva -->
-	<div class="card mb-4">
-		<div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-			<h5 class="mb-0">Importación Masiva de Registros</h5>
-		</div>
-		<div class="card-body">
-			<p class="mb-3">Desde aquí puede importar registros masivamente a través de archivos CSV o Excel.</p>
-
-			<div class="row g-3">
-				<div class="col-md-6">
-					<div class="card h-100">
-						<div class="card-header bg-light">
-							<h6 class="mb-0">Descargar Plantilla</h6>
-						</div>
-						<div class="card-body">
-							<p class="small text-muted">Descargue una plantilla con los campos de la entidad seleccionada:</p>
-
-							<div class="mb-3">
-								<label for="template-entity" class="form-label">Entidad para plantilla</label>
-								<select class="form-select" id="template-entity">
-                                        <option value="">Todas las entidades</option>
-                                        ${entities.map(entity =>
-                                            `<option value="${entity.id}">${entity.name}</option>`
-                                        ).join('')}
-                                    </select>
-							</div>
-
-							<button type="button" class="btn btn-outline-primary" id="download-template-btn">
-                                    <i class="bi bi-download"></i> Descargar Plantilla
-                                </button>
-						</div>
-					</div>
-				</div>
-
-				<div class="col-md-6">
-					<div class="card h-100">
-						<div class="card-header bg-light">
-							<h6 class="mb-0">Importar Datos</h6>
-						</div>
-						<div class="card-body">
-							<p class="small text-muted">Seleccione un archivo CSV o Excel con los datos a importar:</p>
-
-							<div class="mb-3">
-								<label for="import-file" class="form-label">Archivo a importar</label>
-								<input class="form-control" type="file" id="import-file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-								<div class="form-text">Formatos soportados: CSV, Excel (.xlsx, .xls)</div>
-							</div>
-
-							<button type="button" class="btn btn-primary" id="process-import-btn" disabled>
-                                    <i class="bi bi-upload"></i> Procesar Archivo
-                                </button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-
-
-</div>
-        `;
-        
-        mainContent.innerHTML = template;
-        
-        // Cargar datos iniciales
-        this.loadEntities();
-        this.loadFields();
+        try {
+            // Usar el contenedor de vista activa del Router
+            const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
+            if (!mainContent) {
+                console.error("Elemento contenedor no encontrado en render()");
+                return;
+            }
+            
+            const config = StorageService.getConfig();
+            const entityName = config.entityName || 'Entidad';
+            const entities = EntityModel.getAll();
+            
+            const template = `
+                <div class="container mt-4">
+                    <h2>Administración del Sistema</h2>
+    
+                    <!-- Configuración General -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Configuración General</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="config-form">
+                                <div class="mb-3">
+                                    <label for="app-title" class="form-label">Título</label>
+                                    <input type="text" class="form-control" id="app-title" value="${config.title}" required>
+                                    <small class="text-muted">Este será el título del sitio</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="app-description" class="form-label">Descripción</label>
+                                    <textarea class="form-control" id="app-description" rows="2">${config.description}</textarea>
+                                    <small class="text-muted">Este es la descripción general</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="entity-name-config" class="form-label">Nombre de Entidad</label>
+                                    <input type="text" class="form-control" id="entity-name-config" value="${config.entityName || 'Entidad'}" required>
+                                    <small class="text-muted">Este nombre reemplazará la palabra "Entidad" en todo el sistema</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="navbar-title" class="form-label">Título del Sistema</label>
+                                    <input type="text" class="form-control" id="navbar-title" value="${config.navbarTitle || 'Sistema de Registro Flexible'}" required>
+                                    <small class="text-muted">Este título aparecerá en la barra de navegación</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+                            </form>
+                        </div>
+                    </div>
+    
+                    <!-- Entidades Principales -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">${entityName}s Principales</h5>
+                            <button class="btn btn-light btn-sm" id="add-entity-btn">
+                                <i class="bi bi-plus-circle"></i> Agregar ${entityName}
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="entities-container">
+                                <div class="text-center py-4" id="no-entities-message">
+                                    <p class="text-muted">No hay ${entityName.toLowerCase()}s registradas. Agregue una nueva ${entityName.toLowerCase()}.</p>
+                                </div>
+                                <div class="table-responsive" id="entities-table-container" style="display: none;">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre</th>
+                                                <th>Campos Asignados</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="entities-list">
+                                            <!-- Entidades se cargarán aquí -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- Campos Personalizados -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Importación Masiva de Registros</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">Desde aquí puede importar registros masivamente a través de archivos CSV o Excel.</p>
+    
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">Descargar Plantilla</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="small text-muted">Descargue una plantilla con los campos de la entidad seleccionada:</p>
+    
+                                            <div class="mb-3">
+                                                <label for="template-entity" class="form-label">Entidad para plantilla</label>
+                                                <select class="form-select" id="template-entity">
+                                                    <option value="">Todas las entidades</option>
+                                                    ${entities.map(entity =>
+                                                        `<option value="${entity.id}">${entity.name}</option>`
+                                                    ).join('')}
+                                                </select>
+                                            </div>
+    
+                                            <button type="button" class="btn btn-outline-primary" id="download-template-btn">
+                                                <i class="bi bi-download"></i> Descargar Plantilla
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+    
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">Importar Datos</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="small text-muted">Seleccione un archivo CSV o Excel con los datos a importar:</p>
+    
+                                            <div class="mb-3">
+                                                <label for="import-file" class="form-label">Archivo a importar</label>
+                                                <input class="form-control" type="file" id="import-file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                                                <div class="form-text">Formatos soportados: CSV, Excel (.xlsx, .xls)</div>
+                                            </div>
+    
+                                            <button type="button" class="btn btn-primary" id="process-import-btn" disabled>
+                                                <i class="bi bi-upload"></i> Procesar Archivo
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- Campos Personalizados -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Campos Personalizados</h5>
+                            <button class="btn btn-light btn-sm" id="add-field-btn">
+                                <i class="bi bi-plus-circle"></i> Agregar Campo
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="fields-container">
+                                <div class="text-center py-4" id="no-fields-message">
+                                    <p class="text-muted">No hay campos personalizados. Agregue campos para personalizar sus formularios.</p>
+                                </div>
+                                <div class="table-responsive" id="fields-table-container" style="display: none;">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre</th>
+                                                <th>Tipo</th>
+                                                <th>Requerido</th>
+                                                <th>Opciones</th>
+                                                <th>Para Reportes</th>
+                                                <th>Para Tabla</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="fields-list">
+                                            <!-- Los campos se cargarán aquí -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            mainContent.innerHTML = template;
+            
+            // Cargar datos iniciales
+            this.loadEntities();
+            this.loadFields();
+        } catch (error) {
+            console.error("Error al renderizar AdminView:", error);
+        }
     },
     
     /**

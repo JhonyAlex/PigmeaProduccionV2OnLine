@@ -83,9 +83,10 @@ const ReportsView = {
      */
     render() {
         try {
-            const mainContent = document.querySelector('.main-content');
+            // Usar el contenedor de vista activa del Router
+            const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
             if (!mainContent) {
-                console.error("Elemento .main-content no encontrado");
+                console.error("Elemento contenedor no encontrado en render()");
                 return;
             }
 

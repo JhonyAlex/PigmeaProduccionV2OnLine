@@ -45,386 +45,396 @@ const KPIsView = {
      * Renderiza el contenido de la vista
      */
     render() {
-        const mainContent = document.getElementById('main-content');
-        const fields = FieldModel.getAll();
-        const numericFields = fields.filter(field => field.type === 'number');
-        
-        // Obtener las entidades para filtros
-        const entities = EntityModel.getAll();
-        
-        // Formatear fecha actual para los inputs de fecha
-        const today = new Date().toISOString().split('T')[0];
-        const lastMonth = new Date();
-        lastMonth.setMonth(lastMonth.getMonth() - 1);
-        const lastMonthStr = lastMonth.toISOString().split('T')[0];
-        
-        // Obtener nombre personalizado de la entidad
-        const config = StorageService.getConfig();
-        const entityName = config.entityName || 'Entidad';
-        
-        const template = `
-            <div class="container mt-4">
-                <h2>KPIs y Métricas Clave</h2>
-                
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Filtros</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="kpi-filter-form" class="row g-3">
-                            <div class="col-md-4">
-                                <label for="kpi-filter-entity" class="form-label">${entityName}(es)</label>
-                                <select class="form-select" id="kpi-filter-entity" multiple size="4">
-                                    <option value="">Todas las ${entityName.toLowerCase()}s</option>
-                                    ${entities.map(entity =>
-                                        `<option value="${entity.id}">${entity.name}</option>`
-                                    ).join('')}
-                                </select>
-                                <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples ${entityName.toLowerCase()}s</div>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="kpi-filter-from-date" class="form-label">Desde</label>
-                                <input type="date" class="form-control" id="kpi-filter-from-date" value="${lastMonthStr}">
-                            </div>
-                            <div class="col-md-4">
-                                <label for="kpi-filter-to-date" class="form-label">Hasta</label>
-                                <input type="date" class="form-control" id="kpi-filter-to-date" value="${today}">
-                            </div>
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Atajos de fecha</h5>
-                    </div>
-                    <div class="card-body text-center">
-                        <div class="btn-group" role="group" aria-label="Atajos de fecha">
-                            <button type="button" class="btn btn-outline-primary date-shortcut" data-range="yesterday">Ayer</button>
-                            <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisWeek">Esta semana</button>
-                            <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastWeek">Semana pasada</button>
-                            <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisMonth">Mes actual</button>
-                            <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastMonth">Mes pasado</button>
+        try {
+            // Usar el contenedor de vista activa del Router
+            const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
+            if (!mainContent) {
+                console.error("Elemento contenedor no encontrado en render()");
+                return;
+            }
+            
+            const fields = FieldModel.getAll();
+            const numericFields = fields.filter(field => field.type === 'number');
+            
+            // Obtener las entidades para filtros
+            const entities = EntityModel.getAll();
+            
+            // Formatear fecha actual para los inputs de fecha
+            const today = new Date().toISOString().split('T')[0];
+            const lastMonth = new Date();
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+            const lastMonthStr = lastMonth.toISOString().split('T')[0];
+            
+            // Obtener nombre personalizado de la entidad
+            const config = StorageService.getConfig();
+            const entityName = config.entityName || 'Entidad';
+            
+            const template = `
+                <div class="container mt-4">
+                    <h2>KPIs y Métricas Clave</h2>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Filtros</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="kpi-filter-form" class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="kpi-filter-entity" class="form-label">${entityName}(es)</label>
+                                    <select class="form-select" id="kpi-filter-entity" multiple size="4">
+                                        <option value="">Todas las ${entityName.toLowerCase()}s</option>
+                                        ${entities.map(entity =>
+                                            `<option value="${entity.id}">${entity.name}</option>`
+                                        ).join('')}
+                                    </select>
+                                    <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples ${entityName.toLowerCase()}s</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="kpi-filter-from-date" class="form-label">Desde</label>
+                                    <input type="date" class="form-control" id="kpi-filter-from-date" value="${lastMonthStr}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="kpi-filter-to-date" class="form-label">Hasta</label>
+                                    <input type="date" class="form-control" id="kpi-filter-to-date" value="${today}">
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                </div>
-                
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Configuración de KPIs</h5>
-                        <div>
-                            <button type="button" class="btn btn-outline-light btn-sm me-2" id="select-all-kpi-fields">
-                                <i class="bi bi-check-all"></i> Seleccionar Todo
-                            </button>
-                            <button type="button" class="btn btn-light btn-sm" id="save-kpi-config-btn">
-                                <i class="bi bi-save"></i> Guardar Configuración
-                            </button>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Atajos de fecha</h5>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="btn-group" role="group" aria-label="Atajos de fecha">
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="yesterday">Ayer</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisWeek">Esta semana</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastWeek">Semana pasada</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisMonth">Mes actual</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastMonth">Mes pasado</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <div class="card h-100 border-primary">
-                                        <div class="card-header bg-primary text-white">
-                                            <h6 class="mb-0">Campos Numéricos</h6>
-                                        </div>
-                                        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                                            ${numericFields.length === 0 ? `
-                                                <div class="alert alert-info">
-                                                    No hay campos numéricos disponibles. Cree campos numéricos en la sección de Administración.
-                                                </div>
-                                            ` : `
-                                                <div class="row">
-                                                    ${numericFields.map(field => `
-                                                        <div class="col-md-6 mb-2">
-                                                            <div class="form-check">
-                                                                <input class="form-check-input kpi-field-check" type="checkbox" 
-                                                                    id="kpi-field-${field.id}" value="${field.id}" 
-                                                                    ${this.selectedFields.includes(field.id) ? 'checked' : ''}>
-                                                                <label class="form-check-label" for="kpi-field-${field.id}">
-                                                                    ${field.name}
-                                                                </label>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Configuración de KPIs</h5>
+                            <div>
+                                <button type="button" class="btn btn-outline-light btn-sm me-2" id="select-all-kpi-fields">
+                                    <i class="bi bi-check-all"></i> Seleccionar Todo
+                                </button>
+                                <button type="button" class="btn btn-light btn-sm" id="save-kpi-config-btn">
+                                    <i class="bi bi-save"></i> Guardar Configuración
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-4">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-primary">
+                                            <div class="card-header bg-primary text-white">
+                                                <h6 class="mb-0">Campos Numéricos</h6>
+                                            </div>
+                                            <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                                                ${numericFields.length === 0 ? `
+                                                    <div class="alert alert-info">
+                                                        No hay campos numéricos disponibles. Cree campos numéricos en la sección de Administración.
+                                                    </div>
+                                                ` : `
+                                                    <div class="row">
+                                                        ${numericFields.map(field => `
+                                                            <div class="col-md-6 mb-2">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input kpi-field-check" type="checkbox" 
+                                                                        id="kpi-field-${field.id}" value="${field.id}" 
+                                                                        ${this.selectedFields.includes(field.id) ? 'checked' : ''}>
+                                                                    <label class="form-check-label" for="kpi-field-${field.id}">
+                                                                        ${field.name}
+                                                                    </label>
+                                                                </div>
                                                             </div>
+                                                        `).join('')}
+                                                    </div>
+                                                `}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-info">
+                                            <div class="card-header bg-info text-white">
+                                                <h6 class="mb-0">Opciones de Visualización</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Estilo de tarjetas KPI:</label>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-modern" value="modern" checked>
+                                                        <label class="form-check-label" for="kpi-style-modern">
+                                                            Moderno (tarjetas de colores)
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-classic" value="classic">
+                                                        <label class="form-check-label" for="kpi-style-classic">
+                                                            Clásico (tarjetas blancas)
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="default-aggregation">Agregación por defecto:</label>
+                                                    <select class="form-select" id="default-aggregation">
+                                                        <option value="sum">Suma</option>
+                                                        <option value="avg">Promedio</option>
+                                                        <option value="max">Máximo</option>
+                                                        <option value="min">Mínimo</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="decimal-places">Decimales a mostrar:</label>
+                                                    <select class="form-select" id="decimal-places">
+                                                        <option value="0">0 (números enteros)</option>
+                                                        <option value="1">1 decimal</option>
+                                                        <option value="2" selected>2 decimales</option>
+                                                        <option value="3">3 decimales</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-12 mb-3">
+                                        <div class="card border-success">
+                                            <div class="card-header bg-success text-white">
+                                                <h6 class="mb-0">Métricas Adicionales</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="show-count" checked>
+                                                            <label class="form-check-label" for="show-count">
+                                                                Mostrar conteo de registros
+                                                            </label>
                                                         </div>
-                                                    `).join('')}
-                                                </div>
-                                            `}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="card h-100 border-info">
-                                        <div class="card-header bg-info text-white">
-                                            <h6 class="mb-0">Opciones de Visualización</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="mb-3">
-                                                <label class="form-label">Estilo de tarjetas KPI:</label>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-modern" value="modern" checked>
-                                                    <label class="form-check-label" for="kpi-style-modern">
-                                                        Moderno (tarjetas de colores)
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-classic" value="classic">
-                                                    <label class="form-check-label" for="kpi-style-classic">
-                                                        Clásico (tarjetas blancas)
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label" for="default-aggregation">Agregación por defecto:</label>
-                                                <select class="form-select" id="default-aggregation">
-                                                    <option value="sum">Suma</option>
-                                                    <option value="avg">Promedio</option>
-                                                    <option value="max">Máximo</option>
-                                                    <option value="min">Mínimo</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label" for="decimal-places">Decimales a mostrar:</label>
-                                                <select class="form-select" id="decimal-places">
-                                                    <option value="0">0 (números enteros)</option>
-                                                    <option value="1">1 decimal</option>
-                                                    <option value="2" selected>2 decimales</option>
-                                                    <option value="3">3 decimales</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-md-12 mb-3">
-                                    <div class="card border-success">
-                                        <div class="card-header bg-success text-white">
-                                            <h6 class="mb-0">Métricas Adicionales</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-4 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="show-count" checked>
-                                                        <label class="form-check-label" for="show-count">
-                                                            Mostrar conteo de registros
-                                                        </label>
                                                     </div>
-                                                </div>
-                                                <div class="col-md-4 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="show-daily-avg" checked>
-                                                        <label class="form-check-label" for="show-daily-avg">
-                                                            Mostrar promedio diario
-                                                        </label>
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="show-daily-avg" checked>
+                                                            <label class="form-check-label" for="show-daily-avg">
+                                                                Mostrar promedio diario
+                                                            </label>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div class="col-md-4 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="show-entities-count" checked>
-                                                        <label class="form-check-label" for="show-entities-count">
-                                                            Mostrar número de entidades
-                                                        </label>
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="show-entities-count" checked>
+                                                            <label class="form-check-label" for="show-entities-count">
+                                                                Mostrar número de entidades
+                                                            </label>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div class="col-md-4 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="show-growth-rate">
-                                                        <label class="form-check-label" for="show-growth-rate">
-                                                            Mostrar tasa de crecimiento
-                                                        </label>
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="show-growth-rate">
+                                                            <label class="form-check-label" for="show-growth-rate">
+                                                                Mostrar tasa de crecimiento
+                                                            </label>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div class="col-md-4 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="show-predictions">
-                                                        <label class="form-check-label" for="show-predictions">
-                                                            Mostrar predicciones simples
-                                                        </label>
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="show-predictions">
+                                                            <label class="form-check-label" for="show-predictions">
+                                                                Mostrar predicciones simples
+                                                            </label>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div class="col-md-4 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="show-percent-change">
-                                                        <label class="form-check-label" for="show-percent-change">
-                                                            Mostrar cambio porcentual
-                                                        </label>
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="show-percent-change">
+                                                            <label class="form-check-label" for="show-percent-change">
+                                                                Mostrar cambio porcentual
+                                                            </label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row" id="kpi-metrics-container">
-                    <!-- Aquí se mostrarán las tarjetas de KPIs -->
-                    <div class="col-md-4 mb-4">
-                        <div class="card border-0 shadow-sm h-100 bg-primary text-white">
-                            <div class="card-body text-center">
-                                <h6 class="text-uppercase">Total de Registros</h6>
-                                <h1 class="display-4" id="total-records-kpi">0</h1>
-                                <p class="small mb-0">Registros en el sistema</p>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="col-md-4 mb-4">
-                        <div class="card border-0 shadow-sm h-100 bg-success text-white">
-                            <div class="card-body text-center">
-                                <h6 class="text-uppercase">Promedio Diario</h6>
-                                <h1 class="display-4" id="avg-records-kpi">0</h1>
-                                <p class="small mb-0">Registros por día</p>
+                    <div class="row" id="kpi-metrics-container">
+                        <!-- Aquí se mostrarán las tarjetas de KPIs -->
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="text-uppercase">Total de Registros</h6>
+                                    <h1 class="display-4" id="total-records-kpi">0</h1>
+                                    <p class="small mb-0">Registros en el sistema</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-0 shadow-sm h-100 bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="text-uppercase">Promedio Diario</h6>
+                                    <h1 class="display-4" id="avg-records-kpi">0</h1>
+                                    <p class="small mb-0">Registros por día</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-0 shadow-sm h-100 bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="text-uppercase">${entityName}s</h6>
+                                    <h1 class="display-4" id="total-entities-kpi">0</h1>
+                                    <p class="small mb-0">${entityName}s registradas</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="col-md-4 mb-4">
-                        <div class="card border-0 shadow-sm h-100 bg-info text-white">
-                            <div class="card-body text-center">
-                                <h6 class="text-uppercase">${entityName}s</h6>
-                                <h1 class="display-4" id="total-entities-kpi">0</h1>
-                                <p class="small mb-0">${entityName}s registradas</p>
+                    <div class="row" id="kpi-fields-container">
+                        <!-- Aquí se mostrarán los KPIs de campos específicos -->
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Gráficos de KPIs</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="chart-type" class="form-label">Tipo de Gráfico</label>
+                                    <select class="form-select" id="chart-type">
+                                        <option value="bar">Barras</option>
+                                        <option value="line">Línea</option>
+                                        <option value="pie">Circular</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="chart-field" class="form-label">Campo a Graficar</label>
+                                    <select class="form-select" id="chart-field">
+                                        <option value="">Seleccione un campo</option>
+                                        ${numericFields.map(field => `
+                                            <option value="${field.id}" ${this.selectedFields.includes(field.id) ? '' : 'disabled'}>
+                                                ${field.name}
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="chart-grouping" class="form-label">Agrupar Por</label>
+                                    <select class="form-select" id="chart-grouping">
+                                        <option value="entity">${entityName}</option>
+                                        <option value="day">Día</option>
+                                        <option value="week">Semana</option>
+                                        <option value="month">Mes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <canvas id="kpi-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tendencias y Comparativas -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Tendencias y Comparativas</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="trend-field" class="form-label">Campo para Tendencia</label>
+                                    <select class="form-select" id="trend-field">
+                                        <option value="">Seleccione un campo</option>
+                                        ${numericFields.map(field => `
+                                            <option value="${field.id}" ${this.selectedFields.includes(field.id) ? '' : 'disabled'}>
+                                                ${field.name}
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="trend-period" class="form-label">Período</label>
+                                    <select class="form-select" id="trend-period">
+                                        <option value="custom">Personalizado (usar fechas de filtros)</option>
+                                        <option value="day">Diario</option>
+                                        <option value="week">Semanal</option>
+                                        <option value="month" selected>Mensual</option>
+                                        <option value="quarter">Trimestral</option>
+                                        <option value="year">Anual</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="comparison-mode" class="form-label">Modo de Comparación</label>
+                                    <select class="form-select" id="comparison-mode">
+                                        <option value="period">Período Anterior</option>
+                                        <option value="year">Mismo Período Año Anterior</option>
+                                        <option value="custom">Rango Personalizado</option>
+                                        <option value="none">Sin Comparación</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div id="custom-comparison-range" class="row mb-3" style="display: none;">
+                                <div class="col-md-6">
+                                    <label for="comparison-from-date" class="form-label">Desde</label>
+                                    <input type="date" class="form-control" id="comparison-from-date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="comparison-to-date" class="form-label">Hasta</label>
+                                    <input type="date" class="form-control" id="comparison-to-date">
+                                </div>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <canvas id="trend-chart"></canvas>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h6>Comparación del Período</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Métrica</th>
+                                                <th>Período Actual</th>
+                                                <th>Período Anterior</th>
+                                                <th>Diferencia</th>
+                                                <th>Variación %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="comparison-table-body">
+                                            <tr>
+                                                <td colspan="5" class="text-center">Seleccione un campo y un período para ver la comparación</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="row" id="kpi-fields-container">
-                    <!-- Aquí se mostrarán los KPIs de campos específicos -->
-                </div>
-                
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Gráficos de KPIs</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="chart-type" class="form-label">Tipo de Gráfico</label>
-                                <select class="form-select" id="chart-type">
-                                    <option value="bar">Barras</option>
-                                    <option value="line">Línea</option>
-                                    <option value="pie">Circular</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="chart-field" class="form-label">Campo a Graficar</label>
-                                <select class="form-select" id="chart-field">
-                                    <option value="">Seleccione un campo</option>
-                                    ${numericFields.map(field => `
-                                        <option value="${field.id}" ${this.selectedFields.includes(field.id) ? '' : 'disabled'}>
-                                            ${field.name}
-                                        </option>
-                                    `).join('')}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="chart-grouping" class="form-label">Agrupar Por</label>
-                                <select class="form-select" id="chart-grouping">
-                                    <option value="entity">${entityName}</option>
-                                    <option value="day">Día</option>
-                                    <option value="week">Semana</option>
-                                    <option value="month">Mes</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="chart-container">
-                            <canvas id="kpi-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Tendencias y Comparativas -->
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Tendencias y Comparativas</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="trend-field" class="form-label">Campo para Tendencia</label>
-                                <select class="form-select" id="trend-field">
-                                    <option value="">Seleccione un campo</option>
-                                    ${numericFields.map(field => `
-                                        <option value="${field.id}" ${this.selectedFields.includes(field.id) ? '' : 'disabled'}>
-                                            ${field.name}
-                                        </option>
-                                    `).join('')}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="trend-period" class="form-label">Período</label>
-                                <select class="form-select" id="trend-period">
-                                    <option value="custom">Personalizado (usar fechas de filtros)</option>
-                                    <option value="day">Diario</option>
-                                    <option value="week">Semanal</option>
-                                    <option value="month" selected>Mensual</option>
-                                    <option value="quarter">Trimestral</option>
-                                    <option value="year">Anual</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="comparison-mode" class="form-label">Modo de Comparación</label>
-                                <select class="form-select" id="comparison-mode">
-                                    <option value="period">Período Anterior</option>
-                                    <option value="year">Mismo Período Año Anterior</option>
-                                    <option value="custom">Rango Personalizado</option>
-                                    <option value="none">Sin Comparación</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div id="custom-comparison-range" class="row mb-3" style="display: none;">
-                            <div class="col-md-6">
-                                <label for="comparison-from-date" class="form-label">Desde</label>
-                                <input type="date" class="form-control" id="comparison-from-date">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="comparison-to-date" class="form-label">Hasta</label>
-                                <input type="date" class="form-control" id="comparison-to-date">
-                            </div>
-                        </div>
-                        
-                        <div class="chart-container">
-                            <canvas id="trend-chart"></canvas>
-                        </div>
-                        
-                        <div class="mt-4">
-                            <h6>Comparación del Período</h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Métrica</th>
-                                            <th>Período Actual</th>
-                                            <th>Período Anterior</th>
-                                            <th>Diferencia</th>
-                                            <th>Variación %</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="comparison-table-body">
-                                        <tr>
-                                            <td colspan="5" class="text-center">Seleccione un campo y un período para ver la comparación</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        mainContent.innerHTML = template;
+            `;
+            
+            mainContent.innerHTML = template;
+        } catch (error) {
+            console.error("Error al renderizar KPIsView:", error);
+        }
     },
     
     /**

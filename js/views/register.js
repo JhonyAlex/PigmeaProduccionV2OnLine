@@ -42,14 +42,11 @@ const RegisterView = {
      */
     render() {
         try {
-            let mainContent = document.querySelector('.main-content');
+            // Usar el contenedor de vista activa del Router
+            const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
             if (!mainContent) {
-                console.error("Elemento .main-content no encontrado en render()");
-                // Intentar crearlo como último recurso
-                const container = document.querySelector('.container') || document.body;
-                mainContent = document.createElement('div');
-                mainContent.className = 'main-content mt-4';
-                container.appendChild(mainContent);
+                console.error("Elemento contenedor no encontrado en render()");
+                return;
             }
             
             const entities = EntityModel.getAll() || [];

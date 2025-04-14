@@ -1,15 +1,11 @@
 /**
- * Enrutador para la aplicación SPA
+ * Enrutador simple para navegación entre vistas
  */
 const Router = {
-    /**
-     * Ruta actual
-     */
-    currentRoute: 'register',
+    // Ruta actual
+    currentRoute: null,
     
-    /**
-     * Rutas disponibles y sus controladores
-     */
+    // Rutas disponibles
     routes: {
         'register': RegisterView,
         'reports': ReportsView,
@@ -23,17 +19,8 @@ const Router = {
     init() {
         try {
             // Asegurarse de que el contenedor principal existe
-            const mainContent = document.querySelector('.main-content');
-            if (!mainContent) {
-                console.error("Elemento .main-content no encontrado");
-                // Crear el elemento si no existe
-                const container = document.querySelector('.container') || document.body;
-                const newMainContent = document.createElement('div');
-                newMainContent.className = 'main-content mt-4';
-                container.appendChild(newMainContent);
-                console.log("Elemento .main-content creado dinámicamente");
-            }
-
+            const mainContent = DOMUtils.ensureElement('.main-content', 'div', 'main-content mt-4', document.querySelector('.container') || document.body);
+            
             // Configurar listener para los links de navegación
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', (e) => {
@@ -55,31 +42,9 @@ const Router = {
             UIUtils.showAlert('Error al inicializar la navegación. Por favor recarga la página.', 'danger');
         }
     },
-    
+
     /**
-     * Configura los event listeners
-     */
-    setupEventListeners() {
-        // Listener para clicks en navegación
-        document.querySelectorAll('[data-route]').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const route = e.target.getAttribute('data-route');
-                this.navigateTo(route);
-            });
-        });
-        
-        // Listener para cambios en el hash de la URL
-        window.addEventListener('hashchange', () => {
-            const hash = window.location.hash.slice(1);
-            if (hash && this.routes[hash]) {
-                this.navigateTo(hash);
-            }
-        });
-    },
-    
-    /**
-     * Navega a una ruta específica
+     * Navega a la ruta especificada
      * @param {string} route Nombre de la ruta
      */
     navigateTo(route) {
@@ -88,13 +53,25 @@ const Router = {
                 console.error(`Ruta no encontrada: ${route}`);
                 route = 'register'; // Ruta por defecto
             }
-
-            // Verificar que el contenedor principal existe
-            let mainContent = DOMUtils.ensureElement('.main-content', 'div', 'main-content mt-4', document.querySelector('.container') || document.body);
             
-            // Limpia el contenido actual antes de cargar la nueva vista
+            // Verificar que el contenedor principal existe
+            let mainContent = document.querySelector('.main-content');
+            if (!mainContent) {
+                console.warn("Elemento .main-content no encontrado en navigateTo, creándolo...");
+                const container = document.querySelector('.container') || document.body;
+                mainContent = document.createElement('div');
+                mainContent.className = 'main-content mt-4';
+                container.appendChild(mainContent);
+            }
+
+            // IMPORTANTE: Limpiar completamente el contenedor principal antes de cargar la nueva vista
             mainContent.innerHTML = '';
             
+            // Eliminar cualquier posible vista residual que pueda estar fuera del contenedor principal
+            document.querySelectorAll('.view-container').forEach(el => {
+                el.remove();
+            });
+
             // Actualizar estado de la aplicación
             this.currentRoute = route;
             window.location.hash = route;
@@ -109,8 +86,16 @@ const Router = {
                 activeLink.classList.add('active');
             }
             
+            // Crear un nuevo contenedor específico para esta vista
+            const viewContainer = document.createElement('div');
+            viewContainer.className = 'view-container';
+            viewContainer.id = `${route}-view`;
+            mainContent.appendChild(viewContainer);
+            
+            // Establecer este contenedor como el contenedor activo
+            this.activeViewContainer = viewContainer;
+            
             // Inicializar la vista después de un pequeño retraso
-            // para asegurar que el DOM está actualizado
             setTimeout(() => {
                 this.routes[route].init();
             }, 10);
@@ -121,18 +106,14 @@ const Router = {
     },
     
     /**
-     * Actualiza el estado visual de la navegación
+     * Obtiene el contenedor de la vista activa
+     * @returns {HTMLElement} Contenedor de la vista activa
      */
-    updateNavState() {
-        // Eliminar clase active de todos los enlaces
-        document.querySelectorAll('[data-route]').forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        // Agregar clase active al enlace actual
-        const activeLink = document.querySelector(`[data-route="${this.currentRoute}"]`);
-        if (activeLink) {
-            activeLink.classList.add('active');
+    getActiveViewContainer() {
+        if (this.activeViewContainer && document.body.contains(this.activeViewContainer)) {
+            return this.activeViewContainer;
         }
+        
+        return document.querySelector('.main-content');
     }
 };
