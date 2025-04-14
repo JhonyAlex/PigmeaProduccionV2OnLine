@@ -11,100 +11,93 @@ const RegisterView = {
      * Inicializa la vista de registro
      */
     init() {
-        // Obtener el nombre personalizado de la configuración
+        // Obtener el nombre personalizado para "Entidad"
         const config = StorageService.getConfig();
-        this.entityName = config.entityName || 'Entidad';
+        if (config && config.entityName) {
+            this.entityName = config.entityName;
+        }
         
         this.render();
         this.setupEventListeners();
+        this.loadRecentRecords();
     },
     
     /**
      * Renderiza el contenido de la vista
      */
     render() {
-        const mainContent = document.getElementById('main-content');
-        const config = StorageService.getConfig();
-        const entities = EntityModel.getAll();
+        const mainContent = document.querySelector('.main-content');
+        const entities = EntityModel.getAll() || [];
         
-        const template = `
-            <div class="container mt-4">
-                <div class="row">
-                    <div class="col-md-8 mx-auto">
-                        <div class="card mb-4">
-                            <div class="card-header bg-primary text-white">
-                                <h3 class="mb-0">${config.title}</h3>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">${config.description}</p>
-                                
-                                <form id="register-form">
-                                    <div class="mb-3">
-                                        <label class="form-label">Seleccione ${entities.length > 0 ? `una ${this.entityName}` : `la ${this.entityName}`}</label>
-                                        <div id="entity-selector" class="d-flex flex-wrap gap-2">
-                                            ${entities.map(entity => 
-                                                `<button type="button" class="btn btn-outline-primary entity-btn" data-entity-id="${entity.id}">${entity.name}</button>`
-                                            ).join('')}
-                                        </div>
-                                        <input type="hidden" id="selected-entity-id" name="entity-id" required>
-                                    </div>
-                                    
-                                    <div id="dynamic-fields-container">
-                                        <!-- Los campos se cargarán dinámicamente -->
-                                    </div>
-                                    
-                                    <div id="submit-container" style="display: none;">
-                                        <div class="d-flex justify-content-between align-items-center mt-3">
-                                            <button type="submit" class="btn btn-primary" id="save-record-btn">
-                                                Guardar Registro
-                                            </button>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="yesterday-check">
-                                                <label class="form-check-label" for="yesterday-check">
-                                                    Ayer
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
+        const entityButtons = entities.map(entity => 
+            `<button class="btn btn-outline-primary entity-btn mb-2 me-2" data-entity-id="${entity.id}">${entity.name}</button>`
+        ).join('');
+        
+        const noEntitiesMessage = entities.length === 0 ? 
+            `<div class="alert alert-warning">No hay ${this.entityName.toLowerCase()}s configuradas. Cree algunas en la sección de Administración.</div>` : '';
+        
+        mainContent.innerHTML = `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Nuevo registro</h5>
                         </div>
-                        
-                        <!-- Últimos registros -->
-                        <div class="card">
-                            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Últimos Registros</h5>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="recent-records-container">
-                                    <table class="table table-hover mb-0" id="recent-records-table">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>${this.entityName}</th>
-                                                <th>Fecha y Hora</th>
-                                                <th>Datos</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="recent-records-list">
-                                            <!-- Los registros se cargarán dinámicamente -->
-                                        </tbody>
-                                    </table>
+                        <div class="card-body">
+                            <form id="register-form">
+                                <div class="mb-3">
+                                    <label class="form-label">Seleccione ${this.entityName}</label>
+                                    <div class="d-flex flex-wrap">
+                                        ${entityButtons}
+                                    </div>
+                                    ${noEntitiesMessage}
+                                    <input type="hidden" id="selected-entity-id" value="">
                                 </div>
-                                <div id="no-records-message" class="text-center py-4">
-                                    <p class="text-muted">No hay registros recientes.</p>
+                                
+                                <div id="dynamic-fields-container">
+                                    <!-- Los campos se cargan dinámicamente -->
                                 </div>
+                                
+                                <div id="submit-container" style="display: none;">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="yesterday-check">
+                                        <label class="form-check-label" for="yesterday-check">
+                                            Registrar como de ayer
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Guardar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Registros recientes</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="no-records-message" style="display: none;">
+                                <p class="text-muted">No hay registros recientes.</p>
                             </div>
+                            
+                            <table id="recent-records-table" class="table table-striped table-hover" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>${this.entityName}</th>
+                                        <th>Fecha</th>
+                                        <th>Datos</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-records-list"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         `;
-        
-        mainContent.innerHTML = template;
-        
-        // Cargar registros recientes
-        this.loadRecentRecords();
     },
     
     /**
@@ -332,10 +325,15 @@ const RegisterView = {
      * Carga y muestra los registros recientes
      */
     loadRecentRecords() {
-        const recentRecords = RecordModel.getRecent(10);
+        const recentRecords = RecordModel.getRecent(10) || [];
         const recentRecordsList = document.getElementById('recent-records-list');
         const noRecordsMessage = document.getElementById('no-records-message');
         const recentRecordsTable = document.getElementById('recent-records-table');
+        
+        if (!recentRecordsList || !noRecordsMessage || !recentRecordsTable) {
+            console.error("Elementos DOM no encontrados para mostrar registros recientes");
+            return;
+        }
         
         // Mostrar mensaje si no hay registros
         if (recentRecords.length === 0) {
@@ -573,7 +571,7 @@ const RegisterView = {
      */
     update() {
         // Recargar elementos dinámicos sin recargar toda la vista
-        const entityId = document.getElementById('selected-entity-id').value;
+        const entityId = document.getElementById('selected-entity-id')?.value;
         if (entityId) {
             this.loadDynamicFields(entityId);
         }

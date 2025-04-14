@@ -7,7 +7,8 @@ const EntityModel = {
      * @returns {Array} Lista de entidades
      */
     getAll() {
-        return StorageService.getData().entities;
+        const data = StorageService.getData();
+        return data && data.entities ? data.entities : [];
     },
     
     /**

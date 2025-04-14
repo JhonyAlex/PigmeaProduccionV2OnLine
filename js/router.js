@@ -21,17 +21,23 @@ const Router = {
      * Inicializa el enrutador
      */
     init() {
-        // Cargar ruta desde URL hash (si existe)
-        const hash = window.location.hash.slice(1);
-        if (hash && this.routes[hash]) {
-            this.currentRoute = hash;
+        try {
+            // Configurar listener para los links de navegación
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const route = e.target.getAttribute('data-route');
+                    this.navigateTo(route);
+                });
+            });
+            
+            // Determinar la ruta inicial
+            const initialRoute = window.location.hash.substring(1) || 'register';
+            this.navigateTo(initialRoute);
+        } catch (error) {
+            console.error("Error al inicializar Router:", error);
+            UIUtils.showAlert('Error al inicializar la navegación. Por favor recarga la página.', 'danger');
         }
-        
-        // Configurar event listeners
-        this.setupEventListeners();
-        
-        // Cargar vista inicial
-        this.navigateTo(this.currentRoute);
     },
     
     /**
@@ -61,23 +67,32 @@ const Router = {
      * @param {string} route Nombre de la ruta
      */
     navigateTo(route) {
-        // Verificar si la ruta existe
-        if (!this.routes[route]) {
-            console.error('Ruta no encontrada:', route);
-            route = 'register'; // Ruta por defecto
+        try {
+            if (!this.routes[route]) {
+                console.error(`Ruta no encontrada: ${route}`);
+                route = 'register'; // Ruta por defecto
+            }
+            
+            // Actualizar estado de la aplicación
+            this.currentRoute = route;
+            window.location.hash = route;
+            
+            // Actualizar estado de navegación
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            const activeLink = document.querySelector(`.nav-link[data-route="${route}"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+            
+            // Inicializar la vista
+            this.routes[route].init();
+        } catch (error) {
+            console.error(`Error al navegar a ${route}:`, error);
+            UIUtils.showAlert(`Error al cargar la vista ${route}. Por favor intenta nuevamente.`, 'danger');
         }
-        
-        // Actualizar ruta actual
-        this.currentRoute = route;
-        
-        // Actualizar URL hash (sin disparar evento)
-        window.history.pushState(null, null, `#${route}`);
-        
-        // Actualizar estado de navegación
-        this.updateNavState();
-        
-        // Inicializar la vista correspondiente
-        this.routes[route].init();
     },
     
     /**

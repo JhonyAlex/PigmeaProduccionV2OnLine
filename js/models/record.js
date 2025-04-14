@@ -7,7 +7,8 @@ const RecordModel = {
      * @returns {Array} Lista de registros
      */
     getAll() {
-        return StorageService.getData().records;
+        const data = StorageService.getData();
+        return data && data.records ? data.records : [];
     },
     
     /**
@@ -104,8 +105,7 @@ const RecordModel = {
      */
     getRecent(limit = 10) {
         const records = this.getAll();
-        // Ordenar por fecha (más reciente primero)
-        return [...records]
+        return records
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
             .slice(0, limit);
     },
