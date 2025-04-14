@@ -1889,5 +1889,13 @@ const KPIsView = {
         
         // Guardar referencia al gráfico en el canvas
         canvas.chart = chart;
+    },
+
+    /**
+     * Actualiza la vista cuando hay cambios en los datos
+     */
+    update() {
+        // Recargar datos de KPIs
+        this.loadData();
     }
 };

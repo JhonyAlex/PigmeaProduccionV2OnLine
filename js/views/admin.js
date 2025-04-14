@@ -1474,5 +1474,13 @@ confirmImport() {
    
    // Mostrar modal
    confirmModal.show();
-}
-};  
+},
+
+    /**
+     * Actualiza la vista cuando hay cambios en los datos
+     */
+    update() {
+        this.loadEntities();
+        this.loadFields();
+    }
+};

@@ -66,45 +66,45 @@ const ReportsView = {
         }, 100);
     },
 
-        /**
+    /**
      * Renderiza el contenido de la vista
      */
-        render() {
-            const mainContent = document.getElementById('main-content');
-            // --- Añadir verificación para mainContent ---
-            if (!mainContent) {
-                console.error("Error: Elemento con id 'main-content' no encontrado en el DOM.");
-                return; // Detener la renderización si el contenedor principal no existe
-            }
-            // -------------------------------------------
-    
-            const entities = EntityModel.getAll();
-            const sharedNumericFields = FieldModel.getSharedNumericFields();
-            const sharedFields = FieldModel.getAll();
-    
-            // Formatear fechas
-            const lastMonth = new Date();
-            lastMonth.setMonth(lastMonth.getMonth() - 1);
-            const lastMonthStr = this.formatDateForInput(lastMonth); // Usar función propia
-            const today = this.formatDateForInput(new Date());      // Usar función propia
-    
-            const config = StorageService.getConfig();
-            const entityName = config.entityName || 'Entidad';
-    
-            const column3Field = FieldModel.getAll().find(field => field.isColumn3);
-            const column4Field = FieldModel.getAll().find(field => field.isColumn4);
-            const column5Field = FieldModel.getAll().find(field => field.isColumn5);
-    
-            // Actualiza SelectedColumns al cargar si hay campos marcados
-            // Ahora 'this.selectedColumns' está definido
-            this.selectedColumns.field1 = column3Field ? column3Field.id : null; // Línea 70 (modificada para seguridad)
-            this.selectedColumns.field2 = column4Field ? column4Field.id : null;
-            this.selectedColumns.field3 = column5Field ? column5Field.id : null;
-    
-            const horizontalAxisField = FieldModel.getAll().find(field => field.isHorizontalAxis);
-            const compareField = FieldModel.getAll().find(field => field.isCompareField);
-    
-            // --- HTML Template Reorganizado ---
+    render() {
+        const mainContent = document.getElementById('main-content');
+        // --- Añadir verificación para mainContent ---
+        if (!mainContent) {
+            console.error("Error: Elemento con id 'main-content' no encontrado en el DOM.");
+            return; // Detener la renderización si el contenedor principal no existe
+        }
+        // -------------------------------------------
+
+        const entities = EntityModel.getAll();
+        const sharedNumericFields = FieldModel.getSharedNumericFields();
+        const sharedFields = FieldModel.getAll();
+
+        // Formatear fechas
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        const lastMonthStr = this.formatDateForInput(lastMonth); // Usar función propia
+        const today = this.formatDateForInput(new Date());      // Usar función propia
+
+        const config = StorageService.getConfig();
+        const entityName = config.entityName || 'Entidad';
+
+        const column3Field = FieldModel.getAll().find(field => field.isColumn3);
+        const column4Field = FieldModel.getAll().find(field => field.isColumn4);
+        const column5Field = FieldModel.getAll().find(field => field.isColumn5);
+
+        // Actualiza SelectedColumns al cargar si hay campos marcados
+        // Ahora 'this.selectedColumns' está definido
+        this.selectedColumns.field1 = column3Field ? column3Field.id : null; // Línea 70 (modificada para seguridad)
+        this.selectedColumns.field2 = column4Field ? column4Field.id : null;
+        this.selectedColumns.field3 = column5Field ? column5Field.id : null;
+
+        const horizontalAxisField = FieldModel.getAll().find(field => field.isHorizontalAxis);
+        const compareField = FieldModel.getAll().find(field => field.isCompareField);
+
+        // --- HTML Template Reorganizado ---
         const template = `
             <div class="container mt-4">
                 <h2>Reportes y Análisis</h2>
@@ -1520,5 +1520,13 @@ const ReportsView = {
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
         return `${year}-${month}-${day}`;
+    },
+
+    /**
+     * Actualiza la vista cuando hay cambios en los datos
+     */
+    update() {
+        // Recargar la tabla de registros sin perder los filtros actuales
+        this.generateReport();
     }
 }; // Fin del objeto ReportsView

@@ -2,103 +2,117 @@
  * Punto de entrada principal de la aplicación
  */
 document.addEventListener('DOMContentLoaded', () => {
+    // Mostrar indicador de carga
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2">Sincronizando datos...</p>
+    `;
+    document.body.appendChild(loadingIndicator);
+
     // Inicializar almacenamiento
-    StorageService.initializeStorage();
+    StorageService.initializeStorage()
+        .then(() => {
+            // Aplicar configuración personalizada
+            const config = StorageService.getConfig();
 
-    // Aplicar configuración personalizada
-    const config = StorageService.getConfig();
+            // Actualizar navbar-brand
+            if (config.navbarTitle) {
+                document.querySelector('.navbar-brand').textContent = config.navbarTitle;
+            }
 
-    // Actualizar navbar-brand
-    if (config.navbarTitle) {
-        document.querySelector('.navbar-brand').textContent = config.navbarTitle;
-    }
+            // Actualizar referencias a "Entidad" en la página inicial
+            if (config.entityName) {
+                updateGlobalEntityReferences(config.entityName);
+            }
 
-    // Actualizar referencias a "Entidad" en la página inicial
-    if (config.entityName) {
-        updateGlobalEntityReferences(config.entityName);
-    }
+            // Inicializar enrutador
+            Router.init();
 
-    // Inicializar enrutador
-    Router.init();
+            // Configurar exportación de datos
+            document.getElementById('export-data-btn').addEventListener('click', () => {
+                ExportUtils.exportToFile();
+            });
 
-    // Configurar exportación de datos
-    document.getElementById('export-data-btn').addEventListener('click', () => {
-        ExportUtils.exportToFile();
-    });
+            // Configurar importación de datos
+            document.getElementById('import-btn').addEventListener('click', () => {
+                document.getElementById('import-file').click();
+            });
 
-    // Configurar importación de datos
-    document.getElementById('import-btn').addEventListener('click', () => {
-        document.getElementById('import-file').click();
-    });
+            document.getElementById('import-file').addEventListener('change', (e) => {
+                if (e.target.files.length === 0) return;
 
-    document.getElementById('import-file').addEventListener('change', (e) => {
-        if (e.target.files.length === 0) return;
+                const file = e.target.files[0];
 
-        const file = e.target.files[0];
+                // Confirmar importación
+                const confirmModal = UIUtils.initModal('confirmModal');
+                const confirmMessage = document.getElementById('confirm-message');
+                const confirmActionBtn = document.getElementById('confirmActionBtn');
 
-        // Confirmar importación
-        const confirmModal = UIUtils.initModal('confirmModal');
-        const confirmMessage = document.getElementById('confirm-message');
-        const confirmActionBtn = document.getElementById('confirmActionBtn');
+                confirmMessage.textContent = `¿Está seguro de importar los datos desde "${file.name}"? Esta acción sobrescribirá todos los datos existentes.`;
 
-        confirmMessage.textContent = `¿Está seguro de importar los datos desde "${file.name}"? Esta acción sobrescribirá todos los datos existentes.`;
+                // Eliminar listeners anteriores
+                const newConfirmBtn = confirmActionBtn.cloneNode(true);
+                confirmActionBtn.parentNode.replaceChild(newConfirmBtn, confirmActionBtn);
 
-        // Eliminar listeners anteriores
-        const newConfirmBtn = confirmActionBtn.cloneNode(true);
-        confirmActionBtn.parentNode.replaceChild(newConfirmBtn, confirmActionBtn);
+                // Agregar nuevo listener
+                newConfirmBtn.addEventListener('click', () => {
+                    ExportUtils.importFromFile(file)
+                        .then(message => {
+                            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+                            UIUtils.showAlert('Datos importados correctamente. La página se recargará.', 'success');
 
-        // Agregar nuevo listener
-        newConfirmBtn.addEventListener('click', () => {
-            ExportUtils.importFromFile(file)
-                .then(message => {
-                    bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-                    UIUtils.showAlert('Datos importados correctamente. La página se recargará.', 'success');
-
-                    // Recargar la página después de 2 segundos
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                })
-                .catch(error => {
-                    bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-                    UIUtils.showAlert('Error al importar datos: ' + error.message, 'danger');
+                            // Recargar la página después de 2 segundos
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        })
+                        .catch(error => {
+                            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+                            UIUtils.showAlert(`Error al importar datos: ${error}`, 'danger');
+                        });
                 });
+
+                confirmModal.show();
+            });
+            
+            // Configurar actualización en tiempo real de la UI
+            document.addEventListener('firebase-data-changed', (event) => {
+                // Solo recargaremos si estamos en una vista que necesita actualizarse
+                // y si el cambio no fue originado por este cliente
+                const currentRoute = Router.currentRoute;
+                if (currentRoute && Router.routes[currentRoute] && 
+                    typeof Router.routes[currentRoute].update === 'function') {
+                    Router.routes[currentRoute].update();
+                }
+            });
+
+            // Quitar indicador de carga
+            document.body.removeChild(loadingIndicator);
+        })
+        .catch(error => {
+            console.error("Error al inicializar la aplicación:", error);
+            UIUtils.showAlert('Error al cargar datos: ' + error.message, 'danger');
+            // Quitar indicador de carga
+            document.body.removeChild(loadingIndicator);
         });
-
-        confirmModal.show();
-
-        // Resetear input file
-        e.target.value = '';
-    });
 });
 
 /**
- * Actualiza todas las referencias a "Entidad" en la página inicial
- /** @param {string} newEntityName El nuevo nombre para "Entidad"
+ * Actualiza referencias globales a "Entidad" con el nombre personalizado
+ * @param {string} entityName Nombre personalizado para "Entidad"
  */
- function updateGlobalEntityReferences(newEntityName) {
-    console.log("Actualizando referencias globales a Entidad con:", newEntityName);
+function updateGlobalEntityReferences(entityName) {
+    // Actualizar elementos con la clase 'entity-name-ref'
+    document.querySelectorAll('.entity-name-ref').forEach(el => {
+        el.textContent = entityName;
+    });
     
-    // Actualizar modal de entidad
-    const entityModalTitle = document.getElementById('entityModalTitle');
-    if (entityModalTitle) {
-        if (entityModalTitle.textContent === "Entidad Principal") {
-            entityModalTitle.textContent = newEntityName + " Principal";
-        }
-    }
-    
-    // Actualizar texto en el título del modal de asignación de campos
-    const assignModalTitle = document.querySelector('#assignFieldsModal .modal-title');
-    if (assignModalTitle) {
-        // Mantener el texto "Asignar Campos a " pero no modificar el span
-        const titleText = assignModalTitle.textContent;
-        if (titleText.startsWith("Asignar Campos a")) {
-            const spanElement = assignModalTitle.querySelector('span');
-            if (spanElement) {
-                const spanContent = spanElement.textContent;
-                assignModalTitle.textContent = "Asignar Campos a ";
-                assignModalTitle.appendChild(spanElement);
-            }
-        }
+    // También actualizar en el objeto RegisterView
+    if (window.RegisterView) {
+        RegisterView.entityName = entityName;
     }
 }

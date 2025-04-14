@@ -152,91 +152,88 @@ const RegisterView = {
         });
     },
     
- /**
- * Carga los campos dinámicos basados en la entidad seleccionada
- * @param {string} entityId ID de la entidad seleccionada
- */
- loadDynamicFields(entityId) {
-    const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
-    const submitContainer = document.getElementById('submit-container');
-    
-    // Limpiar contenedor
-    dynamicFieldsContainer.innerHTML = '';
-    
-    // Si no hay entityId, ocultar el contenedor del botón y limpiar
-    if (!entityId) {
-        submitContainer.style.display = 'none';
-        return;
-    }
-    
-    // Obtener entidad y sus campos
-    const entity = EntityModel.getById(entityId);
-    if (!entity) {
-        submitContainer.style.display = 'none';
-        return;
-    }
-    
-    const fields = FieldModel.getByIds(entity.fields);
-    
-    // No hay campos asignados
-    if (fields.length === 0) {
-        dynamicFieldsContainer.innerHTML = `
-            <div class="alert alert-warning">
-                Esta ${this.entityName.toLowerCase()} no tiene campos asignados. 
-                Configure los campos en la sección de Administración.
-            </div>
-        `;
-        submitContainer.style.display = 'none';
-        return;
-    }
-    
-    // Generar campos dinámicos
-    fields.forEach(field => {
-        const fieldHTML = UIUtils.generateFieldInput(field);
-        dynamicFieldsContainer.insertAdjacentHTML('beforeend', fieldHTML);
-    });
-
-    // Mostrar el contenedor del botón y checkbox
-    submitContainer.style.display = 'block';
-    
-    // CORRECCIÓN: Guardar referencia a los limpiadores de eventos
-    const cleanupFunctions = [];
-    
-    // Inicializar los selectores de búsqueda después de insertar todos los campos en el DOM
-    setTimeout(() => {
-        fields.forEach(field => {
-            if (field.type === 'select') {
-                // CORRECCIÓN: Almacenar la función de limpieza devuelta por setupSearchableSelect
-                const cleanup = UIUtils.setupSearchableSelect(`#${field.id}`);
-                if (typeof cleanup === 'function') {
-                    cleanupFunctions.push(cleanup);
-                }
-                
-                // Hacer visible el select una vez inicializado
-                const selectElement = document.getElementById(field.id);
-                if (selectElement) {
-                    selectElement.style.visibility = 'visible';
-                }
-            }
-        });
+    /**
+     * Carga los campos dinámicos basados en la entidad seleccionada
+     * @param {string} entityId ID de la entidad seleccionada
+     */
+    loadDynamicFields(entityId) {
+        const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+        const submitContainer = document.getElementById('submit-container');
         
-        // CORRECCIÓN: Agregar una función de limpieza al contenedor para eliminar listeners
-        if (cleanupFunctions.length > 0) {
-            dynamicFieldsContainer.addEventListener('DOMNodeRemoved', function handler() {
-                // Limpiar listeners cuando se elimine el contenedor
-                cleanupFunctions.forEach(cleanup => cleanup());
-                dynamicFieldsContainer.removeEventListener('DOMNodeRemoved', handler);
-            });
+        // Limpiar contenedor
+        dynamicFieldsContainer.innerHTML = '';
+        
+        // Si no hay entityId, ocultar el contenedor del botón y limpiar
+        if (!entityId) {
+            submitContainer.style.display = 'none';
+            return;
         }
-    }, 10); // Un pequeño delay para asegurar que el DOM se actualice primero
-},
+        
+        // Obtener entidad y sus campos
+        const entity = EntityModel.getById(entityId);
+        if (!entity) {
+            submitContainer.style.display = 'none';
+            return;
+        }
+        
+        const fields = FieldModel.getByIds(entity.fields);
+        
+        // No hay campos asignados
+        if (fields.length === 0) {
+            dynamicFieldsContainer.innerHTML = `
+                <div class="alert alert-warning">
+                    Esta ${this.entityName.toLowerCase()} no tiene campos asignados. 
+                    Configure los campos en la sección de Administración.
+                </div>
+            `;
+            submitContainer.style.display = 'none';
+            return;
+        }
+        
+        // Generar campos dinámicos
+        fields.forEach(field => {
+            const fieldHTML = UIUtils.generateFieldInput(field);
+            dynamicFieldsContainer.insertAdjacentHTML('beforeend', fieldHTML);
+        });
+
+        // Mostrar el contenedor del botón y checkbox
+        submitContainer.style.display = 'block';
+        
+        // CORRECCIÓN: Guardar referencia a los limpiadores de eventos
+        const cleanupFunctions = [];
+        
+        // Inicializar los selectores de búsqueda después de insertar todos los campos en el DOM
+        setTimeout(() => {
+            fields.forEach(field => {
+                if (field.type === 'select') {
+                    // CORRECCIÓN: Almacenar la función de limpieza devuelta por setupSearchableSelect
+                    const cleanup = UIUtils.setupSearchableSelect(`#${field.id}`);
+                    if (typeof cleanup === 'function') {
+                        cleanupFunctions.push(cleanup);
+                    }
+                    
+                    // Hacer visible el select una vez inicializado
+                    const selectElement = document.getElementById(field.id);
+                    if (selectElement) {
+                        selectElement.style.visibility = 'visible';
+                    }
+                }
+            });
+            
+            // CORRECCIÓN: Agregar una función de limpieza al contenedor para eliminar listeners
+            if (cleanupFunctions.length > 0) {
+                dynamicFieldsContainer.addEventListener('DOMNodeRemoved', function handler() {
+                    // Limpiar listeners cuando se elimine el contenedor
+                    cleanupFunctions.forEach(cleanup => cleanup());
+                    dynamicFieldsContainer.removeEventListener('DOMNodeRemoved', handler);
+                });
+            }
+        }, 10); // Un pequeño delay para asegurar que el DOM se actualice primero
+    },
     
     /**
      * Guarda un nuevo registro
      */
-    /**
- * Guarda un nuevo registro
- */
     saveRecord() {
         const form = document.getElementById('register-form');
         const entityId = document.getElementById('selected-entity-id').value;
@@ -569,5 +566,17 @@ const RegisterView = {
                 alert.textContent = alert.textContent.replace(/entidad/g, newEntityName.toLowerCase());
             }
         });
+    },
+    
+    /**
+     * Actualiza la vista cuando hay cambios en los datos
+     */
+    update() {
+        // Recargar elementos dinámicos sin recargar toda la vista
+        const entityId = document.getElementById('selected-entity-id').value;
+        if (entityId) {
+            this.loadDynamicFields(entityId);
+        }
+        this.loadRecentRecords();
     }
 };
