@@ -1,0 +1,49 @@
+:root {
+    /* Color primario en formato HEX y RGB */
+    --bs-primary: #008fba;
+    --bs-primary-rgb: 0, 143, 186;
+    
+    /* Otros colores en formato HEX */
+    --bs-secondary: #6c757d;
+    --bs-success: #28a745;
+    --bs-info: #17a2b8;
+    --bs-warning: #ffc107;
+    --bs-danger: #dc3545;
+    --bs-light: #f8f9fa;
+    --bs-dark: #343a40;
+    
+    /* Otros colores en formato RGB */
+    --bs-secondary-rgb: 108, 117, 125;
+    --bs-success-rgb: 40, 167, 69;
+    --bs-info-rgb: 23, 162, 184;
+    --bs-warning-rgb: 255, 193, 7;
+    --bs-danger-rgb: 220, 53, 69;
+    --bs-light-rgb: 248, 249, 250;
+    --bs-dark-rgb: 52, 58, 64;
+    
+    /* Variables personalizadas adicionales */
+    --color-primary-light: rgba(var(--bs-primary-rgb), 0.1);
+    --color-primary-medium: rgba(var(--bs-primary-rgb), 0.2);
+}
+
+/* Personalización adicional de botones si fuera necesario */
+.btn-primary {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.btn-primary:hover, .btn-primary:active, .btn-primary:focus {
+    background-color: #007ca3; /* Una versión ligeramente más oscura del color primario */
+    border-color: #007ca3;
+}
+
+.btn-outline-primary {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+}
