@@ -32,6 +32,25 @@ const DOMUtils = {
     },
     
     /**
+     * Verifica si un elemento existe y lo crea si no
+     * @param {string} selector Selector CSS del elemento
+     * @param {string} tagName Nombre de la etiqueta HTML a crear
+     * @param {string} className Clases CSS a aplicar
+     * @param {HTMLElement} parent Elemento padre donde añadirlo
+     * @returns {HTMLElement} El elemento encontrado o creado
+     */
+    ensureElement(selector, tagName, className, parent) {
+        let element = document.querySelector(selector);
+        if (!element) {
+            console.warn(`Elemento ${selector} no encontrado, creándolo...`);
+            element = document.createElement(tagName);
+            if (className) element.className = className;
+            if (parent) parent.appendChild(element);
+        }
+        return element;
+    },
+    
+    /**
      * Inserta un mensaje de alerta en el DOM
      * @param {string} message Mensaje a mostrar
      * @param {string} type Tipo de alerta (success, danger, warning, info)
@@ -57,24 +76,5 @@ const DOMUtils = {
             alertBox.classList.remove('show');
             setTimeout(() => alertBox.remove(), 300);
         }, 5000);
-    },
-    
-    /**
-     * Verifica si un elemento existe y lo crea si no
-     * @param {string} selector Selector CSS del elemento
-     * @param {string} tagName Nombre de la etiqueta HTML a crear
-     * @param {string} className Clases CSS a aplicar
-     * @param {HTMLElement} parent Elemento padre donde añadirlo
-     * @returns {HTMLElement} El elemento encontrado o creado
-     */
-    ensureElement(selector, tagName, className, parent) {
-        let element = document.querySelector(selector);
-        if (!element) {
-            console.warn(`Elemento ${selector} no encontrado, creándolo...`);
-            element = document.createElement(tagName);
-            if (className) element.className = className;
-            if (parent) parent.appendChild(element);
-        }
-        return element;
     }
 };

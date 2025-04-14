@@ -1123,149 +1123,109 @@ const AdminView = {
      */
     showAssignFieldsModal(entityId) {
         const entity = EntityModel.getById(entityId);
-        if (!entity) return;
+        if (!entity) {
+            console.error('Entidad no encontrada:', entityId);
+            return;
+        }
         
-        const modal = UIUtils.initModal('assignFieldsModal');
-        const entityNameTitle = document.getElementById('entity-name-title');
+        // Obtener todos los campos disponibles
+        const allFields = FieldModel.getAll() || [];
+        
+        // Inicializar arrays si no existen
+        if (!entity.fields) {
+            entity.fields = [];
+        }
+        
+        // Separar campos disponibles y asignados
+        const availableFields = allFields.filter(field => field && !entity.fields.includes(field.id));
+        const assignedFields = allFields.filter(field => field && entity.fields.includes(field.id));
+        
+        // Actualizar listas en el modal
         const availableFieldsList = document.getElementById('available-fields-list');
         const assignedFieldsList = document.getElementById('assigned-fields-list');
-        const saveAssignFieldsBtn = document.getElementById('saveAssignFieldsBtn');
         
-        // Establecer título
-        entityNameTitle.textContent = entity.name;
-        
-        // Guardar entityId para uso posterior
-        saveAssignFieldsBtn.setAttribute('data-entity-id', entityId);
-        
-        // Cargar campos
-        const allFields = FieldModel.getAll();
-        const assignedFieldIds = entity.fields;
+        if (!availableFieldsList || !assignedFieldsList) {
+            console.error('Listas de campos no encontradas en el DOM');
+            return;
+        }
         
         // Limpiar listas
         availableFieldsList.innerHTML = '';
         assignedFieldsList.innerHTML = '';
         
-        // Campos disponibles (no asignados)
-        allFields.filter(field => !assignedFieldIds.includes(field.id)).forEach(field => {
-            const item = document.createElement('div');
-            item.className = 'list-group-item list-group-item-action field-item';
-            item.setAttribute('data-field-id', field.id);
-            item.textContent = `${field.name} (${this.getFieldTypeLabel(field.type)})`;
-            
-            item.addEventListener('click', () => {
-                this.toggleFieldSelection(item, 'available');
+        // Renderizar campos disponibles
+        if (availableFields.length === 0) {
+            availableFieldsList.innerHTML = '<div class="text-center text-muted">No hay campos disponibles</div>';
+        } else {
+            availableFields.forEach(field => {
+                const item = this._createFieldListItem(field);
+                availableFieldsList.appendChild(item);
+                
+                item.addEventListener('click', () => {
+                    this.toggleFieldSelection(item, 'available');
+                });
             });
-            
-            availableFieldsList.appendChild(item);
-        });
+        }
         
-        // Campos asignados
-        const assignedFields = FieldModel.getByIds(assignedFieldIds);
-        assignedFields.forEach(field => {
-            const item = document.createElement('div');
-            item.className = 'list-group-item list-group-item-action field-item';
-            item.setAttribute('data-field-id', field.id);
-            item.textContent = `${field.name} (${this.getFieldTypeLabel(field.type)})`;
-            
-            item.addEventListener('click', () => {
-                this.toggleFieldSelection(item, 'assigned');
+        // Renderizar campos asignados
+        if (assignedFields.length === 0) {
+            assignedFieldsList.innerHTML = '<div class="text-center text-muted">No hay campos asignados</div>';
+        } else {
+            assignedFields.forEach(field => {
+                const item = this._createFieldListItem(field);
+                assignedFieldsList.appendChild(item);
+                
+                item.addEventListener('click', () => {
+                    this.toggleFieldSelection(item, 'assigned');
+                });
             });
-            
-            assignedFieldsList.appendChild(item);
-        });
+        }
         
+        // Configurar botón de guardar
+        const saveBtn = document.getElementById('saveAssignFieldsBtn');
+        if (saveBtn) {
+            saveBtn.setAttribute('data-entity-id', entityId);
+        }
+        
+        // Mostrar título de la entidad
+        const entityNameEl = document.getElementById('assign-fields-entity-name');
+        if (entityNameEl) {
+            entityNameEl.textContent = entity.name;
+        }
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('assignFieldsModal'));
         modal.show();
     },
     
     /**
-     * Obtiene la etiqueta legible para un tipo de campo
-     * @param {string} type Tipo de campo
-     * @returns {string} Etiqueta del tipo
+     * Crea un elemento de lista para un campo
+     * @param {Object} field Campo a mostrar
+     * @returns {HTMLElement} Elemento de lista
      */
-    getFieldTypeLabel(type) {
-        switch (type) {
-            case 'text': return 'Texto';
-            case 'number': return 'Número';
-            case 'select': return 'Selección';
-            default: return type;
-        }
+    _createFieldListItem(field) {
+        const item = document.createElement('div');
+        item.className = 'list-group-item field-item';
+        item.setAttribute('data-field-id', field.id);
+        
+        // Mostrar tipo de campo formateado
+        let fieldType = this.getFieldTypeLabel(field.type);
+        
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${field.name}</strong>
+                    <small class="text-muted ms-2">${fieldType}</small>
+                </div>
+                <span class="badge bg-primary rounded-pill">
+                    <i class="fas fa-arrows-alt-h"></i>
+                </span>
+            </div>
+        `;
+        
+        return item;
     },
     
-    /**
-     * Alterna la selección de un campo en el modal de asignación
-     * @param {HTMLElement} item Elemento del campo
-     * @param {string} listType Tipo de lista ('available' o 'assigned')
-     */
-    toggleFieldSelection(item, listType) {
-        item.classList.toggle('selected');
-        
-        // Mover a la otra lista
-        const fieldId = item.getAttribute('data-field-id');
-        const availableFieldsList = document.getElementById('available-fields-list');
-        const assignedFieldsList = document.getElementById('assigned-fields-list');
-        
-        if (item.classList.contains('selected')) {
-            // Esperar un momento para dar feedback visual
-            setTimeout(() => {
-                if (listType === 'available') {
-                    // Mover de disponible a asignado
-                    assignedFieldsList.appendChild(item);
-                    item.classList.remove('selected');
-                    
-                    // Cambiar listener
-                    item.removeEventListener('click', () => {
-                        this.toggleFieldSelection(item, 'available');
-                    });
-                    item.addEventListener('click', () => {
-                        this.toggleFieldSelection(item, 'assigned');
-                    });
-                } else {
-                    // Mover de asignado a disponible
-                    availableFieldsList.appendChild(item);
-                    item.classList.remove('selected');
-                    
-                    // Cambiar listener
-                    item.removeEventListener('click', () => {
-                        this.toggleFieldSelection(item, 'assigned');
-                    });
-                    item.addEventListener('click', () => {
-                        this.toggleFieldSelection(item, 'available');
-                    });
-                }
-            }, 300);
-        }
-    },
-    
-    /**
-     * Guarda los campos asignados a una entidad
-     */
-    saveAssignedFields() {
-        const saveBtn = document.getElementById('saveAssignFieldsBtn');
-        const entityId = saveBtn.getAttribute('data-entity-id');
-        const assignedFieldsList = document.getElementById('assigned-fields-list');
-        
-        // Recolectar IDs de campos asignados
-        const assignedFieldIds = [];
-        assignedFieldsList.querySelectorAll('.field-item').forEach(item => {
-            assignedFieldIds.push(item.getAttribute('data-field-id'));
-        });
-        
-        // Guardar asignación
-        const result = EntityModel.assignFields(entityId, assignedFieldIds);
-        
-        if (result) {
-            // Cerrar modal
-            bootstrap.Modal.getInstance(document.getElementById('assignFieldsModal')).hide();
-            
-            // Recargar lista
-            this.loadEntities();
-            
-            // Mostrar mensaje
-            UIUtils.showAlert('Campos asignados correctamente', 'success', document.querySelector('.container'));
-        } else {
-            UIUtils.showAlert('Error al asignar campos', 'danger', document.querySelector('.container'));
-        }
-    },
     /**
  * Actualiza las referencias visibles a "Entidad" con el nuevo nombre
  * @param {string} newEntityName El nuevo nombre para "Entidad"

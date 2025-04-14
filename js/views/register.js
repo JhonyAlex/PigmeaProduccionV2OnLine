@@ -206,83 +206,126 @@ const RegisterView = {
      * @param {string} entityId ID de la entidad seleccionada
      */
     loadDynamicFields(entityId) {
+        // Obtener el contenedor de campos dinámicos
         const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
-        const submitContainer = document.getElementById('submit-container');
-        
-        if (!dynamicFieldsContainer || !submitContainer) {
-            console.error("Elementos DOM necesarios para cargar campos dinámicos no encontrados");
+        if (!dynamicFieldsContainer) {
+            console.error('Contenedor de campos dinámicos no encontrado');
             return;
         }
         
         // Limpiar contenedor
         dynamicFieldsContainer.innerHTML = '';
         
-        // Si no hay entityId, ocultar el contenedor del botón y limpiar
-        if (!entityId) {
-            submitContainer.style.display = 'none';
-            return;
+        // Si no hay entidad seleccionada, ocultar el botón de envío
+        const submitContainer = document.getElementById('submit-container');
+        if (submitContainer) {
+            submitContainer.style.display = entityId ? 'block' : 'none';
         }
+        
+        if (!entityId) return;
         
         // Obtener entidad y sus campos
         const entity = EntityModel.getById(entityId);
         if (!entity) {
-            submitContainer.style.display = 'none';
+            console.error('Entidad no encontrada:', entityId);
             return;
         }
         
-        const fields = FieldModel.getByIds(entity.fields);
+        // Asegurarse de que entity.fields existe
+        if (!entity.fields || !Array.isArray(entity.fields)) {
+            console.warn('La entidad no tiene campos asignados');
+            entity.fields = [];
+        }
         
-        // No hay campos asignados
-        if (fields.length === 0) {
+        // Obtener campos asignados a la entidad
+        const fields = FieldModel.getByIds(entity.fields);
+        if (!fields || fields.length === 0) {
             dynamicFieldsContainer.innerHTML = `
-                <div class="alert alert-warning">
-                    Esta ${this.entityName.toLowerCase()} no tiene campos asignados. 
-                    Configure los campos en la sección de Administración.
+                <div class="alert alert-info">
+                    No hay campos configurados para esta ${this.entityName.toLowerCase()}.
+                    Configure algunos en la sección de Administración.
                 </div>
             `;
-            submitContainer.style.display = 'none';
             return;
         }
         
-        // Generar campos dinámicos
-        fields.forEach(field => {
-            const fieldHTML = UIUtils.generateFieldInput(field);
-            dynamicFieldsContainer.insertAdjacentHTML('beforeend', fieldHTML);
-        });
-
-        // Mostrar el contenedor del botón y checkbox
-        submitContainer.style.display = 'block';
-        
-        // CORRECCIÓN: Guardar referencia a los limpiadores de eventos
+        // Array para guardar funciones de limpieza (para selects buscables)
         const cleanupFunctions = [];
         
-        // Inicializar los selectores de búsqueda después de insertar todos los campos en el DOM
-        setTimeout(() => {
-            fields.forEach(field => {
-                if (field.type === 'select') {
-                    // CORRECCIÓN: Almacenar la función de limpieza devuelta por setupSearchableSelect
-                    const cleanup = UIUtils.setupSearchableSelect(`#${field.id}`);
-                    if (typeof cleanup === 'function') {
-                        cleanupFunctions.push(cleanup);
+        // Renderizar cada campo
+        fields.forEach(field => {
+            if (!field) return; // Saltarse campos nulos o indefinidos
+            
+            const fieldContainer = document.createElement('div');
+            fieldContainer.className = 'mb-3';
+            
+            let fieldHTML = '';
+            
+            // Crear etiqueta (con asterisco si es requerido)
+            fieldHTML += `<label for="${field.id}" class="form-label">
+                ${field.name}${field.required ? ' <span class="text-danger">*</span>' : ''}
+            </label>`;
+            
+            // Crear input según el tipo
+            switch (field.type) {
+                case 'text':
+                    fieldHTML += `<input type="text" class="form-control" id="${field.id}" 
+                        name="${field.id}" ${field.required ? 'required' : ''}>`;
+                    break;
+                    
+                case 'number':
+                    fieldHTML += `<input type="number" class="form-control" id="${field.id}" 
+                        name="${field.id}" ${field.required ? 'required' : ''}>`;
+                    break;
+                    
+                case 'select':
+                    // Para selects, utilizamos la utilidad SearchableSelect
+                    fieldHTML += `<select class="form-select" id="${field.id}" 
+                        name="${field.id}" style="visibility: hidden" ${field.required ? 'required' : ''}>
+                        <option value="">Seleccione...</option>`;
+                        
+                    // Agregar opciones
+                    if (field.options && Array.isArray(field.options)) {
+                        field.options.forEach(option => {
+                            fieldHTML += `<option value="${option}">${option}</option>`;
+                        });
                     }
                     
-                    // Hacer visible el select una vez inicializado
-                    const selectElement = document.getElementById(field.id);
-                    if (selectElement) {
-                        selectElement.style.visibility = 'visible';
-                    }
-                }
-            });
-            
-            // CORRECCIÓN: Agregar una función de limpieza al contenedor para eliminar listeners
-            if (cleanupFunctions.length > 0) {
-                dynamicFieldsContainer.addEventListener('DOMNodeRemoved', function handler() {
-                    // Limpiar listeners cuando se elimine el contenedor
-                    cleanupFunctions.forEach(cleanup => cleanup());
-                    dynamicFieldsContainer.removeEventListener('DOMNodeRemoved', handler);
-                });
+                    fieldHTML += `</select>`;
+                    break;
+                    
+                default:
+                    fieldHTML += `<input type="text" class="form-control" id="${field.id}" 
+                        name="${field.id}" ${field.required ? 'required' : ''}>`;
             }
-        }, 10); // Un pequeño delay para asegurar que el DOM se actualice primero
+            
+            fieldContainer.innerHTML = fieldHTML;
+            dynamicFieldsContainer.appendChild(fieldContainer);
+            
+            // Configurar SearchableSelect para campos tipo select
+            if (field.type === 'select') {
+                // CORRECCIÓN: Almacenar la función de limpieza devuelta por setupSearchableSelect
+                const cleanup = UIUtils.setupSearchableSelect(`#${field.id}`);
+                if (typeof cleanup === 'function') {
+                    cleanupFunctions.push(cleanup);
+                }
+                
+                // Hacer visible el select una vez inicializado
+                const selectElement = document.getElementById(field.id);
+                if (selectElement) {
+                    selectElement.style.visibility = 'visible';
+                }
+            }
+        });
+        
+        // CORRECCIÓN: Agregar una función de limpieza al contenedor para eliminar listeners
+        if (cleanupFunctions.length > 0) {
+            dynamicFieldsContainer.addEventListener('DOMNodeRemoved', function handler() {
+                // Limpiar listeners cuando se elimine el contenedor
+                cleanupFunctions.forEach(cleanup => cleanup());
+                dynamicFieldsContainer.removeEventListener('DOMNodeRemoved', handler);
+            });
+        }
     },
     
     /**
@@ -387,88 +430,131 @@ const RegisterView = {
      * Carga y muestra los registros recientes
      */
     loadRecentRecords() {
-        try {
-            const recentRecordsList = document.getElementById('recent-records-list');
-            const noRecordsMessage = document.getElementById('no-records-message');
-            const recentRecordsTable = document.getElementById('recent-records-table');
+        // Verificar elementos necesarios del DOM
+        const recentRecordsList = document.getElementById('recent-records-list');
+        const noRecordsMessage = document.getElementById('no-records-message');
+        const recentRecordsTable = document.getElementById('recent-records-table');
+        
+        // Si no encontramos los elementos, intentamos recrearlos
+        if (!recentRecordsList || !noRecordsMessage || !recentRecordsTable) {
+            console.warn('Elementos DOM no encontrados para mostrar registros recientes, recreando...');
             
-            if (!recentRecordsList || !noRecordsMessage || !recentRecordsTable) {
-                console.error("Elementos DOM no encontrados para mostrar registros recientes");
+            // Buscar el contenedor de la columna derecha o crearlo
+            const container = document.querySelector('.main-content');
+            if (!container) {
+                console.error('No se encontró el contenedor principal para recrear la tabla de registros');
                 return;
             }
             
-            const recentRecords = RecordModel.getRecent(10) || [];
-            
-            // Mostrar mensaje si no hay registros
-            if (recentRecords.length === 0) {
-                noRecordsMessage.style.display = 'block';
-                recentRecordsTable.style.display = 'none';
+            // Buscar si existe la columna derecha
+            let rightColumn = container.querySelector('.col-md-6:last-child');
+            if (!rightColumn) {
+                console.warn('Recreando la estructura completa de registros recientes');
+                // Crear elementos si no existen
+                this.render();
                 return;
             }
             
-            // Mostrar tabla si hay registros
-            noRecordsMessage.style.display = 'none';
-            recentRecordsTable.style.display = 'table';
-            
-            // Limpiar lista
-            recentRecordsList.innerHTML = '';
-            
-            // Renderizar cada registro
-            recentRecords.forEach(record => {
-                const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
-                const fields = FieldModel.getByIds(Object.keys(record.data || {})) || [];
-                
-                // Crear fila para el registro
-                const row = document.createElement('tr');
-                
-                // Preparar datos para mostrar (limitados a 3 campos)
-                const dataFields = [];
-                for (const fieldId in record.data) {
-                    const field = fields.find(f => f && f.id === fieldId);
-                    if (field) {
-                        dataFields.push(`${field.name}: ${record.data[fieldId]}`);
-                    }
-                }
-                
-                // Limitar a 3 campos y agregar elipsis si hay más
-                let displayData = dataFields.slice(0, 3).join(', ');
-                if (dataFields.length > 3) {
-                    displayData += '...';
-                }
-                
-                row.innerHTML = `
-                    <td>${entity.name}</td>
-                    <td>${UIUtils.formatDate(record.timestamp)}</td>
-                    <td>${displayData}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary view-record" data-record-id="${record.id}">
-                            Ver
-                        </button>
-                    </td>
+            // Recrear la tabla y mensajes
+            const cardBody = rightColumn.querySelector('.card-body');
+            if (cardBody) {
+                cardBody.innerHTML = `
+                    <div id="no-records-message" style="display: none;">
+                        <p class="text-muted">No hay registros recientes.</p>
+                    </div>
+                    
+                    <table id="recent-records-table" class="table table-striped table-hover" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>${this.entityName}</th>
+                                <th>Fecha</th>
+                                <th>Datos</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-records-list"></tbody>
+                    </table>
                 `;
-                
-                // Aplicar efecto de highlight si es un nuevo registro
-                const isNew = Date.now() - new Date(record.timestamp).getTime() < 10000; // 10 segundos
-                if (isNew) {
-                    UIUtils.highlightNewElement(row);
-                }
-                
-                recentRecordsList.appendChild(row);
-            });
-            
-            // Configurar event listeners para ver detalles
-            const viewButtons = recentRecordsList.querySelectorAll('.view-record');
-            if (viewButtons) {
-                viewButtons.forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const recordId = e.target.getAttribute('data-record-id');
-                        this.showRecordDetails(recordId);
-                    });
-                });
             }
-        } catch (error) {
-            console.error("Error al cargar registros recientes:", error);
         }
+        
+        // Intentar obtener los elementos nuevamente
+        const refreshedRecentRecordsList = document.getElementById('recent-records-list');
+        const refreshedNoRecordsMessage = document.getElementById('no-records-message');
+        const refreshedRecentRecordsTable = document.getElementById('recent-records-table');
+        
+        if (!refreshedRecentRecordsList || !refreshedNoRecordsMessage || !refreshedRecentRecordsTable) {
+            console.error('No se pudieron recrear los elementos necesarios para mostrar registros recientes');
+            return;
+        }
+        
+        const recentRecords = RecordModel.getRecent(10) || [];
+        
+        // Mostrar mensaje si no hay registros
+        if (recentRecords.length === 0) {
+            refreshedNoRecordsMessage.style.display = 'block';
+            refreshedRecentRecordsTable.style.display = 'none';
+            return;
+        }
+        
+        // Mostrar tabla si hay registros
+        refreshedNoRecordsMessage.style.display = 'none';
+        refreshedRecentRecordsTable.style.display = 'table';
+        
+        // Limpiar lista
+        refreshedRecentRecordsList.innerHTML = '';
+        
+        // Renderizar cada registro
+        recentRecords.forEach(record => {
+            const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
+            const fieldIds = record.data ? Object.keys(record.data) : [];
+            const fields = FieldModel.getByIds(fieldIds);
+            
+            // Crear fila para el registro
+            const row = document.createElement('tr');
+            
+            // Preparar datos para mostrar (limitados a 3 campos)
+            const dataFields = [];
+            for (const fieldId in record.data) {
+                const field = fields.find(f => f && f.id === fieldId);
+                if (field) {
+                    dataFields.push(`${field.name}: ${record.data[fieldId]}`);
+                }
+            }
+            
+            // Limitar a 3 campos y agregar elipsis si hay más
+            let displayData = dataFields.slice(0, 3).join(', ');
+            if (dataFields.length > 3) {
+                displayData += '...';
+            }
+            
+            row.innerHTML = `
+                <td>${entity.name}</td>
+                <td>${UIUtils.formatDate(record.timestamp)}</td>
+                <td>${displayData}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary view-record" data-record-id="${record.id}">
+                        Ver
+                    </button>
+                </td>
+            `;
+            
+            // Aplicar efecto de highlight si es un nuevo registro
+            const isNew = Date.now() - new Date(record.timestamp).getTime() < 10000; // 10 segundos
+            if (isNew) {
+                UIUtils.highlightNewElement(row);
+            }
+            
+            refreshedRecentRecordsList.appendChild(row);
+        });
+        
+        // Configurar event listeners para ver detalles
+        refreshedRecentRecordsList.querySelectorAll('.view-record').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const recordId = e.target.getAttribute('data-record-id');
+                this.showRecordDetails(recordId);
+            });
+        });
     },
     
     /**

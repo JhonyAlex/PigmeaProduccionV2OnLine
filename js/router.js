@@ -88,17 +88,13 @@ const Router = {
                 console.error(`Ruta no encontrada: ${route}`);
                 route = 'register'; // Ruta por defecto
             }
-            
-            // Verificar que el contenedor principal existe
-            let mainContent = document.querySelector('.main-content');
-            if (!mainContent) {
-                console.warn("Elemento .main-content no encontrado en navigateTo, creándolo...");
-                const container = document.querySelector('.container') || document.body;
-                mainContent = document.createElement('div');
-                mainContent.className = 'main-content mt-4';
-                container.appendChild(mainContent);
-            }
 
+            // Verificar que el contenedor principal existe
+            let mainContent = DOMUtils.ensureElement('.main-content', 'div', 'main-content mt-4', document.querySelector('.container') || document.body);
+            
+            // Limpia el contenido actual antes de cargar la nueva vista
+            mainContent.innerHTML = '';
+            
             // Actualizar estado de la aplicación
             this.currentRoute = route;
             window.location.hash = route;
@@ -113,10 +109,11 @@ const Router = {
                 activeLink.classList.add('active');
             }
             
-            // Inicializar la vista con un pequeño retraso para asegurar que el DOM está listo
+            // Inicializar la vista después de un pequeño retraso
+            // para asegurar que el DOM está actualizado
             setTimeout(() => {
                 this.routes[route].init();
-            }, 0);
+            }, 10);
         } catch (error) {
             console.error(`Error al navegar a ${route}:`, error);
             UIUtils.showAlert(`Error al cargar la vista ${route}. Por favor intenta nuevamente.`, 'danger');
