@@ -10,6 +10,7 @@ const StorageService = {
     _initialized: false,
     _initPromise: null,
     _dataSubscribers: [],
+    _fallbackToLocalStorage: false,
     
     /**
      * Inicializa el almacenamiento con datos predeterminados si no existe
@@ -30,18 +31,7 @@ const StorageService = {
                     .then(snapshot => {
                         if (!snapshot.exists()) {
                             // No hay datos, inicializar con datos predeterminados
-                            const initialData = {
-                                config: {
-                                    title: "Sistema de Registro de Datos",
-                                    description: "Registre sus datos de manera flexible y personalizada",
-                                    entityName: "Entidad",
-                                    navbarTitle: "Sistema de Registro Flexible",
-                                    kpiFields: []
-                                },
-                                entities: [],
-                                fields: [],
-                                records: []
-                            };
+                            const initialData = this._getDefaultData();
                             return this.dbRef.set(initialData).then(() => initialData);
                         } else {
                             // Ya existen datos
@@ -67,11 +57,35 @@ const StorageService = {
                     })
                     .catch(err => {
                         console.error("Error al inicializar Firebase:", err);
-                        reject(err);
+                        console.warn("Cambiando a modo localStorage como fallback");
+                        this._fallbackToLocalStorage = true;
+                        
+                        // Cargar datos desde localStorage o crear datos iniciales
+                        let localData;
+                        const storedData = localStorage.getItem(this.DB_PATH);
+                        
+                        if (storedData) {
+                            try {
+                                localData = JSON.parse(storedData);
+                            } catch (e) {
+                                localData = this._getDefaultData();
+                            }
+                        } else {
+                            localData = this._getDefaultData();
+                            localStorage.setItem(this.DB_PATH, JSON.stringify(localData));
+                        }
+                        
+                        this._cachedData = localData;
+                        this._initialized = true;
+                        resolve(localData);
                     });
             } catch (err) {
                 console.error("Error en la configuración de Firebase:", err);
-                reject(err);
+                this._fallbackToLocalStorage = true;
+                const defaultData = this._getDefaultData();
+                this._cachedData = defaultData;
+                this._initialized = true;
+                resolve(defaultData);
             }
         });
         
@@ -79,11 +93,33 @@ const StorageService = {
     },
     
     /**
+     * Obtiene los datos predeterminados para inicializar
+     */
+    _getDefaultData() {
+        return {
+            config: {
+                title: "Sistema de Registro de Datos",
+                description: "Registre sus datos de manera flexible y personalizada",
+                entityName: "Entidad",
+                navbarTitle: "Sistema de Registro Flexible",
+                kpiFields: []
+            },
+            entities: [],
+            fields: [],
+            records: []
+        };
+    },
+    
+    /**
      * Configura la escucha en tiempo real de cambios en Firebase
      */
     _setupRealtimeListener() {
+        if (this._fallbackToLocalStorage) return;
+        
         this.dbRef.on('value', snapshot => {
             const newData = snapshot.val();
+            if (!newData) return;
+            
             this._cachedData = newData;
             
             // Notificar a todos los suscriptores sobre el cambio
@@ -146,18 +182,7 @@ const StorageService = {
     getData() {
         // Si no estamos inicializados, devolvemos los datos en caché o un objeto vacío
         if (!this._initialized) {
-            return this._cachedData || { 
-                config: {
-                    title: "Sistema de Registro de Datos",
-                    description: "Registre sus datos de manera flexible y personalizada",
-                    entityName: "Entidad",
-                    navbarTitle: "Sistema de Registro Flexible",
-                    kpiFields: []
-                },
-                entities: [],
-                fields: [],
-                records: []
-            };
+            return this._cachedData || this._getDefaultData();
         }
         return this._cachedData;
     },
@@ -170,10 +195,22 @@ const StorageService = {
         // Actualizar caché inmediatamente para operaciones rápidas
         this._cachedData = data;
         
+        // Si estamos en modo fallback, guardar en localStorage
+        if (this._fallbackToLocalStorage) {
+            localStorage.setItem(this.DB_PATH, JSON.stringify(data));
+            return Promise.resolve();
+        }
+        
         if (!this._initialized) {
             console.warn("Firebase aún no está inicializado. Los datos se guardarán cuando se complete la inicialización.");
-            this._initPromise = this._initPromise.then(() => this.dbRef.set(data));
-            return;
+            this._initPromise = this._initPromise.then(() => {
+                if (this._fallbackToLocalStorage) {
+                    localStorage.setItem(this.DB_PATH, JSON.stringify(data));
+                    return Promise.resolve();
+                }
+                return this.dbRef.set(data);
+            });
+            return this._initPromise;
         }
         
         // Guardar en Firebase

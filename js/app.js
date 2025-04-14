@@ -29,6 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateGlobalEntityReferences(config.entityName);
             }
 
+            // Mostrar un mensaje si estamos en modo fallback
+            if (StorageService._fallbackToLocalStorage) {
+                UIUtils.showAlert('Usando almacenamiento local. Los cambios no serán sincronizados con otros usuarios.', 'warning', null, 5000);
+            }
+
             // Inicializar enrutador
             Router.init();
 
