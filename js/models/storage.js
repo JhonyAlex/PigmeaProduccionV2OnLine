@@ -196,9 +196,26 @@ const StorageService = {
      */
     getData() {
         // Si no estamos inicializados, devolvemos los datos en caché o un objeto vacío
-        if (!this._initialized) {
-            return this._cachedData || this._getDefaultData();
+        if (!this._initialized || !this._cachedData) {
+            this._cachedData = this._cachedData || this._getDefaultData();
         }
+        
+        // Asegurar que todas las propiedades existan
+        if (!this._cachedData.entities) this._cachedData.entities = [];
+        if (!this._cachedData.fields) this._cachedData.fields = [];
+        if (!this._cachedData.records) this._cachedData.records = [];
+        if (!this._cachedData.config) {
+            this._cachedData.config = {
+                title: "Sistema de Registro de Datos",
+                description: "Registre sus datos de manera flexible y personalizada",
+                entityName: "Entidad",
+                navbarTitle: "Sistema de Registro Flexible",
+                kpiFields: []
+            };
+        } else if (!this._cachedData.config.kpiFields) {
+            this._cachedData.config.kpiFields = [];
+        }
+        
         return this._cachedData;
     },
     

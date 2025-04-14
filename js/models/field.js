@@ -42,20 +42,15 @@ const FieldModel = {
      */
     create(fieldData) {
         const data = StorageService.getData();
+        
+        // Asegurarse de que data.fields existe
+        if (!data.fields) {
+            data.fields = [];
+        }
+        
         const newField = {
             id: 'field_' + Date.now(),
-            name: fieldData.name,
-            type: fieldData.type,
-            required: !!fieldData.required,
-            options: fieldData.type === 'select' ? (fieldData.options || []) : [],
-            // Nuevas propiedades
-            useForRecordsTable: !!fieldData.useForRecordsTable,
-            isColumn3: !!fieldData.isColumn3,
-            isColumn4: !!fieldData.isColumn4,
-            isColumn5: !!fieldData.isColumn5,
-            useForComparativeReports: !!fieldData.useForComparativeReports,
-            isHorizontalAxis: !!fieldData.isHorizontalAxis,
-            isCompareField: !!fieldData.isCompareField
+            ...fieldData
         };
         
         data.fields.push(newField);

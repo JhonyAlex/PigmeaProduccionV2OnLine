@@ -614,6 +614,34 @@ const AdminView = {
     },
     
     /**
+     * Limpia correctamente un modal para evitar problemas con aria-hidden
+     * @param {string} modalId ID del modal a limpiar
+     */
+    cleanupModal(modalId) {
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) {
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+                // Dar tiempo para que se complete la animación
+                setTimeout(() => {
+                    // Remover aria-hidden del modal
+                    modalElement.removeAttribute('aria-hidden');
+                    // Quitar backdrop si existe
+                    const backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) {
+                        backdrop.remove();
+                    }
+                    // Restaurar scroll y desbloquear el cuerpo
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }, 300);
+            }
+        }
+    },
+    
+    /**
      * Guarda una entidad (nueva o existente)
      */
     saveEntity() {
@@ -640,8 +668,8 @@ const AdminView = {
         }
         
         if (result) {
-            // Cerrar modal
-            bootstrap.Modal.getInstance(document.getElementById('entityModal')).hide();
+            // Cerrar modal usando nuestro método mejorado
+            this.cleanupModal('entityModal');
             
             // Recargar lista
             this.loadEntities();
@@ -1017,12 +1045,8 @@ const AdminView = {
     
         // --- INICIO DEL BLOQUE MODIFICADO ---
         if (result) {
-            // Cerrar modal
-            const fieldModalInstance = bootstrap.Modal.getInstance(document.getElementById('fieldModal'));
-            if (fieldModalInstance) {
-                 fieldModalInstance.hide();
-            }
-    
+            // Cerrar modal usando nuestro método mejorado
+            this.cleanupModal('fieldModal');
     
             // Recargar lista de campos (en la vista de administración)
             this.loadFields(); // Asegúrate que 'this' se refiere al contexto correcto o llama al método adecuado

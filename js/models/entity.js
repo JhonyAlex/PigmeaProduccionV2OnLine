@@ -28,6 +28,12 @@ const EntityModel = {
      */
     create(name) {
         const data = StorageService.getData();
+        
+        // Asegurarse de que data.entities existe
+        if (!data.entities) {
+            data.entities = [];
+        }
+        
         const newEntity = {
             id: 'entity_' + Date.now(),
             name: name,
