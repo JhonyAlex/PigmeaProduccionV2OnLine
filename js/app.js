@@ -13,6 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(loadingIndicator);
 
+    // Comprobar si Firebase está disponible
+    const firebaseAvailable = typeof firebase !== 'undefined' && firebase.database;
+    if (!firebaseAvailable) {
+        console.warn("Firebase no está disponible. Se usará localStorage.");
+    }
+
     // Inicializar almacenamiento
     StorageService.initializeStorage()
         .then(() => {
@@ -100,7 +106,26 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => {
             console.error("Error al inicializar la aplicación:", error);
-            UIUtils.showAlert('Error al cargar datos: ' + error.message, 'danger');
+            UIUtils.showAlert('Error al cargar datos. Usando modo offline.', 'danger');
+            
+            // Forzar el modo fallback
+            StorageService._fallbackToLocalStorage = true;
+            StorageService._initialized = true;
+            StorageService._cachedData = StorageService._cachedData || StorageService._getDefaultData();
+            
+            // Inicializar la aplicación de todos modos
+            const config = StorageService.getConfig();
+            
+            if (config.navbarTitle) {
+                document.querySelector('.navbar-brand').textContent = config.navbarTitle;
+            }
+            
+            if (config.entityName) {
+                updateGlobalEntityReferences(config.entityName);
+            }
+            
+            Router.init();
+            
             // Quitar indicador de carga
             document.body.removeChild(loadingIndicator);
         });

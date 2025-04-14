@@ -115,13 +115,17 @@ const ExportUtils = {
                     const jsonData = e.target.result;
                     
                     // Intentar importar los datos
-                    StorageService.importData(jsonData).then(success => {
-                        if (success) {
-                            resolve('Datos importados correctamente');
-                        } else {
-                            reject('Error al importar los datos');
-                        }
-                    });
+                    StorageService.importData(jsonData)
+                        .then(success => {
+                            if (success) {
+                                resolve('Datos importados correctamente');
+                            } else {
+                                reject('Error al importar los datos');
+                            }
+                        })
+                        .catch(error => {
+                            reject('Error al guardar los datos importados: ' + error.message);
+                        });
                 } catch (error) {
                     reject(`Error al leer el archivo: ${error.message}`);
                 }

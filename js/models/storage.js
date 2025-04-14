@@ -23,6 +23,11 @@ const StorageService = {
         console.log("Inicializando Firebase...");
         this._initPromise = new Promise((resolve, reject) => {
             try {
+                // Verificar si Firebase está disponible
+                if (typeof firebase === 'undefined' || !firebase.database) {
+                    throw new Error("Firebase no está disponible");
+                }
+                
                 // Obtener referencia a la base de datos
                 this.dbRef = firebase.database().ref(this.DB_PATH);
                 
@@ -32,7 +37,10 @@ const StorageService = {
                         if (!snapshot.exists()) {
                             // No hay datos, inicializar con datos predeterminados
                             const initialData = this._getDefaultData();
-                            return this.dbRef.set(initialData).then(() => initialData);
+                            return this.dbRef.set(initialData)
+                                .then(() => {
+                                    return initialData;
+                                });
                         } else {
                             // Ya existen datos
                             return snapshot.val();
@@ -44,7 +52,10 @@ const StorageService = {
                         // Verificar y actualizar kpiFields si no existe
                         if (!data.config.kpiFields) {
                             data.config.kpiFields = [];
-                            return this.saveData(data).then(() => data);
+                            return this.dbRef.set(data)
+                                .then(() => {
+                                    return data;
+                                });
                         }
                         return data;
                     })
@@ -57,39 +68,43 @@ const StorageService = {
                     })
                     .catch(err => {
                         console.error("Error al inicializar Firebase:", err);
-                        console.warn("Cambiando a modo localStorage como fallback");
-                        this._fallbackToLocalStorage = true;
-                        
-                        // Cargar datos desde localStorage o crear datos iniciales
-                        let localData;
-                        const storedData = localStorage.getItem(this.DB_PATH);
-                        
-                        if (storedData) {
-                            try {
-                                localData = JSON.parse(storedData);
-                            } catch (e) {
-                                localData = this._getDefaultData();
-                            }
-                        } else {
-                            localData = this._getDefaultData();
-                            localStorage.setItem(this.DB_PATH, JSON.stringify(localData));
-                        }
-                        
-                        this._cachedData = localData;
-                        this._initialized = true;
-                        resolve(localData);
+                        this._switchToLocalStorage(resolve);
                     });
             } catch (err) {
                 console.error("Error en la configuración de Firebase:", err);
-                this._fallbackToLocalStorage = true;
-                const defaultData = this._getDefaultData();
-                this._cachedData = defaultData;
-                this._initialized = true;
-                resolve(defaultData);
+                this._switchToLocalStorage(resolve);
             }
         });
         
         return this._initPromise;
+    },
+    
+    /**
+     * Cambia al modo localStorage como fallback
+     * @param {Function} resolve Función resolver de la promesa
+     */
+    _switchToLocalStorage(resolve) {
+        console.warn("Cambiando a modo localStorage como fallback");
+        this._fallbackToLocalStorage = true;
+        
+        // Cargar datos desde localStorage o crear datos iniciales
+        let localData;
+        const storedData = localStorage.getItem(this.DB_PATH);
+        
+        if (storedData) {
+            try {
+                localData = JSON.parse(storedData);
+            } catch (e) {
+                localData = this._getDefaultData();
+            }
+        } else {
+            localData = this._getDefaultData();
+            localStorage.setItem(this.DB_PATH, JSON.stringify(localData));
+        }
+        
+        this._cachedData = localData;
+        this._initialized = true;
+        resolve(localData);
     },
     
     /**
@@ -190,6 +205,7 @@ const StorageService = {
     /**
      * Guarda los datos en el almacenamiento
      * @param {Object} data Datos completos a guardar
+     * @returns {Promise} Promesa que se resuelve cuando los datos se han guardado
      */
     saveData(data) {
         // Actualizar caché inmediatamente para operaciones rápidas
@@ -203,18 +219,29 @@ const StorageService = {
         
         if (!this._initialized) {
             console.warn("Firebase aún no está inicializado. Los datos se guardarán cuando se complete la inicialización.");
-            this._initPromise = this._initPromise.then(() => {
+            return this.initializeStorage().then(() => {
                 if (this._fallbackToLocalStorage) {
                     localStorage.setItem(this.DB_PATH, JSON.stringify(data));
                     return Promise.resolve();
+                } else if (this.dbRef) {
+                    return this.dbRef.set(data);
+                } else {
+                    this._fallbackToLocalStorage = true;
+                    localStorage.setItem(this.DB_PATH, JSON.stringify(data));
+                    return Promise.resolve();
                 }
-                return this.dbRef.set(data);
             });
-            return this._initPromise;
         }
         
-        // Guardar en Firebase
-        return this.dbRef.set(data);
+        // Guardar en Firebase si está disponible
+        if (this.dbRef) {
+            return this.dbRef.set(data);
+        } else {
+            // Si por alguna razón no hay dbRef, usar localStorage
+            this._fallbackToLocalStorage = true;
+            localStorage.setItem(this.DB_PATH, JSON.stringify(data));
+            return Promise.resolve();
+        }
     },
     
     /**
