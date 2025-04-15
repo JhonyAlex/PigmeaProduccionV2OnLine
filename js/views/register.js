@@ -146,73 +146,95 @@ const RegisterView = {
         // Remover listeners previos para evitar duplicados
         const form = document.getElementById('register-form');
         if (form) {
-            // Clonar y reemplazar el formulario para eliminar listeners previos
-            const newForm = form.cloneNode(true);
-            form.parentNode.replaceChild(newForm, form);
+            // Guardar el valor del campo hidden antes de clonar
+            const selectedEntityId = document.getElementById('selected-entity-id')?.value || '';
             
-            // Agregar el listener al nuevo formulario
-            newForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.saveRecord();
-            });
+            // Remover listener anterior para evitar duplicados (en lugar de clonar todo el formulario)
+            const oldForm = form.cloneNode(false); // Clonar solo el elemento form sin sus hijos
+            form.parentNode.replaceChild(oldForm, form);
+            
+            // Recuperar el formulario original y sus contenidos
+            const newForm = document.getElementById('register-form');
+            if (newForm) {
+                // Restaurar el valor del campo hidden
+                const hiddenField = document.getElementById('selected-entity-id');
+                if (hiddenField) {
+                    hiddenField.value = selectedEntityId;
+                }
+                
+                // Agregar el listener al formulario
+                newForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveRecord();
+                });
+            }
         } else {
             console.error("Formulario de registro no encontrado");
             return;
         }
 
-        // Botones de entidad - remover listeners previos
-        document.querySelectorAll('.entity-btn').forEach(button => {
-            const newButton = button.cloneNode(true);
-            button.parentNode.replaceChild(newButton, button);
-        });
-        
-        // Agregar nuevos listeners a los botones
-        document.querySelectorAll('.entity-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const clickedButton = e.target;
-                const entityId = clickedButton.getAttribute('data-entity-id');
-                const selectedEntityIdInput = document.getElementById('selected-entity-id');
+        // Para los botones de entidad, usar delegación de eventos en lugar de asignar a cada botón
+        const container = document.querySelector('.d-flex.flex-wrap');
+        if (container) {
+            // Eliminar listener anterior si existe
+            if (container._entityClickHandler) {
+                container.removeEventListener('click', container._entityClickHandler);
+            }
+            
+            // Crear nueva función manejadora
+            container._entityClickHandler = (e) => {
+                // Solo procesar si el click fue en un botón
+                if (e.target.matches('.entity-btn')) {
+                    const clickedButton = e.target;
+                    const entityId = clickedButton.getAttribute('data-entity-id');
+                    const selectedEntityIdInput = document.getElementById('selected-entity-id');
 
-                if (!selectedEntityIdInput) {
-                    console.error("Elemento selected-entity-id no encontrado");
-                    return;
+                    if (!selectedEntityIdInput) {
+                        console.error("Elemento selected-entity-id no encontrado");
+                        return;
+                    }
+
+                    const currentEntityId = selectedEntityIdInput.value;
+                    const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+
+                    if (!dynamicFieldsContainer) {
+                        console.error("Contenedor de campos dinámicos no encontrado");
+                        return;
+                    }
+
+                    const isToggle = entityId === currentEntityId && dynamicFieldsContainer.innerHTML !== '';
+
+                    // Si es toggle, deseleccionar el botón y limpiar campos
+                    if (isToggle) {
+                        clickedButton.classList.remove('btn-primary');
+                        clickedButton.classList.add('btn-outline-primary');
+                        selectedEntityIdInput.value = '';
+                        this.loadDynamicFields(''); // Pasamos string vacío para limpiar
+                    } else {
+                        // Quitar clase activa de todos los botones
+                        document.querySelectorAll('.entity-btn').forEach(btn => {
+                            btn.classList.remove('btn-primary');
+                            btn.classList.add('btn-outline-primary');
+                        });
+
+                        // Agregar clase activa al botón seleccionado
+                        clickedButton.classList.remove('btn-outline-primary');
+                        clickedButton.classList.add('btn-primary');
+
+                        // Guardar ID de entidad seleccionada
+                        selectedEntityIdInput.value = entityId;
+
+                        // Cargar campos dinámicos
+                        this.loadDynamicFields(entityId);
+                    }
                 }
-
-                const currentEntityId = selectedEntityIdInput.value;
-                const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
-
-                if (!dynamicFieldsContainer) {
-                    console.error("Contenedor de campos dinámicos no encontrado");
-                    return;
-                }
-
-                const isToggle = entityId === currentEntityId && dynamicFieldsContainer.innerHTML !== '';
-
-                // Si es toggle, deseleccionar el botón y limpiar campos
-                if (isToggle) {
-                    clickedButton.classList.remove('btn-primary');
-                    clickedButton.classList.add('btn-outline-primary');
-                    selectedEntityIdInput.value = '';
-                    this.loadDynamicFields(''); // Pasamos string vacío para limpiar
-                } else {
-                    // Quitar clase activa de todos los botones
-                    document.querySelectorAll('.entity-btn').forEach(btn => {
-                        btn.classList.remove('btn-primary');
-                        btn.classList.add('btn-outline-primary');
-                    });
-
-                    // Agregar clase activa al botón seleccionado
-                    clickedButton.classList.remove('btn-outline-primary');
-                    clickedButton.classList.add('btn-primary');
-
-                    // Guardar ID de entidad seleccionada
-                    selectedEntityIdInput.value = entityId;
-
-                    // Cargar campos dinámicos
-                    this.loadDynamicFields(entityId);
-                }
-            });
-        });
+            };
+            
+            // Añadir el nuevo listener
+            container.addEventListener('click', container._entityClickHandler);
+        } else {
+            console.error("Contenedor de botones de entidad no encontrado");
+        }
     },
 
     /**
@@ -384,13 +406,14 @@ const RegisterView = {
     saveRecord() {
         try {
             const form = document.getElementById('register-form');
-            const entityId = document.getElementById('selected-entity-id')?.value;
-
             if (!form) {
                 console.error("Formulario no encontrado");
                 UIUtils.showAlert('Error al enviar el formulario', 'danger', document.querySelector('.card-body'));
                 return;
             }
+            
+            const entityIdField = document.getElementById('selected-entity-id');
+            const entityId = entityIdField ? entityIdField.value : null;
 
             if (!entityId) {
                 console.error("ID de entidad no encontrado o vacío");
