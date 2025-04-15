@@ -420,7 +420,7 @@ const RegisterView = {
         } else {
             UIUtils.showAlert('Error al guardar el registro', 'danger', document.querySelector('.card-body'));
         }
-    },,
+    },
     
     /**
      * Carga y muestra los registros recientes
