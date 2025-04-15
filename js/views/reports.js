@@ -381,8 +381,25 @@ const ReportsView = {
         updateHeader(column3Header, this.selectedColumns.field3);
     },
 
-    // ... (resto de los métodos sin cambios) ...
+
     setupEventListeners() {
+
+
+        // En setupEventListeners (añadir esto)
+const recordsListContainer = document.getElementById('records-list'); // Usar un nombre diferente si 'recordsList' ya se usa para otra cosa
+if (recordsListContainer) {
+    recordsListContainer.addEventListener('click', (e) => {
+        // Busca si el clic ocurrió dentro de un botón con la clase '.view-record'
+        const viewButton = e.target.closest('.view-record');
+        if (viewButton) {
+            // Si se encontró el botón, obtén el ID y llama a la función
+            const recordId = viewButton.dataset.recordId;
+            this.showRecordDetails(recordId); // Asegúrate que 'this' se refiere a ReportsView
+        }
+    });
+}
+
+
         // Aplicar filtros
         document.getElementById('filter-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -993,17 +1010,6 @@ const ReportsView = {
             recordsList.appendChild(row);
         });
 
-        // Configurar event listeners para ver detalles (re-asignar después de renderizar)
-        recordsList.querySelectorAll('.view-record').forEach(button => {
-            // Remover listener previo si existe (buena práctica)
-            button.replaceWith(button.cloneNode(true));
-            // Añadir nuevo listener
-            recordsList.querySelector(`[data-record-id="${button.dataset.recordId}"]`).addEventListener('click', (e) => {
-                 // Usar currentTarget para asegurar que obtenemos el botón, incluso si se hace clic en el icono
-                 const recordId = e.currentTarget.getAttribute('data-record-id');
-                 this.showRecordDetails(recordId);
-            });
-        });
     },
     getFieldValue(record, fieldId, fields) {
         // Si no hay fieldId, o no hay datos, o el campo específico no existe en los datos, devolver vacío
