@@ -331,97 +331,96 @@ const RegisterView = {
     saveRecord() {
         const form = document.getElementById('register-form');
         const entityId = document.getElementById('selected-entity-id').value;
-        
+
         if (!form || !entityId) {
             console.error("Formulario o ID de entidad no encontrado");
             UIUtils.showAlert(`Debe seleccionar una ${this.entityName.toLowerCase()}`, 'warning', document.querySelector('.card-body'));
             return;
         }
-        
+
         // Obtener entidad y sus campos
         const entity = EntityModel.getById(entityId);
         if (!entity) return;
-        
+
         const fields = FieldModel.getByIds(entity.fields);
-        
+
         // Validar el formulario
         const validation = ValidationUtils.validateForm(form, fields);
-        
+
         if (!validation.isValid) {
             UIUtils.showAlert('Por favor complete correctamente todos los campos requeridos', 'warning', document.querySelector('.card-body'));
             return;
         }
-        
+
         // Verificar si el checkbox "Ayer" está marcado
         const yesterdayCheck = document.getElementById('yesterday-check');
         const useYesterdayDate = yesterdayCheck && yesterdayCheck.checked;
-        
-        // CORRECCIÓN: Almacenar los elementos que contienen listeners antes de limpiar el formulario
-        const fieldsWithSelects = [];
-        fields.forEach(field => {
-            if (field.type === 'select') {
-                const element = document.getElementById(field.id);
-                if (element) {
-                    fieldsWithSelects.push(element);
-                }
-            }
-        });
-        
+
         // Guardar registro
         const newRecord = RecordModel.create(entityId, validation.data);
-        
+
         if (newRecord) {
             // Si el checkbox de ayer está marcado, actualizar la fecha
             if (useYesterdayDate) {
                 // Obtener la fecha actual del registro
                 const currentDate = new Date(newRecord.timestamp);
-                
+
                 // Restar un día manteniendo la misma hora
                 currentDate.setDate(currentDate.getDate() - 1);
-                
+
                 // Actualizar la fecha del registro
                 RecordModel.updateDate(newRecord.id, currentDate.toISOString());
             }
-            
-            // CORRECCIÓN: Disparar un evento personalizado antes de limpiar el formulario
-            // para que los componentes puedan prepararse para la eliminación
-            const cleanupEvent = new CustomEvent('prepareFormReset', { 
-                bubbles: true, detail: { formId: form.id } 
-            });
-            form.dispatchEvent(cleanupEvent);
-            
-            // Limpiar formulario
-            form.reset();
-            
-            // CORRECCIÓN: Limpiar el contenedor de campos correctamente
-            const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
-            if (dynamicFieldsContainer) {
-                // Antes de limpiar, disparar evento para que los listeners puedan limpiarse
-                dynamicFieldsContainer.dispatchEvent(new Event('DOMNodeRemoved', { bubbles: true }));
-                dynamicFieldsContainer.innerHTML = '';
+
+            // --- INICIO: Modificación ---
+            // Comentamos o eliminamos las líneas que limpian el formulario
+            // para que los datos persistan después de guardar.
+
+            // // Disparar un evento personalizado antes de limpiar el formulario
+            // // para que los componentes puedan prepararse para la eliminación
+            // const cleanupEvent = new CustomEvent('prepareFormReset', {
+            //     bubbles: true, detail: { formId: form.id }
+            // });
+            // form.dispatchEvent(cleanupEvent);
+
+            // // Limpiar formulario
+            // form.reset(); // <--- NO resetear el formulario
+
+            // // Limpiar el contenedor de campos correctamente
+            // const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+            // if (dynamicFieldsContainer) {
+            //     // Antes de limpiar, disparar evento para que los listeners puedan limpiarse
+            //     dynamicFieldsContainer.dispatchEvent(new Event('DOMNodeRemoved', { bubbles: true }));
+            //     dynamicFieldsContainer.innerHTML = ''; // <--- NO limpiar los campos dinámicos
+            // }
+
+            // // Opcional: Si quieres que el checkbox "Ayer" se desmarque, puedes añadir:
+            if (yesterdayCheck) {
+                yesterdayCheck.checked = false;
             }
-            
-            // Ocultar el contenedor del botón y checkbox
-            document.getElementById('submit-container').style.display = 'none';
-            
-            // Desactivar el botón de la entidad seleccionada
-            document.querySelectorAll('.entity-btn').forEach(btn => {
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-outline-primary');
-            });
-            
-            // Limpiar el ID de entidad seleccionada
-            document.getElementById('selected-entity-id').value = '';
-            
-            // Recargar registros recientes
+
+            // // Opcional: Si quieres que la entidad se deseleccione y se oculten los campos/botón de guardar
+            // // después de cada registro, mantén estas líneas. Si prefieres que todo se quede
+            // // exactamente igual para el siguiente registro, coméntalas también.
+            // document.getElementById('submit-container').style.display = 'none';
+            // document.querySelectorAll('.entity-btn').forEach(btn => {
+            //     btn.classList.remove('btn-primary');
+            //     btn.classList.add('btn-outline-primary');
+            // });
+            // document.getElementById('selected-entity-id').value = '';
+
+            // --- FIN: Modificación ---
+
+
+            // Recargar registros recientes (esto se mantiene)
             this.loadRecentRecords();
-            
-            // Mostrar mensaje
+
+            // Mostrar mensaje (esto se mantiene)
             UIUtils.showAlert('Registro guardado correctamente', 'success', document.querySelector('.card-body'));
         } else {
             UIUtils.showAlert('Error al guardar el registro', 'danger', document.querySelector('.card-body'));
         }
-    },
+    },,
     
     /**
      * Carga y muestra los registros recientes
