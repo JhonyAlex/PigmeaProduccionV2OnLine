@@ -1502,27 +1502,28 @@ if (recordsListContainer) {
                 fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                 toDate = new Date(today.getFullYear(), today.getMonth(), 0);
                 break;
-            case 'lastMonday':
-            case 'lastTuesday':
-            case 'lastWednesday':
-            case 'lastThursday':
-            case 'lastFriday':
-            case 'lastSaturday':
-            case 'lastSunday':
-                fromDate = new Date(today);
-                const dayMap = {
-                    'lastSunday': 0, 'lastMonday': 1, 'lastTuesday': 2, 'lastWednesday': 3,
-                    'lastThursday': 4, 'lastFriday': 5, 'lastSaturday': 6
-                };
-                const targetDay = dayMap[range];
-                const currentDay = today.getDay(); // 0=Domingo, 1=Lunes,...
-                let daysToSubtract = currentDay - targetDay;
-                if (daysToSubtract <= 0) { // Si el día ya pasó esta semana (o es hoy), ir a la semana anterior
-                    daysToSubtract += 7;
-                }
-                fromDate.setDate(today.getDate() - daysToSubtract);
-                toDate = new Date(fromDate);
-                break;
+                case 'lastMonday':
+                    case 'lastTuesday':
+                    case 'lastWednesday':
+                    case 'lastThursday':
+                    case 'lastFriday':
+                    case 'lastSaturday':
+                    case 'lastSunday':
+                        fromDate = new Date(today); // Empezamos desde hoy
+                        const dayMap = {
+                            'lastSunday': 0, 'lastMonday': 1, 'lastTuesday': 2, 'lastWednesday': 3,
+                            'lastThursday': 4, 'lastFriday': 5, 'lastSaturday': 6
+                        };
+                        const targetDay = dayMap[range]; // El día de la semana que buscamos (0-6)
+                        const currentDay = today.getDay(); // El día de la semana actual (0-6)
+        
+                        // Calcula cuántos días hay que retroceder para llegar al 'targetDay' de la semana pasada SIEMPRE
+                        const daysToSubtract = 7 + (currentDay - targetDay);
+        
+                        fromDate.setDate(today.getDate() - daysToSubtract);
+                        toDate = new Date(fromDate); // El día seleccionado es tanto el inicio como el fin del rango
+                        break;
+        
             default:
                 console.warn(`Rango de fecha desconocido: ${range}`);
                 return;
