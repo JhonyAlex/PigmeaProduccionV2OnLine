@@ -142,100 +142,110 @@ const RegisterView = {
     /**
      * Establece los event listeners para la vista
      */
-    setupEventListeners() {
-        // Remover listeners previos para evitar duplicados
-        const form = document.getElementById('register-form');
-        if (form) {
-            // Guardar el valor del campo hidden antes de clonar
-            const selectedEntityId = document.getElementById('selected-entity-id')?.value || '';
-            
-            // Remover listener anterior para evitar duplicados (en lugar de clonar todo el formulario)
-            const oldForm = form.cloneNode(false); // Clonar solo el elemento form sin sus hijos
-            form.parentNode.replaceChild(oldForm, form);
-            
-            // Recuperar el formulario original y sus contenidos
-            const newForm = document.getElementById('register-form');
-            if (newForm) {
-                // Restaurar el valor del campo hidden
-                const hiddenField = document.getElementById('selected-entity-id');
-                if (hiddenField) {
-                    hiddenField.value = selectedEntityId;
+        /**
+     * Establece los event listeners para la vista
+     */
+        setupEventListeners() {
+            // Obtener el contenedor principal donde se renderizó la vista
+            const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
+            if (!mainContent) {
+                // Si el contenedor principal no existe, no podemos añadir listeners
+                console.error("Contenedor principal (.main-content o vista activa del Router) no encontrado en setupEventListeners");
+                return;
+            }
+    
+            // --- Listener para el Formulario ---
+            const form = mainContent.querySelector('#register-form'); // Buscar DENTRO de mainContent
+            if (form) {
+                // Remover listener anterior explícitamente si existe
+                if (form._submitHandler) {
+                    form.removeEventListener('submit', form._submitHandler);
                 }
-                
-                // Agregar el listener al formulario
-                newForm.addEventListener('submit', (e) => {
+                // Definir el nuevo handler (guardarlo para poder removerlo después)
+                form._submitHandler = (e) => {
                     e.preventDefault();
                     this.saveRecord();
-                });
+                };
+                // Añadir el listener
+                form.addEventListener('submit', form._submitHandler);
+    
+            } else {
+                console.error("Formulario de registro #register-form no encontrado dentro del contenedor principal.");
+                // No necesariamente retornamos, quizás sólo hay botones de entidad
             }
-        } else {
-            console.error("Formulario de registro no encontrado");
-            return;
-        }
-
-        // Para los botones de entidad, usar delegación de eventos en lugar de asignar a cada botón
-        const container = document.querySelector('.d-flex.flex-wrap');
-        if (container) {
-            // Eliminar listener anterior si existe
-            if (container._entityClickHandler) {
-                container.removeEventListener('click', container._entityClickHandler);
-            }
-            
-            // Crear nueva función manejadora
-            container._entityClickHandler = (e) => {
-                // Solo procesar si el click fue en un botón
-                if (e.target.matches('.entity-btn')) {
-                    const clickedButton = e.target;
-                    const entityId = clickedButton.getAttribute('data-entity-id');
-                    const selectedEntityIdInput = document.getElementById('selected-entity-id');
-
-                    if (!selectedEntityIdInput) {
-                        console.error("Elemento selected-entity-id no encontrado");
-                        return;
-                    }
-
-                    const currentEntityId = selectedEntityIdInput.value;
-                    const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
-
-                    if (!dynamicFieldsContainer) {
-                        console.error("Contenedor de campos dinámicos no encontrado");
-                        return;
-                    }
-
-                    const isToggle = entityId === currentEntityId && dynamicFieldsContainer.innerHTML !== '';
-
-                    // Si es toggle, deseleccionar el botón y limpiar campos
-                    if (isToggle) {
-                        clickedButton.classList.remove('btn-primary');
-                        clickedButton.classList.add('btn-outline-primary');
-                        selectedEntityIdInput.value = '';
-                        this.loadDynamicFields(''); // Pasamos string vacío para limpiar
-                    } else {
-                        // Quitar clase activa de todos los botones
-                        document.querySelectorAll('.entity-btn').forEach(btn => {
-                            btn.classList.remove('btn-primary');
-                            btn.classList.add('btn-outline-primary');
-                        });
-
-                        // Agregar clase activa al botón seleccionado
-                        clickedButton.classList.remove('btn-outline-primary');
-                        clickedButton.classList.add('btn-primary');
-
-                        // Guardar ID de entidad seleccionada
-                        selectedEntityIdInput.value = entityId;
-
-                        // Cargar campos dinámicos
-                        this.loadDynamicFields(entityId);
-                    }
+    
+            // --- Listener para los Botones de Entidad (Delegación) ---
+            const entityButtonContainer = mainContent.querySelector('.d-flex.flex-wrap'); // Buscar DENTRO de mainContent
+            if (entityButtonContainer) {
+                // Remover listener anterior explícitamente si existe
+                if (entityButtonContainer._entityClickHandler) {
+                    entityButtonContainer.removeEventListener('click', entityButtonContainer._entityClickHandler);
                 }
-            };
-            
-            // Añadir el nuevo listener
-            container.addEventListener('click', container._entityClickHandler);
-        } else {
-            console.error("Contenedor de botones de entidad no encontrado");
-        }
-    },
+    
+                // Definir el nuevo handler (guardarlo para poder removerlo después)
+                entityButtonContainer._entityClickHandler = (e) => {
+                    // Solo procesar si el click fue en un botón de entidad dentro de este contenedor
+                    if (e.target.matches('.entity-btn')) {
+                        const clickedButton = e.target;
+                        const entityId = clickedButton.getAttribute('data-entity-id');
+    
+                        // Buscar elementos relativos al contenedor o al formulario si es necesario
+                        const formElement = clickedButton.closest('form'); // O mainContent si está fuera
+                        const selectedEntityIdInput = formElement ? formElement.querySelector('#selected-entity-id') : mainContent.querySelector('#selected-entity-id');
+                        const dynamicFieldsContainer = formElement ? formElement.querySelector('#dynamic-fields-container') : mainContent.querySelector('#dynamic-fields-container');
+    
+                        if (!selectedEntityIdInput) {
+                            console.error("Elemento #selected-entity-id no encontrado.");
+                            return;
+                        }
+                        if (!dynamicFieldsContainer) {
+                            console.error("Elemento #dynamic-fields-container no encontrado.");
+                            return;
+                        }
+    
+                        const currentEntityId = selectedEntityIdInput.value;
+                        const isToggle = entityId === currentEntityId && dynamicFieldsContainer.innerHTML.trim() !== '';
+    
+                        // Si es toggle, deseleccionar el botón y limpiar campos
+                        if (isToggle) {
+                            clickedButton.classList.remove('btn-primary');
+                            clickedButton.classList.add('btn-outline-primary');
+                            selectedEntityIdInput.value = '';
+                            this.loadDynamicFields(''); // Limpiar campos
+                        } else {
+                            // Quitar clase activa de todos los botones DENTRO de este contenedor
+                            entityButtonContainer.querySelectorAll('.entity-btn').forEach(btn => {
+                                btn.classList.remove('btn-primary');
+                                btn.classList.add('btn-outline-primary');
+                            });
+    
+                            // Agregar clase activa al botón seleccionado
+                            clickedButton.classList.remove('btn-outline-primary');
+                            clickedButton.classList.add('btn-primary');
+    
+                            // Guardar ID de entidad seleccionada
+                            selectedEntityIdInput.value = entityId;
+    
+                            // Cargar campos dinámicos
+                            this.loadDynamicFields(entityId);
+                        }
+                    }
+                };
+    
+                // Añadir el listener al contenedor de botones
+                entityButtonContainer.addEventListener('click', entityButtonContainer._entityClickHandler);
+            } else {
+                // Si render() funcionó, este error debería ser menos probable ahora
+                console.warn("Contenedor de botones de entidad (.d-flex.flex-wrap) no encontrado dentro del contenedor principal.");
+                // Puedes decidir si esto es un error crítico o no.
+                // Si no hay entidades configuradas, este contenedor podría no existir o estar vacío.
+                 const entities = EntityModel.getAll() || [];
+                 if (entities.length > 0) {
+                     // Si hay entidades pero no se encontró el contenedor, es un problema de renderizado
+                     console.error("Error crítico: Hay entidades pero no se encontró su contenedor en el DOM renderizado.");
+                 }
+            }
+        },
 
     /**
      * Carga los campos dinámicos basados en la entidad seleccionada
