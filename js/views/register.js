@@ -146,16 +146,14 @@ const RegisterView = {
      * Establece los event listeners para la vista
      */
         setupEventListeners() {
-            // Obtener el contenedor principal donde se renderizó la vista
             const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
             if (!mainContent) {
-                // Si el contenedor principal no existe, no podemos añadir listeners
-                console.error("Contenedor principal (.main-content o vista activa del Router) no encontrado en setupEventListeners");
+                console.error("Contenedor principal no encontrado en setupEventListeners");
                 return;
             }
     
-            // --- Listener para el Formulario ---
-            const form = mainContent.querySelector('#register-form'); // Buscar DENTRO de mainContent
+            // --- Listener para el Formulario (sin cambios) ---
+            const form = mainContent.querySelector('#register-form');
             if (form) {
                 // Remover listener anterior explícitamente si existe
                 if (form._submitHandler) {
@@ -171,8 +169,36 @@ const RegisterView = {
     
             } else {
                 console.error("Formulario de registro #register-form no encontrado dentro del contenedor principal.");
-                // No necesariamente retornamos, quizás sólo hay botones de entidad
             }
+
+            // --- INICIO: NUEVO Listener para la tabla de registros recientes (Delegación) ---
+        const recentRecordsList = mainContent.querySelector('#recent-records-list');
+        if (recentRecordsList) {
+            // Remover listener anterior si ya existe (buena práctica por si setupEventListeners se llamara más de una vez)
+            if (recentRecordsList._viewRecordHandler) {
+                recentRecordsList.removeEventListener('click', recentRecordsList._viewRecordHandler);
+            }
+            // Definir el handler
+            recentRecordsList._viewRecordHandler = (e) => {
+                // Verificar si el clic fue en un botón 'view-record' o dentro de él
+                const viewButton = e.target.closest('.view-record');
+                if (viewButton) {
+                    const recordId = viewButton.getAttribute('data-record-id');
+                    // Asegúrate de que 'this' se refiere a RegisterView
+                    this.showRecordDetails(recordId);
+                }
+            };
+            // Añadir el listener
+            recentRecordsList.addEventListener('click', recentRecordsList._viewRecordHandler);
+        } else {
+            // Este mensaje puede aparecer la primera vez si la tabla aún no existe, es normal.
+            console.warn("Tabla de registros recientes #recent-records-list no encontrada al configurar listeners.");
+        }
+        // --- FIN: NUEVO Listener ---
+
+
+
+
     
             // --- Listener para los Botones de Entidad (Delegación) ---
             const entityButtonContainer = mainContent.querySelector('.d-flex.flex-wrap'); // Buscar DENTRO de mainContent
@@ -637,16 +663,7 @@ const RegisterView = {
         });
 
         // Configurar event listeners para ver detalles
-        refreshedRecentRecordsList.querySelectorAll('.view-record').forEach(button => {
-            // Remover listener anterior si existe para evitar duplicados
-            button.replaceWith(button.cloneNode(true));
-        });
-        refreshedRecentRecordsList.addEventListener('click', (e) => {
-             if (e.target && e.target.classList.contains('view-record')) {
-                 const recordId = e.target.getAttribute('data-record-id');
-                 this.showRecordDetails(recordId);
-             }
-        });
+
     },
 
     /**
