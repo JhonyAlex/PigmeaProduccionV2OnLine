@@ -1441,17 +1441,27 @@ confirmImport() {
 saveAssignedFields() {
     const saveBtn = document.getElementById('saveAssignFieldsBtn');
     const entityId = saveBtn.getAttribute('data-entity-id');
+    
+    // 1. Obtener la entidad original
     const entity = EntityModel.getById(entityId);
 
     if (!entity) {
         console.error('Error: Entidad no encontrada para guardar asignación:', entityId);
-        UIUtils.showAlert('Error al guardar: Entidad no encontrada.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); // Mostrar error en el modal
+        UIUtils.showAlert('Error al guardar: Entidad no encontrada.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
         return;
     }
 
+    // --- Verificación importante ---
+    // Asegúrate de que el nombre recuperado sea un string antes de continuar
+    if (typeof entity.name !== 'string') {
+         console.error('Error crítico: El nombre recuperado de la entidad no es un string:', entity.name);
+         UIUtils.showAlert('Error interno al recuperar el nombre de la entidad.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+         return; // Detener si el nombre ya está mal
+    }
+
+    // 2. Recolectar los nuevos IDs de campos asignados
     const assignedFieldsList = document.getElementById('assigned-fields-list');
     const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
-
     const assignedFieldIds = [];
     assignedFieldItems.forEach(item => {
         const fieldId = item.getAttribute('data-field-id');
@@ -1460,19 +1470,13 @@ saveAssignedFields() {
         }
     });
 
-
+    // 3. Actualizar la propiedad 'fields' en el objeto entidad recuperado
     entity.fields = assignedFieldIds;
 
-    // Guardar la entidad actualizada (asumiendo que EntityModel.update puede manejar esto)
-    // O podrías necesitar un método específico como EntityModel.assignFields(entityId, assignedFieldIds)
-        // Crear un objeto solo con los datos a actualizar
-        const updateData = {
-            fields: assignedFieldIds
-        };
-    
-        // Pasar solo los datos actualizados al método update
-        const success = EntityModel.update(entityId, updateData);
-    
+    // 4. Intentar guardar el objeto entidad COMPLETO actualizado
+    //    Esto asume que EntityModel.update espera el objeto completo
+    //    y que el error de profundidad anterior no volverá a ocurrir.
+    const success = EntityModel.update(entityId, entity); 
 
     if (success) {
         // Cerrar el modal
@@ -1481,23 +1485,25 @@ saveAssignedFields() {
         if (modalInstance) {
             modalInstance.hide();
         } else {
-            // Fallback si la instancia no se encuentra (poco probable con initModal)
+            // Fallback
             const fallbackModal = new bootstrap.Modal(modalElement);
             fallbackModal.hide();
         }
 
-
         // Recargar la lista de entidades en la vista principal
         this.loadEntities();
 
-        // Mostrar mensaje de éxito
+        // Mostrar mensaje de éxito (usando el nombre que ya teníamos)
         const config = StorageService.getConfig();
         const entityTypeName = config.entityName || 'Entidad';
         UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entity.name}" guardados correctamente.`, 'success', document.querySelector('.container'));
     } else {
-        UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); // Mostrar error en el modal
+        // Si falla, podría ser el error de profundidad de nuevo, o otro problema
+        console.error("Falló EntityModel.update al pasar el objeto completo:", entity);
+        UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); 
     }
 },
+
 
     /**
      * Actualiza la vista cuando hay cambios en los datos
