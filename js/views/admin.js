@@ -1443,7 +1443,7 @@ saveAssignedFields() {
     const saveBtn = document.getElementById('saveAssignFieldsBtn');
     const entityId = saveBtn.getAttribute('data-entity-id');
     
-    // 1. Obtener la entidad original
+    // Obtener la entidad original
     const entity = EntityModel.getById(entityId);
 
     if (!entity) {
@@ -1452,8 +1452,9 @@ saveAssignedFields() {
         return;
     }
 
-    // Corregir la estructura recursiva: Extraer el nombre real
+    // Extraer el nombre de la entidad de forma segura
     let entityName = '';
+    console.log('Analizando entidad para extraer nombre:', JSON.stringify(entity));
     
     if (typeof entity.name === 'string') {
         // Caso normal: el nombre ya es un string
@@ -1476,7 +1477,7 @@ saveAssignedFields() {
         entityName = `Entidad ${entityId.split('_')[1] || 'desconocida'}`;
     }
 
-    // 2. Recolectar los nuevos IDs de campos asignados
+    // Recolectar los nuevos IDs de campos asignados
     const assignedFieldsList = document.getElementById('assigned-fields-list');
     const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
     const assignedFieldIds = [];
@@ -1487,14 +1488,28 @@ saveAssignedFields() {
         }
     });
 
-    // 3. Actualizar sólo los campos específicos necesarios para evitar recursión
-    const success = EntityModel.update(entityId, { 
-        name: entityName, // Nombre corregido
-        fields: assignedFieldIds, // Nuevos campos
-        id: entityId // Asegurar que el ID se mantiene
-    });
+    // Crear un objeto nuevo y limpio para la entidad actualizada
+    const cleanEntityUpdate = {
+        id: entityId,
+        name: String(entityName), // Forzar conversión a string de forma explícita
+        fields: [...assignedFieldIds] // Crear copia del array para evitar referencias
+    };
+    
+    console.log('Guardando entidad con los siguientes datos:', cleanEntityUpdate);
+    
+    // Intentar primero guardar solo los campos
+    let success = EntityModel.update(entityId, { fields: assignedFieldIds });
+    
+    // Si falla o si necesitamos corregir también el nombre, intentar con la estructura completa
+    if (!success || typeof entity.name !== 'string') {
+        success = EntityModel.update(entityId, cleanEntityUpdate);
+    }
 
     if (success) {
+        // Verificar que la entidad se guardó correctamente
+        const updatedEntity = EntityModel.getById(entityId);
+        console.log('Entidad actualizada:', updatedEntity);
+        
         // Cerrar el modal
         const modalElement = document.getElementById('assignFieldsModal');
         const modalInstance = bootstrap.Modal.getInstance(modalElement);
@@ -1523,7 +1538,7 @@ saveAssignedFields() {
         const entityTypeName = config.entityName || 'Entidad';
         UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
     } else {
-        console.error("Falló EntityModel.update:", entityId);
+        console.error("Falló EntityModel.update para la entidad:", entityId);
         UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); 
     }
 },
