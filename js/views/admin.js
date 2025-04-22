@@ -1465,7 +1465,14 @@ saveAssignedFields() {
 
     // Guardar la entidad actualizada (asumiendo que EntityModel.update puede manejar esto)
     // O podrías necesitar un método específico como EntityModel.assignFields(entityId, assignedFieldIds)
-    const success = EntityModel.update(entityId, entity); // O usa el método apropiado de tu modelo
+        // Crear un objeto solo con los datos a actualizar
+        const updateData = {
+            fields: assignedFieldIds
+        };
+    
+        // Pasar solo los datos actualizados al método update
+        const success = EntityModel.update(entityId, updateData);
+    
 
     if (success) {
         // Cerrar el modal
