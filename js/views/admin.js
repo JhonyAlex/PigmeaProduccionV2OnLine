@@ -1434,48 +1434,35 @@ const AdminView = {
         const saveBtn = document.getElementById('saveAssignFieldsBtn');
         const entityId = saveBtn.getAttribute('data-entity-id');
         
-        // Obtener la entidad original para recuperar información esencial
-        const entity = EntityModel.getById(entityId);
-        if (!entity) {
-            console.error('Error: Entidad no encontrada para guardar asignación:', entityId);
+        // Obtener la entidad original SOLO para extraer el nombre
+        const originalEntity = EntityModel.getById(entityId);
+        if (!originalEntity) {
+            console.error('Error: Entidad original no encontrada para guardar asignación:', entityId);
             UIUtils.showAlert('Error al guardar: Entidad no encontrada.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
             return;
         }
 
-        // Extraer el nombre de la entidad de forma más agresiva
+        // Extraer el nombre de la entidad de forma segura
         let entityName = '';
-        console.log('Analizando entidad para extraer nombre:', JSON.stringify(entity));
+        console.log('Analizando entidad original para extraer nombre:', JSON.stringify(originalEntity));
         
-        // Extraer el nombre mediante un recorrido recursivo
         const extractName = (obj) => {
-            if (typeof obj === 'string') {
-                return obj;
-            } else if (obj && typeof obj === 'object') {
-                // Si el objeto tiene una propiedad 'name' que es string, usarla
-                if (typeof obj.name === 'string') {
-                    return obj.name;
-                }
-                // Si no, buscar recursivamente en las propiedades
-                for (const key in obj) {
-                    if (key === 'name' && typeof obj[key] === 'object') {
-                        const deepName = extractName(obj[key]);
-                        if (deepName) return deepName;
-                    }
-                }
-            }
+            if (!obj) return null;
+            if (typeof obj === 'string') return obj;
+            if (typeof obj.name === 'string') return obj.name;
+            if (typeof obj.name === 'object') return extractName(obj.name); // Recursión
             return null;
         };
 
-        entityName = extractName(entity);
+        entityName = extractName(originalEntity);
         
-        // Si no se pudo extraer un nombre, usar un fallback
         if (!entityName) {
+            console.warn('No se pudo extraer el nombre, usando fallback.');
             entityName = `Entidad ${entityId.split('_')[1] || 'desconocida'}`;
         }
-
         console.log('Nombre extraído:', entityName);
 
-        // Recolectar los nuevos IDs de campos asignados
+        // Recolectar los nuevos IDs de campos asignados desde el DOM
         const assignedFieldsList = document.getElementById('assigned-fields-list');
         const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
         const assignedFieldIds = [];
@@ -1485,20 +1472,28 @@ const AdminView = {
                 assignedFieldIds.push(fieldId);
             }
         });
+        console.log('Campos asignados recolectados:', assignedFieldIds);
 
-        // Alternativa menos radical - construir objeto limpio
-        const cleanEntityData = {
-            name: String(entityName),
-            fields: [...assignedFieldIds]
+        // Crear un objeto COMPLETAMENTE NUEVO y LIMPIO para la actualización
+        // Solo incluir las propiedades que queremos actualizar.
+        const updateData = {
+            name: String(entityName),      // Asegurar que el nombre es un string
+            fields: [...assignedFieldIds]  // Asegurar que es un array limpio
         };
         
-        // Actualizar conservando el ID pero con datos limpios
-        const success = EntityModel.update(entityId, cleanEntityData);
-
+        console.log('Intentando actualizar entidad con datos limpios:', entityId, updateData);
+        
+        // Usar EntityModel.update con el objeto limpio
+        const success = EntityModel.update(entityId, updateData);
+        
         if (success) {
-            // Cerrar el modal - método manual para evitar problemas con aria-hidden
+            console.log('Actualización exitosa reportada por EntityModel.update.');
+            // Verificar el estado de la entidad DESPUÉS de la actualización
+            const updatedEntity = EntityModel.getById(entityId);
+            console.log('Entidad recuperada DESPUÉS de actualizar:', JSON.stringify(updatedEntity));
+
+            // Cerrar el modal manualmente
             try {
-                // Cerrar modal manualmente, sin usar Bootstrap
                 const modalElement = document.getElementById('assignFieldsModal');
                 modalElement.classList.remove('show');
                 modalElement.style.display = 'none';
@@ -1507,20 +1502,18 @@ const AdminView = {
                 const backdrop = document.querySelector('.modal-backdrop');
                 if (backdrop) backdrop.remove();
             } catch (e) {
-                console.warn('Error al cerrar modal:', e);
+                console.warn('Error al cerrar modal manualmente:', e);
             }
             
-            // Recargar la lista de entidades
+            // Recargar la lista de entidades y mostrar mensaje
             setTimeout(() => {
                 this.loadEntities();
-                
-                // Mostrar mensaje de éxito
                 const config = StorageService.getConfig();
                 const entityTypeName = config.entityName || 'Entidad';
                 UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
-            }, 100); // Pequeño retraso para asegurar que el DOM esté actualizado
+            }, 100); 
         } else {
-            console.error("Falló la actualización de la entidad:", entityId);
+            console.error("Falló EntityModel.update para la entidad:", entityId, updateData);
             UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
         }
     },
