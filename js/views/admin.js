@@ -1452,12 +1452,28 @@ saveAssignedFields() {
         return;
     }
 
-    // --- Verificación importante ---
-    // Asegúrate de que el nombre recuperado sea un string antes de continuar
-    if (typeof entity.name !== 'string') {
-         console.error('Error crítico: El nombre recuperado de la entidad no es un string:', entity.name);
-         UIUtils.showAlert('Error interno al recuperar el nombre de la entidad.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
-         return; // Detener si el nombre ya está mal
+    // Corregir la estructura recursiva: Extraer el nombre real
+    let entityName = '';
+    
+    if (typeof entity.name === 'string') {
+        // Caso normal: el nombre ya es un string
+        entityName = entity.name;
+    } else if (typeof entity.name === 'object' && entity.name !== null) {
+        // Caso recursivo: intentar rescatar el nombre
+        console.warn('Detectada estructura recursiva en la entidad:', entity);
+        
+        if (typeof entity.name.name === 'string') {
+            entityName = entity.name.name; // Primer nivel de recursión
+        } else if (typeof entity.name.id === 'string') {
+            // Usar ID como fallback si no hay nombre
+            entityName = `Entidad ${entity.name.id.split('_')[1] || 'desconocida'}`;
+        } else {
+            // Último recurso
+            entityName = `Entidad ${entityId.split('_')[1] || 'desconocida'}`;
+        }
+    } else {
+        // Fallback si el nombre es nulo o indefinido
+        entityName = `Entidad ${entityId.split('_')[1] || 'desconocida'}`;
     }
 
     // 2. Recolectar los nuevos IDs de campos asignados
@@ -1471,13 +1487,12 @@ saveAssignedFields() {
         }
     });
 
-    // 3. Actualizar la propiedad 'fields' en el objeto entidad recuperado
-    entity.fields = assignedFieldIds;
-
-    // 4. Intentar guardar el objeto entidad COMPLETO actualizado
-    //    Esto asume que EntityModel.update espera el objeto completo
-    //    y que el error de profundidad anterior no volverá a ocurrir.
-    const success = EntityModel.update(entityId, entity); 
+    // 3. Actualizar sólo los campos específicos necesarios para evitar recursión
+    const success = EntityModel.update(entityId, { 
+        name: entityName, // Nombre corregido
+        fields: assignedFieldIds, // Nuevos campos
+        id: entityId // Asegurar que el ID se mantiene
+    });
 
     if (success) {
         // Cerrar el modal
@@ -1487,20 +1502,28 @@ saveAssignedFields() {
             modalInstance.hide();
         } else {
             // Fallback
-            const fallbackModal = new bootstrap.Modal(modalElement);
-            fallbackModal.hide();
+            try {
+                const fallbackModal = new bootstrap.Modal(modalElement);
+                fallbackModal.hide();
+            } catch (e) {
+                console.warn('No se pudo cerrar modal via Bootstrap:', e);
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            }
         }
 
         // Recargar la lista de entidades en la vista principal
         this.loadEntities();
 
-        // Mostrar mensaje de éxito (usando el nombre que ya teníamos)
+        // Mostrar mensaje de éxito con el nombre corregido
         const config = StorageService.getConfig();
         const entityTypeName = config.entityName || 'Entidad';
-        UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entity.name}" guardados correctamente.`, 'success', document.querySelector('.container'));
+        UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
     } else {
-        // Si falla, podría ser el error de profundidad de nuevo, o otro problema
-        console.error("Falló EntityModel.update al pasar el objeto completo:", entity);
+        console.error("Falló EntityModel.update:", entityId);
         UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); 
     }
 },
