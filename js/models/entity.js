@@ -49,19 +49,37 @@ const EntityModel = {
     /**
      * Actualiza una entidad existente
      * @param {string} id ID de la entidad
-     * @param {string} name Nuevo nombre
+     * @param {Object} updateData Objeto con las propiedades a actualizar (ej. { name: 'nuevoNombre', fields: [...] })
      * @returns {Object|null} Entidad actualizada o null
      */
-    update(id, name) {
+    update(id, updateData) {
         const data = StorageService.getData();
         const entityIndex = data.entities.findIndex(entity => entity.id === id);
         
-        if (entityIndex === -1) return null;
+        if (entityIndex === -1) {
+            console.error(`EntityModel.update: Entidad con ID ${id} no encontrada.`);
+            return null;
+        }
         
-        data.entities[entityIndex].name = name;
+        // Actualizar solo las propiedades proporcionadas en updateData
+        const entityToUpdate = data.entities[entityIndex];
+        
+        if (updateData.hasOwnProperty('name')) {
+            // Asegurarse de que el nombre sea un string
+            entityToUpdate.name = String(updateData.name); 
+        }
+        if (updateData.hasOwnProperty('fields')) {
+            // Asegurarse de que fields sea un array
+            entityToUpdate.fields = Array.isArray(updateData.fields) ? [...updateData.fields] : []; 
+        }
+        // Se podrían añadir más propiedades aquí si fuera necesario en el futuro
+        
+        console.log(`EntityModel.update: Actualizando entidad ${id} con:`, entityToUpdate);
+        
         StorageService.saveData(data);
         
-        return data.entities[entityIndex];
+        // Devolver una copia para evitar mutaciones accidentales fuera del modelo
+        return { ...entityToUpdate }; 
     },
     
     /**
