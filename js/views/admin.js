@@ -1486,29 +1486,15 @@ const AdminView = {
             }
         });
 
-        // SOLUCIÓN RADICAL: Eliminar y recrear la entidad para romper completamente la estructura recursiva
-        console.log('Eliminando entidad para recrearla limpia...');
-        const deleteResult = EntityModel.delete(entityId);
-        
-        if (!deleteResult) {
-            console.error('Error al eliminar la entidad para recreación:', entityId);
-            UIUtils.showAlert('Error al actualizar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
-            return;
-        }
-
-        // Crear una nueva entidad con los mismos datos pero sin referencias circulares
-        const newEntityData = {
-            id: entityId,  // Mantener el mismo ID
+        // Alternativa menos radical - construir objeto limpio
+        const cleanEntityData = {
             name: String(entityName),
             fields: [...assignedFieldIds]
         };
         
-        console.log('Recreando entidad con datos limpios:', newEntityData);
-        
-        // Usar EntityModel.create para recrear la entidad (esto puede requerir ajustes según cómo funcione tu modelo)
-        // Si create no acepta un ID específico, puedes necesitar extender el modelo o utilizar una función más baja nivel
-        const success = EntityModel.createWithId(newEntityData);
-        
+        // Actualizar conservando el ID pero con datos limpios
+        const success = EntityModel.update(entityId, cleanEntityData);
+
         if (success) {
             // Cerrar el modal - método manual para evitar problemas con aria-hidden
             try {
@@ -1534,7 +1520,7 @@ const AdminView = {
                 UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
             }, 100); // Pequeño retraso para asegurar que el DOM esté actualizado
         } else {
-            console.error("Falló la recreación de la entidad:", entityId);
+            console.error("Falló la actualización de la entidad:", entityId);
             UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
         }
     },
