@@ -832,16 +832,6 @@ const AdminView = {
         }
     },
 
-
-
-
-
-
-
-
-
-
-    
     /**
      * Agrega un input para una opción en el modal de campo
      * @param {string} value Valor inicial (opcional)
@@ -1206,343 +1196,348 @@ const AdminView = {
     },
 
     /**
- * Actualiza las referencias visibles a "Entidad" con el nuevo nombre
- * @param {string} newEntityName El nuevo nombre para "Entidad"
- */
-/**
- * Actualiza las referencias visibles a "Entidad" con el nuevo nombre
- * @param {string} newEntityName El nuevo nombre para "Entidad"
- */
-updateEntityNameReferences(newEntityName) {
-    console.log("Actualizando referencias a Entidad con:", newEntityName);
-    
-    // Actualizar encabezado "Entidades Principales"
-    const entitiesHeader = document.querySelector('.card-header h5');
-    if (entitiesHeader && entitiesHeader.textContent.includes("Entidades")) {
-        entitiesHeader.textContent = entitiesHeader.textContent.replace("Entidades", newEntityName + "s");
-    }
-    
-    // Actualizar botón "Agregar Entidad"
-    const addEntityBtn = document.getElementById('add-entity-btn');
-    if (addEntityBtn) {
-        const btnHTML = addEntityBtn.innerHTML;
-        if (btnHTML.includes("Agregar Entidad")) {
-            addEntityBtn.innerHTML = btnHTML.replace("Agregar Entidad", "Agregar " + newEntityName);
-        }
-    }
-    
-    // Actualizar mensaje "No hay entidades registradas"
-    const noEntitiesMessage = document.getElementById('no-entities-message');
-    if (noEntitiesMessage) {
-        const messageText = noEntitiesMessage.querySelector('p');
-        if (messageText && messageText.textContent.includes("entidades")) {
-            messageText.textContent = messageText.textContent
-                .replace("entidades", newEntityName.toLowerCase() + "s")
-                .replace("nueva entidad", "nueva " + newEntityName.toLowerCase());
-        }
-    }
-    
-    // Actualizar modal de entidad
-    const entityModalTitle = document.getElementById('entityModalTitle');
-    if (entityModalTitle) {
-        if (entityModalTitle.textContent === "Entidad Principal") {
-            entityModalTitle.textContent = newEntityName + " Principal";
-        } else if (entityModalTitle.textContent === "Nueva Entidad Principal") {
-            entityModalTitle.textContent = "Nueva " + newEntityName + " Principal";
-        } else if (entityModalTitle.textContent === "Editar Entidad Principal") {
-            entityModalTitle.textContent = "Editar " + newEntityName + " Principal";
-        }
-    }
-}, /**
-* Descarga una plantilla para importación masiva
-* @param {string} entityId ID de la entidad seleccionada (opcional)
-*/
-downloadImportTemplate(entityId = null) {
-   MassImportUtils.generateSampleFile(entityId);
-},
-
-/**
-* Datos procesados de la importación actual
-*/
-importData: null,
-
-/**
-* Procesa un archivo para importación masiva
-* @param {File} file Archivo a procesar
-*/
-processImportFile(file) {
-   if (!file) return;
-   
-   // Mostrar indicador de carga
-   const processBtn = document.getElementById('process-import-btn');
-   const originalText = processBtn.innerHTML;
-   processBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
-   processBtn.disabled = true;
-   
-   // Procesar el archivo
-   MassImportUtils.parseImportFile(file)
-       .then(result => {
-           // Guardar resultado para uso posterior
-           this.importData = result;
-           
-           // Mostrar previsualización
-           this.showImportPreview(result);
-           
-           // Restaurar botón
-           processBtn.innerHTML = originalText;
-           processBtn.disabled = false;
-       })
-       .catch(error => {
-           UIUtils.showAlert('Error al procesar el archivo: ' + error.message, 'danger');
-           
-           // Restaurar botón
-           processBtn.innerHTML = originalText;
-           processBtn.disabled = false;
-       });
-},
-
-/**
-* Muestra la previsualización de los datos a importar
-* @param {Object} importData Datos procesados
-*/
-showImportPreview(importData) {
-   if (!importData) return;
-   
-   const modal = UIUtils.initModal('importPreviewModal');
-   const importSummary = document.getElementById('import-summary');
-   const importErrors = document.getElementById('import-errors');
-   const errorList = document.getElementById('error-list');
-   const previewTable = document.getElementById('import-preview-table');
-   const confirmBtn = document.getElementById('confirmImportBtn');
-   
-   // Actualizar resumen
-   importSummary.innerHTML = `
-       <div class="alert ${importData.valid ? 'alert-success' : 'alert-warning'}">
-           <p class="mb-0"><strong>Resumen:</strong> ${importData.validRows} de ${importData.totalRows} filas válidas para importar.</p>
-       </div>
-   `;
-   
-   // Mostrar errores si hay
-   if (importData.errors && importData.errors.length > 0) {
-       errorList.innerHTML = importData.errors.map(error => `<li>${error}</li>`).join('');
-       importErrors.style.display = 'block';
-   } else {
-       importErrors.style.display = 'none';
-   }
-   
-   // Habilitar/deshabilitar botón de confirmar
-   confirmBtn.disabled = !importData.valid || importData.validRows === 0;
-   
-   // Crear tabla de previsualización
-   if (importData.data && importData.data.length > 0) {
-       // Obtener entidades para mostrar nombres
-       const entities = EntityModel.getAll();
-       
-       // Cabeceras
-       const theadHTML = `
-           <tr>
-               <th>Entidad</th>
-               <th>Fecha y Hora</th>
-               <th>Campos</th>
-           </tr>
-       `;
-       
-       // Filas de datos (mostrar máximo 100 para no sobrecargar)
-       const maxRows = Math.min(importData.data.length, 100);
-       let tbodyHTML = '';
-       
-       for (let i = 0; i < maxRows; i++) {
-           const item = importData.data[i];
-           const entity = entities.find(e => e.id === item.entityId) || { name: 'Desconocido' };
-           const formattedDate = new Date(item.timestamp).toLocaleString();
-           
-           // Formatear los campos en pares clave-valor
-           const fieldsHTML = Object.keys(item.data)
-               .map(fieldId => {
-                   const field = FieldModel.getById(fieldId);
-                   return `<strong>${field ? field.name : fieldId}:</strong> ${item.data[fieldId]}`;
-               })
-               .join('<br>');
-           
-           tbodyHTML += `
-               <tr>
-                   <td>${entity.name}</td>
-                   <td>${formattedDate}</td>
-                   <td>${fieldsHTML}</td>
-               </tr>
-           `;
-       }
-       
-       // Si hay más filas, mostrar indicador
-       if (importData.data.length > maxRows) {
-           tbodyHTML += `
-               <tr>
-                   <td colspan="3" class="text-center text-muted">
-                       ... y ${importData.data.length - maxRows} filas más
-                   </td>
-               </tr>
-           `;
-       }
-       
-       // Actualizar tabla
-       previewTable.querySelector('thead').innerHTML = theadHTML;
-       previewTable.querySelector('tbody').innerHTML = tbodyHTML;
-   }
-   
-   // Mostrar modal
-   modal.show();
-},
-
-/**
-* Confirma la importación de los datos
-*/
-confirmImport() {
-   if (!this.importData || !this.importData.data) {
-       UIUtils.showAlert('No hay datos para importar', 'warning');
-       return;
-   }
-   
-   // Confirmar importación
-   const confirmModal = UIUtils.initModal('confirmModal');
-   const confirmMessage = document.getElementById('confirm-message');
-   const confirmActionBtn = document.getElementById('confirmActionBtn');
-   
-   confirmMessage.textContent = `¿Está seguro de importar ${this.importData.data.length} registros? Esta acción añadirá los nuevos registros a los existentes.`;
-   
-   // Eliminar listeners anteriores
-   const newConfirmBtn = confirmActionBtn.cloneNode(true);
-   confirmActionBtn.parentNode.replaceChild(newConfirmBtn, confirmActionBtn);
-   
-   // Agregar nuevo listener
-   newConfirmBtn.addEventListener('click', () => {
-       // Importar los datos
-       const result = MassImportUtils.importRecords(this.importData.data);
-       
-       // Cerrar modales
-       bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-       bootstrap.Modal.getInstance(document.getElementById('importPreviewModal')).hide();
-       
-       // Mostrar resultado
-       if (result.success) {
-           // Limpiar formulario
-           document.getElementById('import-file').value = '';
-           document.getElementById('process-import-btn').disabled = true;
-           this.importData = null;
-           
-           UIUtils.showAlert(result.message, 'success');
-       } else {
-           UIUtils.showAlert(result.message, 'danger');
-       }
-   });
-   
-   // Mostrar modal
-   confirmModal.show();
-},
-
-saveAssignedFields() {
-    const saveBtn = document.getElementById('saveAssignFieldsBtn');
-    const entityId = saveBtn.getAttribute('data-entity-id');
-    
-    // Obtener la entidad original
-    const entity = EntityModel.getById(entityId);
-
-    if (!entity) {
-        console.error('Error: Entidad no encontrada para guardar asignación:', entityId);
-        UIUtils.showAlert('Error al guardar: Entidad no encontrada.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
-        return;
-    }
-
-    // Extraer el nombre de la entidad de forma segura
-    let entityName = '';
-    console.log('Analizando entidad para extraer nombre:', JSON.stringify(entity));
-    
-    if (typeof entity.name === 'string') {
-        // Caso normal: el nombre ya es un string
-        entityName = entity.name;
-    } else if (typeof entity.name === 'object' && entity.name !== null) {
-        // Caso recursivo: intentar rescatar el nombre
-        console.warn('Detectada estructura recursiva en la entidad:', entity);
+     * Actualiza las referencias visibles a "Entidad" con el nuevo nombre
+     * @param {string} newEntityName El nuevo nombre para "Entidad"
+     */
+    updateEntityNameReferences(newEntityName) {
+        console.log("Actualizando referencias a Entidad con:", newEntityName);
         
-        if (typeof entity.name.name === 'string') {
-            entityName = entity.name.name; // Primer nivel de recursión
-        } else if (typeof entity.name.id === 'string') {
-            // Usar ID como fallback si no hay nombre
-            entityName = `Entidad ${entity.name.id.split('_')[1] || 'desconocida'}`;
+        // Actualizar encabezado "Entidades Principales"
+        const entitiesHeader = document.querySelector('.card-header h5');
+        if (entitiesHeader && entitiesHeader.textContent.includes("Entidades")) {
+            entitiesHeader.textContent = entitiesHeader.textContent.replace("Entidades", newEntityName + "s");
+        }
+        
+        // Actualizar botón "Agregar Entidad"
+        const addEntityBtn = document.getElementById('add-entity-btn');
+        if (addEntityBtn) {
+            const btnHTML = addEntityBtn.innerHTML;
+            if (btnHTML.includes("Agregar Entidad")) {
+                addEntityBtn.innerHTML = btnHTML.replace("Agregar Entidad", "Agregar " + newEntityName);
+            }
+        }
+        
+        // Actualizar mensaje "No hay entidades registradas"
+        const noEntitiesMessage = document.getElementById('no-entities-message');
+        if (noEntitiesMessage) {
+            const messageText = noEntitiesMessage.querySelector('p');
+            if (messageText && messageText.textContent.includes("entidades")) {
+                messageText.textContent = messageText.textContent
+                    .replace("entidades", newEntityName.toLowerCase() + "s")
+                    .replace("nueva entidad", "nueva " + newEntityName.toLowerCase());
+            }
+        }
+        
+        // Actualizar modal de entidad
+        const entityModalTitle = document.getElementById('entityModalTitle');
+        if (entityModalTitle) {
+            if (entityModalTitle.textContent === "Entidad Principal") {
+                entityModalTitle.textContent = newEntityName + " Principal";
+            } else if (entityModalTitle.textContent === "Nueva Entidad Principal") {
+                entityModalTitle.textContent = "Nueva " + newEntityName + " Principal";
+            } else if (entityModalTitle.textContent === "Editar Entidad Principal") {
+                entityModalTitle.textContent = "Editar " + newEntityName + " Principal";
+            }
+        }
+    },
+
+    /**
+     * Descarga una plantilla para importación masiva
+     * @param {string} entityId ID de la entidad seleccionada (opcional)
+     */
+    downloadImportTemplate(entityId = null) {
+        MassImportUtils.generateSampleFile(entityId);
+    },
+
+    /**
+     * Datos procesados de la importación actual
+     */
+    importData: null,
+
+    /**
+     * Procesa un archivo para importación masiva
+     * @param {File} file Archivo a procesar
+     */
+    processImportFile(file) {
+        if (!file) return;
+        
+        // Mostrar indicador de carga
+        const processBtn = document.getElementById('process-import-btn');
+        const originalText = processBtn.innerHTML;
+        processBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+        processBtn.disabled = true;
+        
+        // Procesar el archivo
+        MassImportUtils.parseImportFile(file)
+            .then(result => {
+                // Guardar resultado para uso posterior
+                this.importData = result;
+                
+                // Mostrar previsualización
+                this.showImportPreview(result);
+                
+                // Restaurar botón
+                processBtn.innerHTML = originalText;
+                processBtn.disabled = false;
+            })
+            .catch(error => {
+                UIUtils.showAlert('Error al procesar el archivo: ' + error.message, 'danger');
+                
+                // Restaurar botón
+                processBtn.innerHTML = originalText;
+                processBtn.disabled = false;
+            });
+    },
+
+    /**
+     * Muestra la previsualización de los datos a importar
+     * @param {Object} importData Datos procesados
+     */
+    showImportPreview(importData) {
+        if (!importData) return;
+        
+        const modal = UIUtils.initModal('importPreviewModal');
+        const importSummary = document.getElementById('import-summary');
+        const importErrors = document.getElementById('import-errors');
+        const errorList = document.getElementById('error-list');
+        const previewTable = document.getElementById('import-preview-table');
+        const confirmBtn = document.getElementById('confirmImportBtn');
+        
+        // Actualizar resumen
+        importSummary.innerHTML = `
+            <div class="alert ${importData.valid ? 'alert-success' : 'alert-warning'}">
+                <p class="mb-0"><strong>Resumen:</strong> ${importData.validRows} de ${importData.totalRows} filas válidas para importar.</p>
+            </div>
+        `;
+        
+        // Mostrar errores si hay
+        if (importData.errors && importData.errors.length > 0) {
+            errorList.innerHTML = importData.errors.map(error => `<li>${error}</li>`).join('');
+            importErrors.style.display = 'block';
         } else {
-            // Último recurso
+            importErrors.style.display = 'none';
+        }
+        
+        // Habilitar/deshabilitar botón de confirmar
+        confirmBtn.disabled = !importData.valid || importData.validRows === 0;
+        
+        // Crear tabla de previsualización
+        if (importData.data && importData.data.length > 0) {
+            // Obtener entidades para mostrar nombres
+            const entities = EntityModel.getAll();
+            
+            // Cabeceras
+            const theadHTML = `
+                <tr>
+                    <th>Entidad</th>
+                    <th>Fecha y Hora</th>
+                    <th>Campos</th>
+                </tr>
+            `;
+            
+            // Filas de datos (mostrar máximo 100 para no sobrecargar)
+            const maxRows = Math.min(importData.data.length, 100);
+            let tbodyHTML = '';
+            
+            for (let i = 0; i < maxRows; i++) {
+                const item = importData.data[i];
+                const entity = entities.find(e => e.id === item.entityId) || { name: 'Desconocido' };
+                const formattedDate = new Date(item.timestamp).toLocaleString();
+                
+                // Formatear los campos en pares clave-valor
+                const fieldsHTML = Object.keys(item.data)
+                    .map(fieldId => {
+                        const field = FieldModel.getById(fieldId);
+                        return `<strong>${field ? field.name : fieldId}:</strong> ${item.data[fieldId]}`;
+                    })
+                    .join('<br>');
+                
+                tbodyHTML += `
+                    <tr>
+                        <td>${entity.name}</td>
+                        <td>${formattedDate}</td>
+                        <td>${fieldsHTML}</td>
+                    </tr>
+                `;
+            }
+            
+            // Si hay más filas, mostrar indicador
+            if (importData.data.length > maxRows) {
+                tbodyHTML += `
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">
+                            ... y ${importData.data.length - maxRows} filas más
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // Actualizar tabla
+            previewTable.querySelector('thead').innerHTML = theadHTML;
+            previewTable.querySelector('tbody').innerHTML = tbodyHTML;
+        }
+        
+        // Mostrar modal
+        modal.show();
+    },
+
+    /**
+     * Confirma la importación de los datos
+     */
+    confirmImport() {
+        if (!this.importData || !this.importData.data) {
+            UIUtils.showAlert('No hay datos para importar', 'warning');
+            return;
+        }
+        
+        // Confirmar importación
+        const confirmModal = UIUtils.initModal('confirmModal');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmActionBtn = document.getElementById('confirmActionBtn');
+        
+        confirmMessage.textContent = `¿Está seguro de importar ${this.importData.data.length} registros? Esta acción añadirá los nuevos registros a los existentes.`;
+        
+        // Eliminar listeners anteriores
+        const newConfirmBtn = confirmActionBtn.cloneNode(true);
+        confirmActionBtn.parentNode.replaceChild(newConfirmBtn, confirmActionBtn);
+        
+        // Agregar nuevo listener
+        newConfirmBtn.addEventListener('click', () => {
+            // Importar los datos
+            const result = MassImportUtils.importRecords(this.importData.data);
+            
+            // Cerrar modales
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('importPreviewModal')).hide();
+            
+            // Mostrar resultado
+            if (result.success) {
+                // Limpiar formulario
+                document.getElementById('import-file').value = '';
+                document.getElementById('process-import-btn').disabled = true;
+                this.importData = null;
+                
+                UIUtils.showAlert(result.message, 'success');
+            } else {
+                UIUtils.showAlert(result.message, 'danger');
+            }
+        });
+        
+        // Mostrar modal
+        confirmModal.show();
+    },
+
+    /**
+     * Guarda la asignación de campos a una entidad
+     */
+    saveAssignedFields() {
+        const saveBtn = document.getElementById('saveAssignFieldsBtn');
+        const entityId = saveBtn.getAttribute('data-entity-id');
+        
+        // Obtener la entidad original para recuperar información esencial
+        const entity = EntityModel.getById(entityId);
+        if (!entity) {
+            console.error('Error: Entidad no encontrada para guardar asignación:', entityId);
+            UIUtils.showAlert('Error al guardar: Entidad no encontrada.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+            return;
+        }
+
+        // Extraer el nombre de la entidad de forma más agresiva
+        let entityName = '';
+        console.log('Analizando entidad para extraer nombre:', JSON.stringify(entity));
+        
+        // Extraer el nombre mediante un recorrido recursivo
+        const extractName = (obj) => {
+            if (typeof obj === 'string') {
+                return obj;
+            } else if (obj && typeof obj === 'object') {
+                // Si el objeto tiene una propiedad 'name' que es string, usarla
+                if (typeof obj.name === 'string') {
+                    return obj.name;
+                }
+                // Si no, buscar recursivamente en las propiedades
+                for (const key in obj) {
+                    if (key === 'name' && typeof obj[key] === 'object') {
+                        const deepName = extractName(obj[key]);
+                        if (deepName) return deepName;
+                    }
+                }
+            }
+            return null;
+        };
+
+        entityName = extractName(entity);
+        
+        // Si no se pudo extraer un nombre, usar un fallback
+        if (!entityName) {
             entityName = `Entidad ${entityId.split('_')[1] || 'desconocida'}`;
         }
-    } else {
-        // Fallback si el nombre es nulo o indefinido
-        entityName = `Entidad ${entityId.split('_')[1] || 'desconocida'}`;
-    }
 
-    // Recolectar los nuevos IDs de campos asignados
-    const assignedFieldsList = document.getElementById('assigned-fields-list');
-    const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
-    const assignedFieldIds = [];
-    assignedFieldItems.forEach(item => {
-        const fieldId = item.getAttribute('data-field-id');
-        if (fieldId) {
-            assignedFieldIds.push(fieldId);
-        }
-    });
+        console.log('Nombre extraído:', entityName);
 
-    // Crear un objeto nuevo y limpio para la entidad actualizada
-    const cleanEntityUpdate = {
-        id: entityId,
-        name: String(entityName), // Forzar conversión a string de forma explícita
-        fields: [...assignedFieldIds] // Crear copia del array para evitar referencias
-    };
-    
-    console.log('Guardando entidad con los siguientes datos:', cleanEntityUpdate);
-    
-    // Intentar primero guardar solo los campos
-    let success = EntityModel.update(entityId, { fields: assignedFieldIds });
-    
-    // Si falla o si necesitamos corregir también el nombre, intentar con la estructura completa
-    if (!success || typeof entity.name !== 'string') {
-        success = EntityModel.update(entityId, cleanEntityUpdate);
-    }
+        // Recolectar los nuevos IDs de campos asignados
+        const assignedFieldsList = document.getElementById('assigned-fields-list');
+        const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
+        const assignedFieldIds = [];
+        assignedFieldItems.forEach(item => {
+            const fieldId = item.getAttribute('data-field-id');
+            if (fieldId) {
+                assignedFieldIds.push(fieldId);
+            }
+        });
 
-    if (success) {
-        // Verificar que la entidad se guardó correctamente
-        const updatedEntity = EntityModel.getById(entityId);
-        console.log('Entidad actualizada:', updatedEntity);
+        // SOLUCIÓN RADICAL: Eliminar y recrear la entidad para romper completamente la estructura recursiva
+        console.log('Eliminando entidad para recrearla limpia...');
+        const deleteResult = EntityModel.delete(entityId);
         
-        // Cerrar el modal
-        const modalElement = document.getElementById('assignFieldsModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) {
-            modalInstance.hide();
-        } else {
-            // Fallback
+        if (!deleteResult) {
+            console.error('Error al eliminar la entidad para recreación:', entityId);
+            UIUtils.showAlert('Error al actualizar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+            return;
+        }
+
+        // Crear una nueva entidad con los mismos datos pero sin referencias circulares
+        const newEntityData = {
+            id: entityId,  // Mantener el mismo ID
+            name: String(entityName),
+            fields: [...assignedFieldIds]
+        };
+        
+        console.log('Recreando entidad con datos limpios:', newEntityData);
+        
+        // Usar EntityModel.create para recrear la entidad (esto puede requerir ajustes según cómo funcione tu modelo)
+        // Si create no acepta un ID específico, puedes necesitar extender el modelo o utilizar una función más baja nivel
+        const success = EntityModel.createWithId(newEntityData);
+        
+        if (success) {
+            // Cerrar el modal - método manual para evitar problemas con aria-hidden
             try {
-                const fallbackModal = new bootstrap.Modal(modalElement);
-                fallbackModal.hide();
-            } catch (e) {
-                console.warn('No se pudo cerrar modal via Bootstrap:', e);
+                // Cerrar modal manualmente, sin usar Bootstrap
+                const modalElement = document.getElementById('assignFieldsModal');
                 modalElement.classList.remove('show');
                 modalElement.style.display = 'none';
                 document.body.classList.remove('modal-open');
+                document.body.removeAttribute('style');
                 const backdrop = document.querySelector('.modal-backdrop');
                 if (backdrop) backdrop.remove();
+            } catch (e) {
+                console.warn('Error al cerrar modal:', e);
             }
+            
+            // Recargar la lista de entidades
+            setTimeout(() => {
+                this.loadEntities();
+                
+                // Mostrar mensaje de éxito
+                const config = StorageService.getConfig();
+                const entityTypeName = config.entityName || 'Entidad';
+                UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
+            }, 100); // Pequeño retraso para asegurar que el DOM esté actualizado
+        } else {
+            console.error("Falló la recreación de la entidad:", entityId);
+            UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
         }
-
-        // Recargar la lista de entidades en la vista principal
-        this.loadEntities();
-
-        // Mostrar mensaje de éxito con el nombre corregido
-        const config = StorageService.getConfig();
-        const entityTypeName = config.entityName || 'Entidad';
-        UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
-    } else {
-        console.error("Falló EntityModel.update para la entidad:", entityId);
-        UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); 
-    }
-},
-
+    },
 
     /**
      * Actualiza la vista cuando hay cambios en los datos
