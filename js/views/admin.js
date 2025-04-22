@@ -603,7 +603,8 @@ const AdminView = {
         let result;
         if (entityId) {
             // Actualizar entidad existente
-            result = EntityModel.update(entityId, entityName);
+            result = EntityModel.update(entityId, { name: entityName }); 
+
         } else {
             // Crear nueva entidad
             result = EntityModel.create(entityName);
