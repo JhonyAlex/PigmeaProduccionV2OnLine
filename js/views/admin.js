@@ -1460,7 +1460,7 @@ saveAssignedFields() {
         }
     });
 
-    Actualizar la propiedad 'fields' de la entidad
+
     entity.fields = assignedFieldIds;
 
     // Guardar la entidad actualizada (asumiendo que EntityModel.update puede manejar esto)
