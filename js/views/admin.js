@@ -1438,6 +1438,60 @@ confirmImport() {
    confirmModal.show();
 },
 
+saveAssignedFields() {
+    const saveBtn = document.getElementById('saveAssignFieldsBtn');
+    const entityId = saveBtn.getAttribute('data-entity-id');
+    const entity = EntityModel.getById(entityId);
+
+    if (!entity) {
+        console.error('Error: Entidad no encontrada para guardar asignación:', entityId);
+        UIUtils.showAlert('Error al guardar: Entidad no encontrada.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); // Mostrar error en el modal
+        return;
+    }
+
+    const assignedFieldsList = document.getElementById('assigned-fields-list');
+    const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
+
+    const assignedFieldIds = [];
+    assignedFieldItems.forEach(item => {
+        const fieldId = item.getAttribute('data-field-id');
+        if (fieldId) {
+            assignedFieldIds.push(fieldId);
+        }
+    });
+
+    Actualizar la propiedad 'fields' de la entidad
+    entity.fields = assignedFieldIds;
+
+    // Guardar la entidad actualizada (asumiendo que EntityModel.update puede manejar esto)
+    // O podrías necesitar un método específico como EntityModel.assignFields(entityId, assignedFieldIds)
+    const success = EntityModel.update(entityId, entity); // O usa el método apropiado de tu modelo
+
+    if (success) {
+        // Cerrar el modal
+        const modalElement = document.getElementById('assignFieldsModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        if (modalInstance) {
+            modalInstance.hide();
+        } else {
+            // Fallback si la instancia no se encuentra (poco probable con initModal)
+            const fallbackModal = new bootstrap.Modal(modalElement);
+            fallbackModal.hide();
+        }
+
+
+        // Recargar la lista de entidades en la vista principal
+        this.loadEntities();
+
+        // Mostrar mensaje de éxito
+        const config = StorageService.getConfig();
+        const entityTypeName = config.entityName || 'Entidad';
+        UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entity.name}" guardados correctamente.`, 'success', document.querySelector('.container'));
+    } else {
+        UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body')); // Mostrar error en el modal
+    }
+},
+
     /**
      * Actualiza la vista cuando hay cambios en los datos
      */
