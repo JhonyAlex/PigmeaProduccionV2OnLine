@@ -18,10 +18,28 @@ const ReportsView = {
 
     init() {
         try {
+            console.log("Initializing ReportsView...");
+            
+            // Check required dependencies
+            const requiredDependencies = [
+                { name: 'ReportsTable', obj: window.ReportsTable },
+                { name: 'ReportsChart', obj: window.ReportsChart },
+                { name: 'ReportsEvents', obj: window.ReportsEvents },
+                { name: 'UIUtils', obj: window.UIUtils },
+                { name: 'FieldModel', obj: window.FieldModel },
+                { name: 'RecordModel', obj: window.RecordModel }
+            ];
+            
+            const missing = requiredDependencies.filter(d => !d.obj);
+            if (missing.length > 0) {
+                const missingNames = missing.map(m => m.name).join(', ');
+                throw new Error(`One or more required modules are missing: ${missingNames}`);
+            }
+            
             const mainContent = document.querySelector('.main-content');
             if (!mainContent) {
                 console.error("Elemento .main-content no encontrado");
-                return;
+                throw new Error("Main content container not found");
             }
 
             this.pagination = { currentPage: 1, itemsPerPage: 20 };
@@ -31,31 +49,56 @@ const ReportsView = {
             this.searchedRecords = [];
 
             this.render();
-            ReportsEvents.setupEventListeners(this);
-            this.autoGenerateReport();
+            
+            // Add a small delay to ensure everything is rendered
+            setTimeout(() => {
+                if (window.ReportsEvents) {
+                    ReportsEvents.setupEventListeners(this);
+                    this.autoGenerateReport();
+                } else {
+                    console.error("ReportsEvents module not found");
+                }
+            }, 300);
         } catch (error) {
             console.error("Error al inicializar vista de reportes:", error);
-            UIUtils.showAlert('Error al inicializar la vista de reportes', 'danger');
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al inicializar la vista de reportes: ${error.message}
+                    </div>
+                `;
+            }
         }
     },
 
     autoGenerateReport() {
-        const sharedNumericFields = FieldModel.getSharedNumericFields();
-        if (sharedNumericFields.length === 0) {
-            return;
-        }
-
-        setTimeout(() => {
-            const compareField = FieldModel.getAll().find(field => field.isCompareField);
-
-            if (compareField) {
-                document.getElementById('report-field').value = compareField.id;
-            } else {
-                document.getElementById('report-field').value = sharedNumericFields[0].id;
+        try {
+            const sharedNumericFields = FieldModel.getSharedNumericFields();
+            if (sharedNumericFields.length === 0) {
+                return;
             }
 
-            this.generateReport();
-        }, 100);
+            setTimeout(() => {
+                const reportField = document.getElementById('report-field');
+                if (!reportField) {
+                    console.warn("Element #report-field not found");
+                    return;
+                }
+                
+                const compareField = FieldModel.getAll().find(field => field.isCompareField);
+
+                if (compareField) {
+                    reportField.value = compareField.id;
+                } else if (sharedNumericFields.length > 0) {
+                    reportField.value = sharedNumericFields[0].id;
+                }
+
+                this.generateReport();
+            }, 300);
+        } catch (error) {
+            console.error("Error in autoGenerateReport:", error);
+        }
     },
 
     render() {

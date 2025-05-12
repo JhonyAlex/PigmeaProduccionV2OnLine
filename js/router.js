@@ -95,13 +95,51 @@ const Router = {
             // Establecer este contenedor como el contenedor activo
             this.activeViewContainer = viewContainer;
             
+            // Verificar que todas las dependencias necesarias estén cargadas
+            if (route === 'reports') {
+                const dependencies = [
+                    { name: 'ReportsTable', obj: window.ReportsTable },
+                    { name: 'ReportsChart', obj: window.ReportsChart },
+                    { name: 'ReportsEvents', obj: window.ReportsEvents }
+                ];
+                
+                const missing = dependencies.filter(d => !d.obj);
+                if (missing.length > 0) {
+                    const missingNames = missing.map(m => m.name).join(', ');
+                    console.error(`Missing dependencies for reports view: ${missingNames}`);
+                    mainContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error al cargar la vista de reportes: Módulos faltantes (${missingNames}).
+                            <br>Verifique que todos los scripts necesarios están incluidos en el HTML.
+                        </div>
+                    `;
+                    return;
+                }
+            }
+            
             // Inicializar la vista después de un pequeño retraso
             setTimeout(() => {
-                this.routes[route].init();
+                try {
+                    this.routes[route].init();
+                } catch (error) {
+                    console.error(`Error initializing ${route} view:`, error);
+                    mainContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error al inicializar la vista ${route}: ${error.message}
+                        </div>
+                    `;
+                }
             }, 10);
         } catch (error) {
             console.error(`Error al navegar a ${route}:`, error);
-            UIUtils.showAlert(`Error al cargar la vista ${route}. Por favor intenta nuevamente.`, 'danger');
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al cargar la vista ${route}: ${error.message}
+                    </div>
+                `;
+            }
         }
     },
     
@@ -120,11 +158,11 @@ const Router = {
 
 /**
  * Maneja el cambio de ruta
+ * This function seems redundant as routing is already handled by the navigateTo method.
  */
 function handleRouteChange() {
-    const path = window.location.pathname;
-
-    if (path === '/reports') {
-        ReportsView.init();
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+        Router.navigateTo(hash);
     }
 }

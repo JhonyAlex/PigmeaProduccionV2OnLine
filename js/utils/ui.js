@@ -8,58 +8,60 @@ const UIUtils = {
      * @param {string} type Tipo de alerta ('success', 'danger', 'warning', 'info')
      * @param {HTMLElement} container Elemento donde mostrar la alerta
      */
-    showAlert(message, type = 'info', container = document.body) {
+    showAlert(message, type = 'info', container = null) {
         try {
-            // Ensure container is a valid DOM element that supports insertAdjacentHTML
+            // Find a suitable container - check if the provided one is valid
             if (!container || typeof container.insertAdjacentHTML !== 'function') {
-                console.warn("Invalid alert container, falling back to document.body");
+                // Try to find main content container
+                container = document.querySelector('.main-content');
+            }
+            
+            // If still no valid container, fall back to document.body
+            if (!container || typeof container.insertAdjacentHTML !== 'function') {
                 container = document.body;
-                
-                // If document.body is also invalid for some reason, create a fallback
-                if (!container || typeof container.insertAdjacentHTML !== 'function') {
-                    console.warn("document.body is not available, creating container");
-                    container = document.createElement('div');
-                    container.className = 'alert-container';
-                    if (document.documentElement) {
-                        document.documentElement.appendChild(container);
-                    }
-                    // If we can't append to documentElement either, we can't show the alert
-                    else {
-                        console.error("Cannot display alert: No valid DOM container available");
-                        return;
-                    }
-                }
+            }
+            
+            // If even document.body isn't available (which would be very unusual)
+            if (!container || typeof container.insertAdjacentHTML !== 'function') {
+                // Just log to console as last resort
+                console.warn(`ALERT [${type}]: ${message}`);
+                return;
             }
             
             const alertId = 'alert-' + Date.now();
             const alertHTML = `
-                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3 z-index-1050" role="alert" style="z-index: 1050;">
                     ${message}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             `;
             
-            // Insertar al inicio del contenedor
-            container.insertAdjacentHTML('afterbegin', alertHTML);
+            // Use appendChild with a wrapper rather than insertAdjacentHTML for more reliability
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = alertHTML;
+            const alertElement = tempDiv.firstElementChild;
+            container.appendChild(alertElement);
             
             // Auto-eliminar después de 5 segundos
             setTimeout(() => {
-                const alertElement = document.getElementById(alertId);
-                if (alertElement) {
+                const alert = document.getElementById(alertId);
+                if (alert) {
                     if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
-                        const bsAlert = new bootstrap.Alert(alertElement);
+                        const bsAlert = new bootstrap.Alert(alert);
                         bsAlert.close();
                     } else {
                         // Fallback if bootstrap is not available
-                        alertElement.style.opacity = '0';
+                        alert.style.opacity = '0';
                         setTimeout(() => {
-                            alertElement.remove();
+                            if (alert.parentNode) {
+                                alert.parentNode.removeChild(alert);
+                            }
                         }, 300);
                     }
                 }
             }, 5000);
         } catch (error) {
-            console.error("Error displaying alert:", error);
+            console.error("Error displaying alert:", error, message);
             // Last resort: alert through console
             console.warn(`ALERT [${type}]: ${message}`);
         }
