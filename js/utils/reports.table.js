@@ -45,10 +45,17 @@ const ReportsTable = {
             if (!tableBody) return;
             
             const stats = reportsView.getReportSummaryStats();
-            document.getElementById('record-count')?.textContent = stats.count;
-            document.getElementById('records-avg')?.textContent = stats.average;
-            document.getElementById('records-min')?.textContent = stats.min;
-            document.getElementById('records-max')?.textContent = stats.max;
+            const recordCount = document.getElementById('record-count');
+            if (recordCount) recordCount.textContent = stats.count;
+            
+            const recordsAvg = document.getElementById('records-avg');
+            if (recordsAvg) recordsAvg.textContent = stats.average;
+            
+            const recordsMin = document.getElementById('records-min');
+            if (recordsMin) recordsMin.textContent = stats.min;
+            
+            const recordsMax = document.getElementById('records-max');
+            if (recordsMax) recordsMax.textContent = stats.max;
 
             // Apply sorting
             const sortedRecords = this.sortRecords(reportsView.searchedRecords, reportsView.sorting);

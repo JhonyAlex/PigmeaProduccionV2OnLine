@@ -132,21 +132,190 @@ const ReportsView = {
             const horizontalAxisField = FieldModel.getAll().find(field => field.isHorizontalAxis);
             const compareField = FieldModel.getAll().find(field => field.isCompareField);
 
+            // Complete HTML template with all form controls
             const template = `
                 <div class="container mt-4">
                     <h2>Reportes y Análisis</h2>
-                    <!-- Filtros, Atajos de fecha, Reportes Comparativos, Registros -->
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>Filtros y Opciones</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="report-field">Campo a reportar:</label>
+                                        <select class="form-control" id="report-field">
+                                            ${sharedNumericFields.map(field => 
+                                                `<option value="${field.id}" ${compareField && compareField.id === field.id ? 'selected' : ''}>${field.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="start-date">Desde:</label>
+                                                <input type="date" class="form-control" id="start-date" value="${lastMonthStr}">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="end-date">Hasta:</label>
+                                                <input type="date" class="form-control" id="end-date" value="${today}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="search-input">Buscar:</label>
+                                        <input type="text" class="form-control" id="search-input" placeholder="Buscar...">
+                                    </div>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button id="generate-report-btn" class="btn btn-primary">Generar Reporte</button>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button id="today-btn" type="button" class="btn btn-outline-secondary">Hoy</button>
+                                        <button id="yesterday-btn" type="button" class="btn btn-outline-secondary">Ayer</button>
+                                        <button id="last-7-days-btn" type="button" class="btn btn-outline-secondary">Últimos 7 días</button>
+                                        <button id="last-30-days-btn" type="button" class="btn btn-outline-secondary">Últimos 30 días</button>
+                                        <button id="this-month-btn" type="button" class="btn btn-outline-secondary">Este mes</button>
+                                        <button id="last-month-btn" type="button" class="btn btn-outline-secondary">Mes anterior</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Gráfico</h5>
+                            <div>
+                                <button id="export-csv-btn" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-file-csv"></i> CSV
+                                </button>
+                                <button id="export-pdf-btn" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div id="chart-container" style="height: 400px;"></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header">Estadísticas</div>
+                                        <div class="card-body">
+                                            <p><strong>Total registros:</strong> <span id="record-count">0</span></p>
+                                            <p><strong>Promedio:</strong> <span id="records-avg">N/A</span></p>
+                                            <p><strong>Mínimo:</strong> <span id="records-min">N/A</span></p>
+                                            <p><strong>Máximo:</strong> <span id="records-max">N/A</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Registros</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="column-field1-select">Columna 1:</label>
+                                        <select class="form-control" id="column-field1-select">
+                                            <option value="">Ninguno</option>
+                                            ${sharedFields.map(field => 
+                                                `<option value="${field.id}" ${column3Field && column3Field.id === field.id ? 'selected' : ''}>${field.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="column-field2-select">Columna 2:</label>
+                                        <select class="form-control" id="column-field2-select">
+                                            <option value="">Ninguno</option>
+                                            ${sharedFields.map(field => 
+                                                `<option value="${field.id}" ${column4Field && column4Field.id === field.id ? 'selected' : ''}>${field.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="column-field3-select">Columna 3:</label>
+                                        <select class="form-control" id="column-field3-select">
+                                            <option value="">Ninguno</option>
+                                            ${sharedFields.map(field => 
+                                                `<option value="${field.id}" ${column5Field && column5Field.id === field.id ? 'selected' : ''}>${field.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr id="reports-table-header">
+                                            <!-- Header will be populated by ReportsTable.updateColumnHeaders -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reports-table-body">
+                                        <!-- Table body will be populated by ReportsTable.renderTable -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div id="pagination-container" class="mt-3">
+                                <!-- Pagination will be populated by ReportsTable.renderPagination -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
 
             mainContent.innerHTML = template;
 
+            // Try to initialize table with error checking
             try {
-                ReportsTable.updateColumnHeaders(this);
-                ReportsTable.applyFilters(this);
+                if (typeof ReportsTable !== 'undefined') {
+                    ReportsTable.updateColumnHeaders(this);
+                    ReportsTable.applyFilters(this);
+                } else {
+                    console.error("ReportsTable is not defined");
+                    mainContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error: El módulo ReportsTable no está disponible. 
+                            Verifique que todos los scripts necesarios están incluidos en el HTML.
+                        </div>
+                    `;
+                }
             } catch (error) {
                 console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
-                mainContent.innerHTML = `<div class="alert alert-danger">Error al inicializar la vista de reportes. Revise la consola para más detalles.</div>`;
+                mainContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al inicializar la vista de reportes: ${error.message}
+                        <br>Revise la consola para más detalles.
+                    </div>
+                `;
             }
         } catch (error) {
             console.error("Error al renderizar vista de reportes:", error);
@@ -175,21 +344,41 @@ const ReportsView = {
 
     generateReport() {
         try {
-            const reportField = document.getElementById('report-field').value;
-            const startDate = document.getElementById('start-date')?.value;
-            const endDate = document.getElementById('end-date')?.value;
+            // Find the report field and safely get its value
+            const reportFieldElement = document.getElementById('report-field');
+            if (!reportFieldElement) {
+                console.error("Element #report-field not found");
+                UIUtils.showAlert('Error: Campo de reporte no encontrado', 'danger');
+                return;
+            }
             
+            const reportField = reportFieldElement.value;
             if (!reportField) {
                 UIUtils.showAlert('Por favor seleccione un campo para el reporte', 'warning');
                 return;
             }
             
+            // Safely get date values
+            const startDate = document.getElementById('start-date')?.value || '';
+            const endDate = document.getElementById('end-date')?.value || '';
+            
             const records = RecordModel.getFilteredByDateRange(startDate, endDate);
             this.filteredRecords = records;
             this.searchedRecords = records;
             
-            ReportsTable.renderTable(this);
-            ReportsChart.renderChart(this, reportField);
+            if (typeof ReportsTable !== 'undefined') {
+                ReportsTable.renderTable(this);
+            } else {
+                console.error("ReportsTable is not defined");
+                UIUtils.showAlert('Error: El módulo ReportsTable no está disponible', 'danger');
+            }
+            
+            if (typeof ReportsChart !== 'undefined') {
+                ReportsChart.renderChart(this, reportField);
+            } else {
+                console.error("ReportsChart is not defined");
+                UIUtils.showAlert('Error: El módulo ReportsChart no está disponible', 'danger');
+            }
             
             UIUtils.showAlert('Reporte generado con éxito', 'success');
         } catch (error) {
