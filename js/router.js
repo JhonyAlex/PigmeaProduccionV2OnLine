@@ -95,87 +95,13 @@ const Router = {
             // Establecer este contenedor como el contenedor activo
             this.activeViewContainer = viewContainer;
             
-            // Cargar scripts específicos si estamos navegando a la vista de reportes
-            if (route === 'reports') {
-                mainContent.innerHTML = '<div class="alert alert-info">Cargando módulos de reportes...</div>';
-                
-                if (typeof ScriptLoader !== 'undefined') {
-                    ScriptLoader.loadReportsScripts((error) => {
-                        if (error) {
-                            console.error("Error loading report scripts:", error);
-                            mainContent.innerHTML = `
-                                <div class="alert alert-danger">
-                                    Error al cargar los módulos de reportes: ${error.message}
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        // Check dependencies again after scripts are loaded
-                        const dependencies = [
-                            { name: 'ReportsTable', obj: window.ReportsTable },
-                            { name: 'ReportsChart', obj: window.ReportsChart },
-                            { name: 'ReportsEvents', obj: window.ReportsEvents }
-                        ];
-                        
-                        const missing = dependencies.filter(d => !d.obj);
-                        if (missing.length > 0) {
-                            const missingNames = missing.map(m => m.name).join(', ');
-                            console.error(`Missing dependencies for reports view: ${missingNames}`);
-                            mainContent.innerHTML = `
-                                <div class="alert alert-danger">
-                                    Error al cargar la vista de reportes: Módulos faltantes (${missingNames}).
-                                    <br>Verifique que todos los scripts necesarios están incluidos en el HTML.
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        // Initialize view after scripts are loaded
-                        try {
-                            this.routes[route].init();
-                        } catch (error) {
-                            console.error(`Error initializing ${route} view:`, error);
-                            mainContent.innerHTML = `
-                                <div class="alert alert-danger">
-                                    Error al inicializar la vista ${route}: ${error.message}
-                                </div>
-                            `;
-                        }
-                    });
-                } else {
-                    console.error("ScriptLoader is not defined");
-                    mainContent.innerHTML = `
-                        <div class="alert alert-danger">
-                            Error al cargar la vista de reportes: ScriptLoader no está disponible.
-                        </div>
-                    `;
-                }
-            } else {
-                // Inicializar vista normal (no es reports)
-                setTimeout(() => {
-                    try {
-                        this.routes[route].init();
-                    } catch (error) {
-                        console.error(`Error initializing ${route} view:`, error);
-                        mainContent.innerHTML = `
-                            <div class="alert alert-danger">
-                                Error al inicializar la vista ${route}: ${error.message}
-                            </div>
-                        `;
-                    }
-                }, 10);
-            }
+            // Inicializar la vista después de un pequeño retraso
+            setTimeout(() => {
+                this.routes[route].init();
+            }, 10);
         } catch (error) {
             console.error(`Error al navegar a ${route}:`, error);
-            const mainContent = document.querySelector('.main-content');
-            if (mainContent) {
-                mainContent.innerHTML = `
-                    <div class="alert alert-danger">
-                        Error al cargar la vista ${route}: ${error.message}
-                    </div>
-                `;
-            }
+            UIUtils.showAlert(`Error al cargar la vista ${route}. Por favor intenta nuevamente.`, 'danger');
         }
     },
     
@@ -191,14 +117,3 @@ const Router = {
         return document.querySelector('.main-content');
     }
 };
-
-/**
- * Maneja el cambio de ruta
- * This function seems redundant as routing is already handled by the navigateTo method.
- */
-function handleRouteChange() {
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-        Router.navigateTo(hash);
-    }
-}

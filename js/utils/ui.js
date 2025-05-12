@@ -8,63 +8,26 @@ const UIUtils = {
      * @param {string} type Tipo de alerta ('success', 'danger', 'warning', 'info')
      * @param {HTMLElement} container Elemento donde mostrar la alerta
      */
-    showAlert(message, type = 'info', container = null) {
-        try {
-            // Find a suitable container - check if the provided one is valid
-            if (!container || typeof container.insertAdjacentHTML !== 'function') {
-                // Try to find main content container
-                container = document.querySelector('.main-content');
+    showAlert(message, type = 'info', container = document.body) {
+        const alertId = 'alert-' + Date.now();
+        const alertHTML = `
+            <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Insertar al inicio del contenedor
+        container.insertAdjacentHTML('afterbegin', alertHTML);
+        
+        // Auto-eliminar después de 5 segundos
+        setTimeout(() => {
+            const alertElement = document.getElementById(alertId);
+            if (alertElement) {
+                const bsAlert = new bootstrap.Alert(alertElement);
+                bsAlert.close();
             }
-            
-            // If still no valid container, fall back to document.body
-            if (!container || typeof container.insertAdjacentHTML !== 'function') {
-                container = document.body;
-            }
-            
-            // If even document.body isn't available (which would be very unusual)
-            if (!container || typeof container.insertAdjacentHTML !== 'function') {
-                // Just log to console as last resort
-                console.warn(`ALERT [${type}]: ${message}`);
-                return;
-            }
-            
-            const alertId = 'alert-' + Date.now();
-            const alertHTML = `
-                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3 z-index-1050" role="alert" style="z-index: 1050;">
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            `;
-            
-            // Use appendChild with a wrapper rather than insertAdjacentHTML for more reliability
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = alertHTML;
-            const alertElement = tempDiv.firstElementChild;
-            container.appendChild(alertElement);
-            
-            // Auto-eliminar después de 5 segundos
-            setTimeout(() => {
-                const alert = document.getElementById(alertId);
-                if (alert) {
-                    if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
-                        const bsAlert = new bootstrap.Alert(alert);
-                        bsAlert.close();
-                    } else {
-                        // Fallback if bootstrap is not available
-                        alert.style.opacity = '0';
-                        setTimeout(() => {
-                            if (alert.parentNode) {
-                                alert.parentNode.removeChild(alert);
-                            }
-                        }, 300);
-                    }
-                }
-            }, 5000);
-        } catch (error) {
-            console.error("Error displaying alert:", error, message);
-            // Last resort: alert through console
-            console.warn(`ALERT [${type}]: ${message}`);
-        }
+        }, 5000);
     },
     
     /**
@@ -334,5 +297,3 @@ const UIUtils = {
         }, 2000);
     }
 };
-
-window.UIUtils = UIUtils;

@@ -152,10 +152,3 @@ function updateGlobalEntityReferences(entityName) {
         RegisterView.entityName = entityName;
     }
 }
-
-// Update any direct references to Reports object
-// For example, if you have code like this:
-// Reports.generateReport();
-
-// Change to:
-// ReportsView.generateReport();
