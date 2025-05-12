@@ -102,5 +102,3 @@ const ReportsUtils = {
         toDateInput.value = this.formatDateForInput(toDate);
     }
 };
-
-export { ReportsUtils };

@@ -136,8 +136,8 @@ const ReportsView = {
             // Formatear fechas
             const lastMonth = new Date();
             lastMonth.setMonth(lastMonth.getMonth() - 1);
-            const lastMonthStr = ReportsUtils.formatDateForInput(lastMonth); // Usar función propia
-            const today = ReportsUtils.formatDateForInput(new Date());      // Usar función propia
+            const lastMonthStr = ReportsUtils.formatDateForInput(lastMonth);
+            const today = ReportsUtils.formatDateForInput(new Date());
 
             const config = StorageService.getConfig();
             const entityName = config.entityName || 'Entidad';

@@ -270,5 +270,3 @@ const ReportsModal = {
         }
     }
 };
-
-export { ReportsModal };

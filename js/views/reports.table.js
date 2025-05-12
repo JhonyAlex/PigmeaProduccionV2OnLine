@@ -222,5 +222,3 @@ const ReportsTable = {
         });
     }
 };
-
-export { ReportsTable };
