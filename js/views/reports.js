@@ -68,8 +68,11 @@ const ReportsView = {
             if (mainContent) {
                 mainContent.innerHTML = `<div class="alert alert-danger">Error fatal al inicializar la vista de reportes: ${error.message}. Verifique la consola e inténtelo de nuevo.</div>`;
             }
+            // Solo llamar a UIUtils.showAlert si existe y el contenedor es un elemento DOM
             if (typeof UIUtils !== 'undefined' && typeof UIUtils.showAlert === 'function') {
-                UIUtils.showAlert('Error grave al iniciar Reportes. Consulte la consola.', 'danger', 5000);
+                // Verifica que mainContent sea un elemento DOM antes de pasarlo
+                const alertContainer = (mainContent && typeof mainContent.insertAdjacentHTML === 'function') ? mainContent : undefined;
+                UIUtils.showAlert('Error grave al iniciar Reportes. Consulte la consola.', 'danger', 5000, alertContainer);
             }
         }
     },
