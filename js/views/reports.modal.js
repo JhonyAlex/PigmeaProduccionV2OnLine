@@ -459,3 +459,5 @@ const ReportsModal = {
         }
     }
 };
+
+window.ReportsModal = ReportsModal;

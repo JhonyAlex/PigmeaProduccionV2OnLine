@@ -247,3 +247,5 @@ const ReportsEvents = {
         });
     }
 };
+
+window.ReportsEvents = ReportsEvents;

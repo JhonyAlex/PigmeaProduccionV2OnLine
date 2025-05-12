@@ -106,3 +106,5 @@ const ReportsUtils = {
         return record.data[fieldId];
     }
 };
+
+window.ReportsUtils = ReportsUtils;

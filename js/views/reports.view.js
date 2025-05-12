@@ -1,8 +1,3 @@
-import { ReportsEvents } from './reports.events.js';
-import { ReportsTable } from './reports.table.js';
-import { ReportsModal } from './reports.modal.js';
-import { ReportsUtils } from './reports.utils.js';
-
 const ReportsView = {
     selectedRecordIds: new Set(),
     pagination: {
@@ -124,4 +119,4 @@ const ReportsView = {
     }
 };
 
-export { ReportsView };
+window.ReportsView = ReportsView;

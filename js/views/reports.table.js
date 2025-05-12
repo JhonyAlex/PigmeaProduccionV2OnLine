@@ -1,5 +1,3 @@
-import { ReportsUtils } from './reports.utils.js';
-
 /**
  * Funcionalidades de tabla para la vista de reportes
  */
@@ -385,3 +383,5 @@ const ReportsTable = {
         view.updateSelectAllCheckbox();
     }
 };
+
+window.ReportsTable = ReportsTable;
