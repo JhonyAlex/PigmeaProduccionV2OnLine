@@ -60,19 +60,36 @@ const ReportsView = {
             // Trigger initial data load and display based on default filters
             this.applyFiltersAndDisplayData();
 
+            // Automatically generate report if required
+            this.autoGenerateReport();
+
             console.log("ReportsView initialized successfully.");
 
         } catch (error) {
             console.error("Error initializing ReportsView:", error);
-            const mainContent = Router.getActiveViewContainer ? Router.getActiveViewContainer() : document.querySelector('.main-content');
-            if (mainContent) {
-                mainContent.innerHTML = `<div class="alert alert-danger">Error fatal al inicializar la vista de reportes: ${error.message}. Verifique la consola e inténtelo de nuevo.</div>`;
-            }
-            // Solo llamar a UIUtils.showAlert si existe y el contenedor es un elemento DOM
-            if (typeof UIUtils !== 'undefined' && typeof UIUtils.showAlert === 'function') {
-                // Verifica que mainContent sea un elemento DOM antes de pasarlo
-                const alertContainer = (mainContent && typeof mainContent.insertAdjacentHTML === 'function') ? mainContent : undefined;
-                UIUtils.showAlert('Error grave al iniciar Reportes. Consulte la consola.', 'danger', 5000, alertContainer);
+            
+            // Get a valid container element for alerts
+            let alertContainer;
+            try {
+                alertContainer = document.querySelector('.main-content') || document.querySelector('.container');
+                if (!alertContainer) {
+                    // If no container is found, create a fallback one
+                    alertContainer = document.createElement('div');
+                    alertContainer.className = 'alert-container';
+                    document.body.appendChild(alertContainer);
+                }
+                
+                // Add an error message to the main content directly
+                if (alertContainer) {
+                    alertContainer.innerHTML = `<div class="alert alert-danger">Error fatal al inicializar la vista de reportes: ${error.message}. Verifique la consola e inténtelo de nuevo.</div>`;
+                }
+                
+                // Only call UIUtils.showAlert if exists with a valid container
+                if (typeof UIUtils !== 'undefined' && typeof UIUtils.showAlert === 'function') {
+                    UIUtils.showAlert('Error grave al iniciar Reportes. Consulte la consola.', 'danger', alertContainer);
+                }
+            } catch (innerError) {
+                console.error("Additional error when displaying alert:", innerError);
             }
         }
     },
@@ -512,7 +529,27 @@ const ReportsView = {
             console.error("Error updating ReportsView:", error);
             UIUtils.showAlert('Error al actualizar la vista de reportes.', 'danger');
         }
-    }
+    },
+
+    /**
+     * Automatically generates a report if required based on URL parameters or settings.
+     */
+    autoGenerateReport() {
+        try {
+            // Check if automatic report generation is needed based on URL parameters or settings
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoGenerate = urlParams.get('autoGenerate') === 'true';
+            
+            if (autoGenerate) {
+                // If URL parameter is set, generate the report automatically
+                setTimeout(() => {
+                    this.generateReport();
+                }, 1000); // Short delay to ensure data is loaded
+            }
+        } catch (error) {
+            console.error("Error in autoGenerateReport:", error);
+        }
+    },
 };
 
 // Make ReportsView globally accessible or export if using ES Modules

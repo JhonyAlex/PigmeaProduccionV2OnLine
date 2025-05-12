@@ -116,7 +116,61 @@ const ReportsView = {
         } catch (error) {
             console.error("Error al actualizar la vista de reportes:", error);
         }
-    }
+    },
+
+    formatDateForInput(date) {
+        try {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (error) {
+            console.error("Error formatting date:", error);
+            return "";
+        }
+    },
+
+    generateReport() {
+        try {
+            const reportField = document.getElementById('report-field').value;
+            const startDate = document.getElementById('start-date')?.value;
+            const endDate = document.getElementById('end-date')?.value;
+            
+            if (!reportField) {
+                UIUtils.showAlert('Por favor seleccione un campo para el reporte', 'warning');
+                return;
+            }
+            
+            const records = RecordModel.getFilteredByDateRange(startDate, endDate);
+            this.filteredRecords = records;
+            this.searchedRecords = records;
+            
+            ReportsTable.renderTable(this);
+            ReportsChart.renderChart(this, reportField);
+            
+            UIUtils.showAlert('Reporte generado con éxito', 'success');
+        } catch (error) {
+            console.error("Error generating report:", error);
+            UIUtils.showAlert('Error al generar el reporte', 'danger');
+        }
+    },
+
+    handleTableSorting(column) {
+        if (this.sorting.column === column) {
+            this.sorting.direction = this.sorting.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sorting.column = column;
+            this.sorting.direction = 'asc';
+        }
+        
+        ReportsTable.renderTable(this);
+    },
+
+    updateSelectedColumns(fieldId, columnType) {
+        this.selectedColumns[columnType] = fieldId;
+        ReportsTable.updateColumnHeaders(this);
+        ReportsTable.renderTable(this);
+    },
 };
 
 window.ReportsView = ReportsView;

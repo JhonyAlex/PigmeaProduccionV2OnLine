@@ -9,25 +9,60 @@ const UIUtils = {
      * @param {HTMLElement} container Elemento donde mostrar la alerta
      */
     showAlert(message, type = 'info', container = document.body) {
-        const alertId = 'alert-' + Date.now();
-        const alertHTML = `
-            <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        `;
-        
-        // Insertar al inicio del contenedor
-        container.insertAdjacentHTML('afterbegin', alertHTML);
-        
-        // Auto-eliminar después de 5 segundos
-        setTimeout(() => {
-            const alertElement = document.getElementById(alertId);
-            if (alertElement) {
-                const bsAlert = new bootstrap.Alert(alertElement);
-                bsAlert.close();
+        try {
+            // Ensure container is a valid DOM element that supports insertAdjacentHTML
+            if (!container || typeof container.insertAdjacentHTML !== 'function') {
+                console.warn("Invalid alert container, falling back to document.body");
+                container = document.body;
+                
+                // If document.body is also invalid for some reason, create a fallback
+                if (!container || typeof container.insertAdjacentHTML !== 'function') {
+                    console.warn("document.body is not available, creating container");
+                    container = document.createElement('div');
+                    container.className = 'alert-container';
+                    if (document.documentElement) {
+                        document.documentElement.appendChild(container);
+                    }
+                    // If we can't append to documentElement either, we can't show the alert
+                    else {
+                        console.error("Cannot display alert: No valid DOM container available");
+                        return;
+                    }
+                }
             }
-        }, 5000);
+            
+            const alertId = 'alert-' + Date.now();
+            const alertHTML = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Insertar al inicio del contenedor
+            container.insertAdjacentHTML('afterbegin', alertHTML);
+            
+            // Auto-eliminar después de 5 segundos
+            setTimeout(() => {
+                const alertElement = document.getElementById(alertId);
+                if (alertElement) {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                        const bsAlert = new bootstrap.Alert(alertElement);
+                        bsAlert.close();
+                    } else {
+                        // Fallback if bootstrap is not available
+                        alertElement.style.opacity = '0';
+                        setTimeout(() => {
+                            alertElement.remove();
+                        }, 300);
+                    }
+                }
+            }, 5000);
+        } catch (error) {
+            console.error("Error displaying alert:", error);
+            // Last resort: alert through console
+            console.warn(`ALERT [${type}]: ${message}`);
+        }
     },
     
     /**
