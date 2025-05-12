@@ -1,4 +1,11 @@
+/**
+ * Gestiona los eventos de la vista de reportes
+ */
 const ReportsEvents = {
+    /**
+     * Configura todos los listeners de eventos para la vista
+     * @param {Object} view Vista de reportes
+     */
     setupEventListeners(view) {
         const recordsListContainer = document.getElementById('records-list');
         if (recordsListContainer) {
@@ -6,7 +13,7 @@ const ReportsEvents = {
                 const viewButton = e.target.closest('.view-record');
                 if (viewButton) {
                     const recordId = viewButton.dataset.recordId;
-                    view.showRecordDetails(recordId);
+                    ReportsModal.showRecordDetails(recordId, view);
                 }
             });
 
@@ -52,7 +59,7 @@ const ReportsEvents = {
 
         document.getElementById('filter-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            view.applyFilters();
+            ReportsTable.applyFilters(view);
 
             const reportContainer = document.getElementById('report-container');
             if (reportContainer && reportContainer.style.display === 'block') {
@@ -108,7 +115,7 @@ const ReportsEvents = {
         const searchInput = document.getElementById('search-records');
         if (searchInput) {
             searchInput.addEventListener('input', () => {
-                view.filterRecordsBySearch();
+                ReportsTable.filterRecordsBySearch(view);
             });
         }
 
@@ -118,14 +125,14 @@ const ReportsEvents = {
             itemsPerPageSelect.addEventListener('change', () => {
                 view.pagination.itemsPerPage = parseInt(itemsPerPageSelect.value);
                 view.pagination.currentPage = 1;
-                view.filterRecordsBySearch();
+                ReportsTable.filterRecordsBySearch(view);
             });
         }
 
         document.querySelectorAll('.date-shortcut').forEach(button => {
             button.addEventListener('click', (e) => {
                 const range = e.target.getAttribute('data-range');
-                view.setDateRange(range);
+                ReportsUtils.setDateRange(range, view);
                 document.getElementById('filter-form').dispatchEvent(new Event('submit'));
             });
         });
@@ -138,8 +145,8 @@ const ReportsEvents = {
 
                 view.selectedColumns[columnKey] = newValue;
 
-                view.updateColumnHeaders();
-                view.filterRecordsBySearch();
+                ReportsTable.updateColumnHeaders(view);
+                ReportsTable.filterRecordsBySearch(view);
 
                 const allFields = FieldModel.getAll();
                 const previousFieldId = allFields.find(f => {
@@ -155,8 +162,6 @@ const ReportsEvents = {
                         if (fieldNumber === 1) prevField.isColumn3 = false;
                         if (fieldNumber === 2) prevField.isColumn4 = false;
                         if (fieldNumber === 3) prevField.isColumn5 = false;
-                        if (!prevField.isColumn3 && !prevField.isColumn4 && !prevField.isColumn5) {
-                        }
                         FieldModel.update(previousFieldId, prevField);
                     }
                 }
@@ -194,7 +199,7 @@ const ReportsEvents = {
                    icon.className = `bi bi-sort-${view.sorting.direction === 'asc' ? 'up' : 'down'}`;
                 }
 
-                view.filterRecordsBySearch();
+                ReportsTable.filterRecordsBySearch(view);
             });
         });
 
@@ -224,8 +229,8 @@ const ReportsEvents = {
                 if (column2Select) column2Select.value = view.selectedColumns.field2;
                 if (column3Select) column3Select.value = view.selectedColumns.field3;
 
-                view.updateColumnHeaders();
-                view.filterRecordsBySearch();
+                ReportsTable.updateColumnHeaders(view);
+                ReportsTable.filterRecordsBySearch(view);
             }
 
             const horizontalSelect = document.getElementById('report-horizontal-field');
@@ -235,10 +240,10 @@ const ReportsEvents = {
                  const horizontalAxisField = FieldModel.getAll().find(f => f.isHorizontalAxis);
                  horizontalSelect.value = horizontalAxisField ? horizontalAxisField.id : '';
             }
-             if (compareSelect && (field.id === compareSelect.value || field.isCompareField)) {
+            if (compareSelect && (field.id === compareSelect.value || field.isCompareField)) {
                  const compareField = FieldModel.getAll().find(f => f.isCompareField);
                  compareSelect.value = compareField ? compareField.id : '';
-             }
+            }
         });
     }
 };

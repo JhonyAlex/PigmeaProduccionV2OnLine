@@ -1,25 +1,11 @@
 /**
- * Utility functions for ReportsView
+ * Utilidades para la vista de reportes
  */
 const ReportsUtils = {
     /**
-     * Gets the value of a field from a record.
-     * @param {Object} record - The record object.
-     * @param {string} fieldId - The field ID.
-     * @param {Array} fields - Array of field definitions.
-     * @returns {string} - The field value.
-     */
-    getFieldValue(record, fieldId, fields) {
-        if (!fieldId || !record.data || record.data[fieldId] === undefined || record.data[fieldId] === null) {
-            return '';
-        }
-        return record.data[fieldId];
-    },
-
-    /**
-     * Formats a date for input fields.
-     * @param {Date} date - The date object.
-     * @returns {string} - The formatted date string.
+     * Formatea una fecha para los inputs de tipo date
+     * @param {Date} date Fecha a formatear
+     * @returns {string} Fecha formateada en formato YYYY-MM-DD
      */
     formatDateForInput(date) {
         if (!(date instanceof Date) || isNaN(date)) {
@@ -32,12 +18,14 @@ const ReportsUtils = {
     },
 
     /**
-     * Sets the date range based on a predefined range.
-     * @param {string} range - The range identifier.
-     * @param {HTMLInputElement} fromDateInput - The "from" date input element.
-     * @param {HTMLInputElement} toDateInput - The "to" date input element.
+     * Establece un rango de fecha predefinido
+     * @param {string} range Tipo de rango: yesterday, thisWeek, lastWeek, etc.
+     * @param {Object} view Vista de reportes
      */
-    setDateRange(range, fromDateInput, toDateInput) {
+    setDateRange(range, view) {
+        const fromDateInput = document.getElementById('filter-from-date');
+        const toDateInput = document.getElementById('filter-to-date');
+
         if (!fromDateInput || !toDateInput) return;
 
         const now = new Date();
@@ -52,18 +40,18 @@ const ReportsUtils = {
                 break;
             case 'thisWeek':
                 fromDate = new Date(today);
-                const firstDayOfWeek = 1; // Monday
-                const dayOfWeek = today.getDay() || 7; // 1=Monday..7=Sunday
+                const firstDayOfWeek = 1; // Lunes
+                const dayOfWeek = today.getDay() || 7; // 1=Lunes..7=Domingo
                 fromDate.setDate(today.getDate() - (dayOfWeek - firstDayOfWeek));
                 toDate = new Date(today);
                 break;
             case 'lastWeek':
                 fromDate = new Date(today);
-                const firstDayOfPrevWeek = 1; // Monday
-                const currentDayOfWeekForLast = today.getDay() || 7; // 1=Monday..7=Sunday
+                const firstDayOfPrevWeek = 1; // Lunes
+                const currentDayOfWeekForLast = today.getDay() || 7; // 1=Lunes..7=Domingo
                 fromDate.setDate(today.getDate() - (currentDayOfWeekForLast - firstDayOfPrevWeek) - 7);
                 toDate = new Date(fromDate);
-                toDate.setDate(fromDate.getDate() + 6); // Sunday of last week
+                toDate.setDate(fromDate.getDate() + 6); // Domingo de la semana pasada
                 break;
             case 'thisMonth':
                 fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -80,25 +68,41 @@ const ReportsUtils = {
             case 'lastFriday':
             case 'lastSaturday':
             case 'lastSunday':
-                fromDate = new Date(today);
+                fromDate = new Date(today); // Empezamos desde hoy
                 const dayMap = {
                     'lastSunday': 0, 'lastMonday': 1, 'lastTuesday': 2, 'lastWednesday': 3,
                     'lastThursday': 4, 'lastFriday': 5, 'lastSaturday': 6
                 };
-                const targetDay = dayMap[range];
-                const currentDay = today.getDay();
+                const targetDay = dayMap[range]; // El día de la semana que buscamos (0-6)
+                const currentDay = today.getDay(); // El día de la semana actual (0-6)
 
+                // Calcula cuántos días hay que retroceder para llegar al 'targetDay' de la semana pasada SIEMPRE
                 const daysToSubtract = 7 + (currentDay - targetDay);
 
                 fromDate.setDate(today.getDate() - daysToSubtract);
-                toDate = new Date(fromDate);
+                toDate = new Date(fromDate); // El día seleccionado es tanto el inicio como el fin del rango
                 break;
             default:
-                console.warn(`Unknown date range: ${range}`);
+                console.warn(`Rango de fecha desconocido: ${range}`);
                 return;
         }
 
         fromDateInput.value = this.formatDateForInput(fromDate);
         toDateInput.value = this.formatDateForInput(toDate);
+    },
+
+    /**
+     * Obtiene el valor de un campo para un registro
+     * @param {Object} record Registro
+     * @param {string} fieldId ID del campo
+     * @param {Array} fields Lista de campos disponibles
+     * @returns {string} Valor del campo
+     */
+    getFieldValue(record, fieldId, fields) {
+        if (!fieldId || !record.data || record.data[fieldId] === undefined || record.data[fieldId] === null) {
+            return '';
+        }
+
+        return record.data[fieldId];
     }
 };
