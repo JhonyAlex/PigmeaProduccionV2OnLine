@@ -1,6 +1,3 @@
-import { ReportsModal } from './reports.modal.js';
-import { ReportsTable } from './reports.table.js';
-
 const ReportsEvents = {
     setupEventListeners(view) {
         const recordsListContainer = document.getElementById('records-list');
@@ -245,5 +242,3 @@ const ReportsEvents = {
         });
     }
 };
-
-export { ReportsEvents };

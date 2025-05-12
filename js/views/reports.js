@@ -16,11 +16,6 @@
  * 
  * Ejemplo de estructura mínima para este archivo:
  * 
- * import { ReportsEvents } from './reports.events.js';
- * import { ReportsTable } from './reports.table.js';
- * import { ReportsModal } from './reports.modal.js';
- * import { ReportsUtils } from './reports.utils.js';
- * 
  * const ReportsView = {
  *   ...estado...
  *   init() {
@@ -37,17 +32,10 @@
  *   }
  * }
  * 
- * export { ReportsView };
- * 
  * Así el archivo será pequeño y fácil de mantener.
  * 
  * Si necesitas ayuda para migrar métodos a los archivos nuevos, dímelo y te hago el desglose exacto.
  */
-
-import { ReportsEvents } from './reports.events.js';
-import { ReportsTable } from './reports.table.js';
-import { ReportsModal } from './reports.modal.js';
-import { ReportsUtils } from './reports.utils.js';
 
 /**
  * Vista de reportes para visualizar datos
@@ -419,4 +407,4 @@ const ReportsView = {
     }
 };
 
-export { ReportsView };
+window.ReportsView = ReportsView;
