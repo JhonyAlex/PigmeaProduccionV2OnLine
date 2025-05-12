@@ -297,3 +297,5 @@ const UIUtils = {
         }, 2000);
     }
 };
+
+window.UIUtils = UIUtils;
