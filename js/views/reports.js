@@ -66,9 +66,11 @@ const ReportsView = {
             console.error("Error initializing ReportsView:", error);
             const mainContent = Router.getActiveViewContainer ? Router.getActiveViewContainer() : document.querySelector('.main-content');
             if (mainContent) {
-                 mainContent.innerHTML = UIUtils.getErrorAlertHTML(`Error fatal al inicializar la vista de reportes: ${error.message}. Verifique la consola e inténtelo de nuevo.`);
+                mainContent.innerHTML = `<div class="alert alert-danger">Error fatal al inicializar la vista de reportes: ${error.message}. Verifique la consola e inténtelo de nuevo.</div>`;
             }
-            UIUtils.showAlert('Error grave al iniciar Reportes. Consulte la consola.', 'danger', 5000);
+            if (typeof UIUtils !== 'undefined' && typeof UIUtils.showAlert === 'function') {
+                UIUtils.showAlert('Error grave al iniciar Reportes. Consulte la consola.', 'danger', 5000);
+            }
         }
     },
 
@@ -327,10 +329,10 @@ const ReportsView = {
 
         } catch (error) {
             console.error("Error rendering ReportsView:", error);
-             const mainContent = Router.getActiveViewContainer ? Router.getActiveViewContainer() : document.querySelector('.main-content');
-             if (mainContent) {
-                 mainContent.innerHTML = UIUtils.getErrorAlertHTML(`Error al renderizar la vista de reportes: ${error.message}. Revise la consola.`);
-             }
+            const mainContent = Router.getActiveViewContainer ? Router.getActiveViewContainer() : document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.innerHTML = `<div class="alert alert-danger">Error al renderizar la vista de reportes: ${error.message}. Revise la consola.</div>`;
+            }
         }
     },
 
