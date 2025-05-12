@@ -117,3 +117,14 @@ const Router = {
         return document.querySelector('.main-content');
     }
 };
+
+/**
+ * Maneja el cambio de ruta
+ */
+function handleRouteChange() {
+    const path = window.location.pathname;
+
+    if (path === '/reports') {
+        ReportsView.init();
+    }
+}

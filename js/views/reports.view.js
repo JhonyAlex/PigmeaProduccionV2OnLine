@@ -155,6 +155,130 @@ const ReportsView = {
         }
     },
 
+    exportToCSV() {
+        try {
+            if (this.searchedRecords.length === 0) {
+                UIUtils.showAlert('No hay datos para exportar', 'warning');
+                return;
+            }
+
+            const fields = FieldModel.getAll();
+            const headers = ['ID', 'Fecha', 'Hora'];
+            
+            // Add selected custom columns
+            Object.values(this.selectedColumns).forEach(fieldId => {
+                if (fieldId) {
+                    const field = fields.find(f => f.id === fieldId);
+                    if (field) headers.push(field.name);
+                }
+            });
+            
+            const csvContent = ExportUtils.generateCSV(this.searchedRecords, headers, fields);
+            ExportUtils.downloadCSV(csvContent, `reporte_${this.formatDateForInput(new Date())}.csv`);
+            
+            UIUtils.showAlert('Datos exportados con éxito', 'success');
+        } catch (error) {
+            console.error("Error al exportar datos:", error);
+            UIUtils.showAlert('Error al exportar datos', 'danger');
+        }
+    },
+
+    exportToPDF() {
+        try {
+            if (this.searchedRecords.length === 0) {
+                UIUtils.showAlert('No hay datos para exportar', 'warning');
+                return;
+            }
+            
+            const config = StorageService.getConfig();
+            const title = `Reporte - ${config.entityName || 'Entidad'}`;
+            const startDate = document.getElementById('start-date')?.value;
+            const endDate = document.getElementById('end-date')?.value;
+            const dateRange = startDate && endDate ? `${startDate} al ${endDate}` : 'Todos los registros';
+            
+            ExportUtils.exportToPDF(
+                this.searchedRecords, 
+                title, 
+                dateRange,
+                this.selectedColumns,
+                FieldModel.getAll()
+            );
+            UIUtils.showAlert('PDF generado con éxito', 'success');
+        } catch (error) {
+            console.error("Error al generar PDF:", error);
+            UIUtils.showAlert('Error al generar PDF', 'danger');
+        }
+    },
+
+    getReportSummaryStats() {
+        try {
+            if (this.searchedRecords.length === 0) {
+                return { count: 0, average: 'N/A', min: 'N/A', max: 'N/A' };
+            }
+            
+            const reportField = document.getElementById('report-field').value;
+            if (!reportField) return { count: this.searchedRecords.length, average: 'N/A', min: 'N/A', max: 'N/A' };
+            
+            const field = FieldModel.getById(reportField);
+            if (!field || field.type !== 'number') {
+                return { count: this.searchedRecords.length, average: 'N/A', min: 'N/A', max: 'N/A' };
+            }
+            
+            const values = this.searchedRecords
+                .map(record => Number(record.data[reportField]))
+                .filter(value => !isNaN(value));
+                
+            if (values.length === 0) {
+                return { count: this.searchedRecords.length, average: 'N/A', min: 'N/A', max: 'N/A' };
+            }
+            
+            const sum = values.reduce((a, b) => a + b, 0);
+            const avg = (sum / values.length).toFixed(2);
+            const min = Math.min(...values).toFixed(2);
+            const max = Math.max(...values).toFixed(2);
+            
+            return {
+                count: this.searchedRecords.length,
+                average: avg,
+                min: min,
+                max: max
+            };
+        } catch (error) {
+            console.error("Error al calcular estadísticas:", error);
+            return { count: 0, average: 'N/A', min: 'N/A', max: 'N/A' };
+        }
+    },
+    
+    applyFilters() {
+        try {
+            const startDate = document.getElementById('start-date')?.value;
+            const endDate = document.getElementById('end-date')?.value;
+            const searchText = document.getElementById('search-input')?.value || '';
+            
+            // Filter by date range
+            this.filteredRecords = RecordModel.getFilteredByDateRange(startDate, endDate);
+            
+            // Search functionality
+            if (searchText.trim()) {
+                this.searchedRecords = this.filteredRecords.filter(record => 
+                    Object.values(record.data).some(value => 
+                        String(value).toLowerCase().includes(searchText.toLowerCase())
+                    )
+                );
+            } else {
+                this.searchedRecords = this.filteredRecords;
+            }
+            
+            // Reset pagination to first page when filters change
+            this.pagination.currentPage = 1;
+            
+            ReportsTable.renderTable(this);
+        } catch (error) {
+            console.error("Error al aplicar filtros:", error);
+            UIUtils.showAlert('Error al aplicar filtros', 'danger');
+        }
+    },
+
     handleTableSorting(column) {
         if (this.sorting.column === column) {
             this.sorting.direction = this.sorting.direction === 'asc' ? 'desc' : 'asc';
