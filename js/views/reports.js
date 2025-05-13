@@ -48,6 +48,9 @@ const ReportsView = {
                 this.filteredRecords = null;
                 this.searchedRecords = null;
 
+                // Cargar recursos de calendario localmente
+                this.loadLocalCalendarStyles();
+
                 this.render(); // Ahora 'this.selectedColumns' existe
                 this.setupEventListeners();
 
@@ -61,408 +64,529 @@ const ReportsView = {
     },
 
     /**
-     * Genera automáticamente un informe al cargar la página si hay datos disponibles
+     * Carga estilos de calendario localmente para evitar problemas con CDN
      */
-    autoGenerateReport() {
-        // Verificar si hay campos disponibles para generar un reporte
-        const sharedNumericFields = FieldModel.getSharedNumericFields();
-        if (sharedNumericFields.length === 0) {
-            return; // No hay campos para generar reporte
-        }
-
-        // Esperar a que el DOM esté completamente cargado
-        setTimeout(() => {
-            const reportField = document.getElementById('report-field');
-            if (!reportField) {
-                console.warn("Elemento 'report-field' no encontrado en el DOM");
-                return;
+    loadLocalCalendarStyles() {
+        // Insertar estilos mínimos para calendario directamente
+        const calendarStyles = document.createElement('style');
+        calendarStyles.textContent = `
+            /* Estilos mínimos para calendario local */
+            .simple-calendar {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                overflow: hidden;
+                background-color: #fff;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             }
-
-            // Obtener campos marcados para reportes comparativos
-            const compareField = FieldModel.getAll().find(field => field.isCompareField);
-
-            if (compareField) {
-                // Si hay un campo marcado para comparar, usarlo
-                reportField.value = compareField.id;
-            } else {
-                // Si no hay campo marcado, usar el primer campo numérico disponible
-                reportField.value = sharedNumericFields[0].id;
+            .simple-calendar .calendar-header {
+                background-color: #f8f9fa;
+                padding: 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #ddd;
             }
-
-            // Generar el reporte usando los valores predeterminados o los que están en el formulario
-            this.generateReport();
-        }, 200); // Dar más tiempo para que el DOM esté listo
+            .simple-calendar .calendar-header .month-title {
+                font-size: 1.1rem;
+                font-weight: 500;
+                color: #333;
+                margin: 0;
+            }
+            .simple-calendar .calendar-days {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                text-align: center;
+            }
+            .simple-calendar .calendar-days .day-name {
+                background-color: #f5f5f5;
+                padding: 10px 0;
+                font-weight: 500;
+                font-size: 0.9em;
+                border-bottom: 1px solid #eee;
+            }
+            .simple-calendar .calendar-days .day {
+                padding: 10px 5px;
+                height: 42px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                border: 1px solid #f0f0f0;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            .simple-calendar .calendar-days .day:hover {
+                background-color: #f5f9ff;
+                box-shadow: inset 0 0 0 1px #d5e6ff;
+            }
+            .simple-calendar .calendar-days .day.today {
+                background-color: #ecf4fe;
+                font-weight: bold;
+                color: #3788d8;
+                position: relative;
+            }
+            .simple-calendar .calendar-days .day.today:after {
+                content: '';
+                position: absolute;
+                bottom: 4px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background-color: #3788d8;
+            }
+            .simple-calendar .calendar-days .day.selected {
+                background-color: #e4efff;
+                box-shadow: inset 0 0 0 2px #3788d8;
+            }
+            .simple-calendar .calendar-days .day.other-month {
+                color: #aaa;
+                background-color: #f8f8f8;
+            }
+            .simple-calendar .btn {
+                transition: all 0.2s ease;
+            }
+            .simple-calendar .btn:active {
+                transform: scale(0.95);
+            }
+            .simple-calendar .btn:focus {
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            }
+            /* Rangos de selección */
+            .simple-calendar .calendar-days .day.in-range {
+                background-color: #e9f2ff;
+            }
+            .simple-calendar .calendar-days .day.range-start {
+                background-color: #3788d8;
+                color: white;
+                border-radius: 4px 0 0 4px;
+            }
+            .simple-calendar .calendar-days .day.range-end {
+                background-color: #3788d8;
+                color: white;
+                border-radius: 0 4px 4px 0;
+            }
+            /* Botones de navegación */
+            .simple-calendar .navigation-buttons {
+                display: flex;
+                gap: 5px;
+            }
+            .simple-calendar .navigation-buttons .today-btn {
+                margin-right: 10px;
+            }
+            /* Selectores de vista */
+            .simple-calendar .view-selectors {
+                display: flex;
+                margin-left: auto;
+                gap: 5px;
+            }
+        `;
+        document.head.appendChild(calendarStyles);
     },
 
     /**
-     * Renderiza el contenido de la vista
+     * Configura los eventos del calendario al inicializar
      */
-    render() {
-        try {
-            // Usar el contenedor de vista activa del Router
-            const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
-            if (!mainContent) {
-                console.error("Elemento contenedor no encontrado en render()");
-                return;
+    setupCalendar() {
+        console.log("Configurando calendario local");
+        // Crear un calendario simple desde cero
+        this.renderLocalCalendar();
+    },
+
+    /**
+     * Renderiza un calendario local completo
+     */
+    renderLocalCalendar() {
+        console.log("Renderizando calendario local");
+        const calendarEl = document.getElementById('date-calendar');
+        if (!calendarEl) return;
+
+        const today = new Date();
+        this.currentCalendarDate = today;
+        this.renderCalendarMonth(calendarEl, this.currentCalendarDate);
+    },
+
+    /**
+     * Renderiza el mes actual en el calendario
+     */
+    renderCalendarMonth(container, date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const today = new Date();
+        
+        // Primer día del mes
+        const firstDay = new Date(year, month, 1);
+        // Último día del mes
+        const lastDay = new Date(year, month + 1, 0);
+        
+        // Obtener día de la semana del primer día (0 = Domingo, 1 = Lunes, etc.)
+        let firstDayOfWeek = firstDay.getDay();
+        // Ajustar para que la semana empiece en lunes (0 = Lunes, 6 = Domingo)
+        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+        
+        // Nombres de los meses
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        // Nombres de los días
+        const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+        // Verificar rango seleccionado actual
+        const fromDateInput = document.getElementById('filter-from-date');
+        const toDateInput = document.getElementById('filter-to-date');
+        let rangeStart = null;
+        let rangeEnd = null;
+        
+        if (fromDateInput && toDateInput) {
+            if (fromDateInput.value) {
+                rangeStart = new Date(fromDateInput.value);
+                rangeStart.setHours(0, 0, 0, 0);
             }
-
-            const entities = EntityModel.getAll();
-            const sharedNumericFields = FieldModel.getSharedNumericFields();
-            const sharedFields = FieldModel.getAll();
-
-            // Formatear fechas
-            const lastMonth = new Date();
-            lastMonth.setMonth(lastMonth.getMonth() - 1);
-            const lastMonthStr = this.formatDateForInput(lastMonth);
-            const today = this.formatDateForInput(new Date());
-
-            const config = StorageService.getConfig();
-            const entityName = config.entityName || 'Entidad';
-
-            const column3Field = FieldModel.getAll().find(field => field.isColumn3);
-            const column4Field = FieldModel.getAll().find(field => field.isColumn4);
-            const column5Field = FieldModel.getAll().find(field => field.isColumn5);
-
-            // Actualiza SelectedColumns al cargar si hay campos marcados
-            this.selectedColumns.field1 = column3Field ? column3Field.id : '';
-            this.selectedColumns.field2 = column4Field ? column4Field.id : '';
-            this.selectedColumns.field3 = column5Field ? column5Field.id : '';
-
-            const horizontalAxisField = FieldModel.getAll().find(field => field.isHorizontalAxis);
-            const compareField = FieldModel.getAll().find(field => field.isCompareField);
-
-            // --- HTML Template Reorganizado ---
-            const template = `
-                <div class="container mt-4">
-                    <h2>Reportes y Análisis</h2>
-
-                    <!-- Filtros -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Filtros</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="filter-form" class="row g-3">
-                                <div class="col-md-4">
-                                    <label for="filter-entity" class="form-label">${entityName}(es)</label>
-                                    <select class="form-select" id="filter-entity" multiple size="4">
-                                        <option value="">Todas las ${entityName.toLowerCase()}s</option>
-                                        ${entities.map(entity =>
-                                            `<option value="${entity.id}">${entity.name}</option>`
-                                        ).join('')}
-                                    </select>
-                                    <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples ${entityName.toLowerCase()}s</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="filter-from-date" class="form-label">Desde</label>
-                                    <input type="date" class="form-control" id="filter-from-date" value="${lastMonthStr}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="filter-to-date" class="form-label">Hasta</label>
-                                    <input type="date" class="form-control" id="filter-to-date" value="${today}">
-                                </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
-                                </div>
-                            </form>
-                        </div>
+            if (toDateInput.value) {
+                rangeEnd = new Date(toDateInput.value);
+                rangeEnd.setHours(0, 0, 0, 0);
+            }
+        }
+        
+        // Crear estructura HTML del calendario
+        let calendarHTML = `
+            <div class="simple-calendar">
+                <div class="calendar-header">
+                    <div class="navigation-buttons">
+                        <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
+                            Hoy
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary prev-month" title="Mes anterior">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary next-month" title="Mes siguiente">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
                     </div>
-
-                    <!-- Atajos de fecha -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Atajos de fecha</h5>
-                            <button class="btn btn-sm btn-outline-light collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fechasCollapse" aria-expanded="false" aria-controls="fechasCollapse">
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
-                        </div>
-                        <div class="collapse" id="fechasCollapse">
-                            <div class="card-body">
-                                <div class="row g-2">
-                                    <!-- Periodos comunes -->
-                                    <div class="col-md-6">
-                                        <div class="card h-100 border-light">
-                                            <div class="card-header bg-light py-2">
-                                                <h6 class="mb-0"><i class="bi bi-calendar-range me-1"></i>Periodos comunes</h6>
-                                            </div>
-                                            <div class="card-body p-2">
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="yesterday">
-                                                        <i class="bi bi-calendar-day"></i> Ayer
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisWeek">
-                                                        <i class="bi bi-calendar-week"></i> Esta semana
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastWeek">
-                                                        <i class="bi bi-calendar-week-fill"></i> Semana pasada
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisMonth">
-                                                        <i class="bi bi-calendar-month"></i> Mes actual
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastMonth">
-                                                        <i class="bi bi-calendar-month-fill"></i> Mes pasado
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Calendario interactivo -->
-                                    <div class="col-md-6">
-                                        <div class="card h-100 border-light">
-                                            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-                                                <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Calendario</h6>
-                                                <div class="btn-group btn-group-sm">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="calendar-month-view">Mes</button>
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="calendar-week-view">Semana</button>
-                                                </div>
-                                            </div>
-                                            <div class="card-body p-2">
-                                                <div id="date-calendar" style="min-height: 340px;"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Grupos de entidades (condicional) -->
-                                    ${(() => {
-                                        // Obtener todos los grupos de entidades
-                                        const groups = EntityModel.getAllGroups();
-                                        if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
-                                        
-                                        return `
-                                        <div class="col-12 mt-2">
-                                            <div class="card border-light">
-                                                <div class="card-header bg-light py-2">
-                                                    <h6 class="mb-0"><i class="bi bi-filter me-1"></i>Filtrar por grupos de ${entityName.toLowerCase()}s</h6>
-                                                </div>
-                                                <div class="card-body p-2">
-                                                    <div class="d-flex flex-wrap gap-1">
-                                                        ${groups.map(group => 
-                                                            `<button type="button" class="btn btn-sm btn-outline-info entity-group-filter" data-group="${group}">${group}</button>`
-                                                        ).join('')}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        `;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Reportes Comparativos -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Reportes Comparativos</h5>
-                        </div>
-                        <div class="card-body">
-                            ${sharedNumericFields.length === 0 ? `
-                                <div class="alert alert-info">
-                                    No hay campos numéricos compartidos entre ${entityName.toLowerCase()}s para generar reportes comparativos.
-                                    <hr>
-                                    <p class="mb-0">Para generar reportes comparativos, debe crear campos numéricos y asignarlos a múltiples ${entityName.toLowerCase()}s.</p>
-                                </div>
-                            ` : `
-                                <form id="report-form" class="row g-3 mb-4">
-                                    <div class="col-md-4">
-                                        <label for="report-horizontal-field" class="form-label">Eje Horizontal</label>
-                                        <select class="form-select" id="report-horizontal-field">
-                                            <option value="">${entityName} Principal</option>
-                                            ${sharedFields.map(field =>
-                                                `<option value="${field.id}" ${(horizontalAxisField && horizontalAxisField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="report-field" class="form-label">Campo a Comparar</label>
-                                        <select class="form-select" id="report-field" required>
-                                            <option value="">Seleccione un campo</option>
-                                            ${sharedNumericFields.map(field =>
-                                                `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="report-aggregation" class="form-label">Tipo de Agregación</label>
-                                        <select class="form-select" id="report-aggregation">
-                                            <option value="sum">Suma</option>
-                                            <option value="average">Promedio</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-12">
-                                        <button type="submit" class="btn btn-primary">Generar Reporte</button>
-                                    </div>
-                                </form>
-
-                                <div id="report-container" style="display: none;">
-                                    <div class="row">
-                                        <div class="col-md-8">
-                                            <div class="chart-container">
-                                                <canvas id="report-chart"></canvas>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div id="report-summary"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `}
-                        </div>
-                    </div>
-
-                    <!-- Registros -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">${this.recordName}s</h5>
-                            <div>
-                                <button id="export-csv-btn" class="btn btn-outline-light btn-sm me-2">
-                                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar a CSV
-                                </button>
-                                <span id="records-count" class="badge bg-light text-dark">0 ${this.recordName.toLowerCase()}s</span>
-                            </div>
-                        </div>
-                        <div class="card-body p-0">
-                            <!-- Búsqueda -->
-                            <div class="p-3 bg-light border-bottom">
-                                <div class="input-group">
-                                    <span class="input-group-text">
-                                        <i class="bi bi-search"></i>
-                                    </span>
-                                    <input type="text" id="search-records" class="form-control" placeholder="Buscar en registros...">
-                                </div>
-                            </div>
-                            <!-- Selectores de Columna -->
-                            <div class="p-3 bg-light border-bottom">
-                                <div class="row g-3 align-items-end">
-                                    <div class="col-md-4">
-                                        <label for="column-selector-1" class="form-label">Columna 3:</label>
-                                        <select class="form-select form-select-sm column-selector" id="column-selector-1">
-                                            <option value="">Seleccione un campo</option>
-                                            ${sharedFields.map(field =>
-                                                `<option value="${field.id}" ${(column3Field && column3Field.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="column-selector-2" class="form-label">Columna 4:</label>
-                                        <select class="form-select form-select-sm column-selector" id="column-selector-2">
-                                            <option value="">Seleccione un campo</option>
-                                            ${sharedFields.map(field =>
-                                                `<option value="${field.id}" ${(column4Field && column4Field.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="column-selector-3" class="form-label">Columna 5:</label>
-                                        <select class="form-select form-select-sm column-selector" id="column-selector-3">
-                                            <option value="">Seleccione un campo</option>
-                                            ${sharedFields.map(field =>
-                                                `<option value="${field.id}" ${(column5Field && column5Field.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Tabla de Registros -->
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0" id="records-table">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="select-all-records">
-                                                </div>
-                                            </th>
-                                            <th class="sortable" data-sort="entity">${entityName} <i class="bi"></i></th>
-                                            <th class="sortable" data-sort="timestamp">Fecha y Hora <i class="bi"></i></th>
-                                            <th class="sortable column-1" data-sort="field1">Columna 3 <i class="bi"></i></th>
-                                            <th class="sortable column-2" data-sort="field2">Columna 4 <i class="bi"></i></th>
-                                            <th class="sortable column-3" data-sort="field3">Columna 5 <i class="bi"></i></th>
-                                            <th></th> <!-- Columna para acciones -->
-                                        </tr>
-                                    </thead>
-                                    <tbody id="records-list">
-                                        <!-- Las filas se insertarán aquí -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- Mensaje si no hay registros -->
-                            <div id="no-filtered-records" class="text-center py-4" style="display: none;">
-                                <p class="text-muted">No hay ${this.recordName.toLowerCase()}s que coincidan con los filtros.</p>
-                            </div>
-                            <!-- Paginación -->
-                            <div class="d-flex justify-content-between align-items-center mt-3 p-2 bg-light border-top">
-                                <div class="d-flex align-items-center">
-                                    <label class="me-2 mb-0">${this.recordName}s por página:</label>
-                                    <select id="items-per-page" class="form-select form-select-sm" style="width: auto;">
-                                        <option value="20">20</option>
-                                        <option value="50">50</option>
-                                        <option value="100">100</option>
-                                    </select>
-                                </div>
-                                <div class="pagination-container">
-                                    <nav aria-label="Navegación de página">
-                                        <ul class="pagination pagination-sm mb-0" id="pagination-controls">
-                                            <!-- Controles de paginación se insertarán aquí -->
-                                        </ul>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                    <h5 class="month-title mb-0">${monthNames[month]} ${year}</h5>
+                    <div class="view-selectors">
+                        <button class="btn btn-sm btn-outline-secondary active" id="month-view-btn">Mes</button>
+                        <button class="btn btn-sm btn-outline-secondary" id="week-view-btn">Semana</button>
                     </div>
                 </div>
-            `;
+                <div class="calendar-days">
+        `;
+        
+        // Añadir nombres de los días
+        dayNames.forEach(day => {
+            calendarHTML += `<div class="day-name">${day}</div>`;
+        });
+        
+        // Añadir días del mes anterior para completar la primera semana
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            const prevMonthDay = new Date(year, month, -firstDayOfWeek + i + 1);
+            const dateStr = this.formatDateForInput(prevMonthDay);
+            const isInRange = this.isDateInRange(prevMonthDay, rangeStart, rangeEnd);
+            const rangeClasses = this.getRangeClasses(prevMonthDay, rangeStart, rangeEnd);
+            
+            calendarHTML += `<div class="day other-month ${isInRange ? 'in-range' : ''} ${rangeClasses}" 
+                                data-date="${dateStr}">${prevMonthDay.getDate()}</div>`;
+        }
+        
+        // Añadir días del mes actual
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const currentDate = new Date(year, month, day);
+            const dateStr = this.formatDateForInput(currentDate);
+            const isToday = currentDate.getDate() === today.getDate() && 
+                          currentDate.getMonth() === today.getMonth() && 
+                          currentDate.getFullYear() === today.getFullYear();
+            
+            const isInRange = this.isDateInRange(currentDate, rangeStart, rangeEnd);
+            const rangeClasses = this.getRangeClasses(currentDate, rangeStart, rangeEnd);
+            
+            calendarHTML += `<div class="day ${isToday ? 'today' : ''} ${isInRange ? 'in-range' : ''} ${rangeClasses}" 
+                               data-date="${dateStr}">${day}</div>`;
+        }
+        
+        // Añadir días del mes siguiente para completar la última semana
+        const totalDaysShown = firstDayOfWeek + lastDay.getDate();
+        const remainingCells = 7 - (totalDaysShown % 7);
+        if (remainingCells < 7) {
+            for (let i = 1; i <= remainingCells; i++) {
+                const nextMonthDay = new Date(year, month + 1, i);
+                const dateStr = this.formatDateForInput(nextMonthDay);
+                const isInRange = this.isDateInRange(nextMonthDay, rangeStart, rangeEnd);
+                const rangeClasses = this.getRangeClasses(nextMonthDay, rangeStart, rangeEnd);
+                
+                calendarHTML += `<div class="day other-month ${isInRange ? 'in-range' : ''} ${rangeClasses}" 
+                                   data-date="${dateStr}">${i}</div>`;
+            }
+        }
+        
+        // Cerrar estructura HTML
+        calendarHTML += `
+                </div>
+            </div>
+        `;
+        
+        // Insertar calendario en el elemento
+        container.innerHTML = calendarHTML;
+        
+        // Guardar referencia al contenedor
+        this.calendarContainer = container;
+        
+        // Añadir event listeners
+        this.addCalendarEventListeners(container);
+    },
 
-            mainContent.innerHTML = template;
+    /**
+     * Verifica si una fecha está dentro de un rango
+     */
+    isDateInRange(date, rangeStart, rangeEnd) {
+        if (!rangeStart || !rangeEnd) return false;
+        
+        // Normalizar fechas para comparación
+        const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const start = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+        const end = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
+        
+        return day >= start && day <= end;
+    },
 
-            // Esperar a que el DOM se actualice
-            setTimeout(() => {
-                try {
-                    this.updateColumnHeaders();
-                    this.applyFilters();
-                } catch (error) {
-                    console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
+    /**
+     * Obtiene las clases CSS para los puntos de inicio y fin de rango
+     */
+    getRangeClasses(date, rangeStart, rangeEnd) {
+        if (!rangeStart || !rangeEnd) return '';
+        
+        // Normalizar fechas para comparación
+        const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const start = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+        const end = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
+        
+        if (day.getTime() === start.getTime()) return 'range-start';
+        if (day.getTime() === end.getTime()) return 'range-end';
+        return '';
+    },
+
+    /**
+     * Añade los event listeners al calendario
+     */
+    addCalendarEventListeners(container) {
+        // Eventos para los días
+        const days = container.querySelectorAll('.day');
+        let isDragging = false;
+        let dragStartDate = null;
+        let lastHoveredDate = null;
+        
+        days.forEach(day => {
+            // Manejo de clic simple
+            day.addEventListener('click', (e) => {
+                const dateStr = day.getAttribute('data-date');
+                if (!dateStr) return;
+                
+                // Si no estamos en modo arrastrar, tratar como clic simple
+                if (!isDragging) {
+                    // Marcar día seleccionado
+                    days.forEach(d => d.classList.remove('selected'));
+                    day.classList.add('selected');
+                    
+                    // Actualizar inputs de fecha
+                    const fromDateInput = document.getElementById('filter-from-date');
+                    const toDateInput = document.getElementById('filter-to-date');
+                    
+                    if (fromDateInput && toDateInput) {
+                        fromDateInput.value = dateStr;
+                        toDateInput.value = dateStr;
+                        
+                        // Aplicar filtros automáticamente
+                        const filterForm = document.getElementById('filter-form');
+                        if (filterForm) {
+                            filterForm.dispatchEvent(new Event('submit'));
+                        }
+                    }
                 }
-            }, 0);
-
-        } catch (error) {
-            console.error("Error al renderizar vista de reportes:", error);
+            });
+            
+            // Eventos para selección por arrastre
+            day.addEventListener('mousedown', (e) => {
+                // Iniciar arrastre
+                isDragging = true;
+                dragStartDate = new Date(day.getAttribute('data-date'));
+                lastHoveredDate = dragStartDate;
+                
+                // Evitar selección de texto durante el arrastre
+                e.preventDefault();
+            });
+            
+            day.addEventListener('mouseover', (e) => {
+                if (isDragging && dragStartDate) {
+                    const currentDate = new Date(day.getAttribute('data-date'));
+                    lastHoveredDate = currentDate;
+                    
+                    // Actualizar visualización de rango
+                    this.updateRangeSelection(days, dragStartDate, currentDate);
+                }
+            });
+        });
+        
+        // Manejo del fin del arrastre
+        document.addEventListener('mouseup', (e) => {
+            if (isDragging && dragStartDate && lastHoveredDate) {
+                // Ordenar fechas
+                let startDate, endDate;
+                if (dragStartDate <= lastHoveredDate) {
+                    startDate = dragStartDate;
+                    endDate = lastHoveredDate;
+                } else {
+                    startDate = lastHoveredDate;
+                    endDate = dragStartDate;
+                }
+                
+                // Actualizar inputs de fecha
+                const fromDateInput = document.getElementById('filter-from-date');
+                const toDateInput = document.getElementById('filter-to-date');
+                
+                if (fromDateInput && toDateInput) {
+                    fromDateInput.value = this.formatDateForInput(startDate);
+                    toDateInput.value = this.formatDateForInput(endDate);
+                    
+                    // Aplicar filtros automáticamente
+                    const filterForm = document.getElementById('filter-form');
+                    if (filterForm) {
+                        filterForm.dispatchEvent(new Event('submit'));
+                    }
+                }
+                
+                // Actualizar la visualización del calendario para reflejar el rango seleccionado
+                this.renderCalendarMonth(container, this.currentCalendarDate);
+            }
+            
+            // Resetear estado de arrastre
+            isDragging = false;
+            dragStartDate = null;
+            lastHoveredDate = null;
+        });
+        
+        // Navegar entre meses
+        const prevMonthBtn = container.querySelector('.prev-month');
+        const nextMonthBtn = container.querySelector('.next-month');
+        const todayBtn = container.querySelector('.today-btn');
+        
+        if (prevMonthBtn) {
+            prevMonthBtn.addEventListener('click', () => {
+                const date = new Date(this.currentCalendarDate);
+                date.setMonth(date.getMonth() - 1);
+                this.currentCalendarDate = date;
+                this.renderCalendarMonth(container, date);
+            });
+        }
+        
+        if (nextMonthBtn) {
+            nextMonthBtn.addEventListener('click', () => {
+                const date = new Date(this.currentCalendarDate);
+                date.setMonth(date.getMonth() + 1);
+                this.currentCalendarDate = date;
+                this.renderCalendarMonth(container, date);
+            });
+        }
+        
+        if (todayBtn) {
+            todayBtn.addEventListener('click', () => {
+                this.currentCalendarDate = new Date();
+                this.renderCalendarMonth(container, this.currentCalendarDate);
+            });
+        }
+        
+        // Cambio de vista (mes/semana)
+        const monthViewBtn = container.querySelector('#month-view-btn');
+        const weekViewBtn = container.querySelector('#week-view-btn');
+        
+        if (monthViewBtn && weekViewBtn) {
+            monthViewBtn.addEventListener('click', () => {
+                monthViewBtn.classList.add('active');
+                weekViewBtn.classList.remove('active');
+                // Por ahora, simplemente recargamos el mes
+                this.renderCalendarMonth(container, this.currentCalendarDate);
+            });
+            
+            weekViewBtn.addEventListener('click', () => {
+                weekViewBtn.classList.add('active');
+                monthViewBtn.classList.remove('active');
+                // Aquí podríamos implementar una vista semanal si fuera necesario
+                // Por ahora, mostramos un mensaje
+                container.innerHTML = `
+                    <div class="simple-calendar">
+                        <div class="calendar-header">
+                            <div class="navigation-buttons">
+                                <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
+                                    Hoy
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary prev-week" title="Semana anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary next-week" title="Semana siguiente">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                            <h5 class="month-title mb-0">Vista Semanal</h5>
+                            <div class="view-selectors">
+                                <button class="btn btn-sm btn-outline-secondary" id="month-view-btn">Mes</button>
+                                <button class="btn btn-sm btn-outline-secondary active" id="week-view-btn">Semana</button>
+                            </div>
+                        </div>
+                        <div class="p-3 text-center">
+                            <div class="alert alert-info mb-0">
+                                Vista semanal en desarrollo. Por favor, utilice la vista mensual.
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Volver a añadir listeners
+                this.addCalendarEventListeners(container);
+            });
         }
     },
 
-    // ... (resto de métodos: updateColumnHeaders, setupEventListeners, applyFilters, etc.) ...
-
     /**
-     * Actualiza los encabezados de columna en la tabla según los campos seleccionados
+     * Actualiza la visualización de selección de rango durante el arrastre
      */
-    updateColumnHeaders() {
-        // Actualizar encabezados de columna basados en los campos seleccionados
-        const column1Header = document.querySelector('th.column-1');
-        const column2Header = document.querySelector('th.column-2');
-        const column3Header = document.querySelector('th.column-3');
-
-        // Función auxiliar para actualizar un encabezado
-        const updateHeader = (headerElement, fieldId) => {
-            if (headerElement) {
-                const field = fieldId ? FieldModel.getById(fieldId) : null;
-                // Usar el nombre del campo o el texto por defecto si no hay campo seleccionado
-                const headerText = field ? field.name : headerElement.getAttribute('data-sort').replace('field', 'Columna '); // Ej: Columna 3
-                headerElement.innerHTML = `${headerText} <i class="bi"></i>`;
+    updateRangeSelection(days, startDate, endDate) {
+        // Ordenar las fechas si es necesario
+        let rangeStart, rangeEnd;
+        if (startDate <= endDate) {
+            rangeStart = startDate;
+            rangeEnd = endDate;
+        } else {
+            rangeStart = endDate;
+            rangeEnd = startDate;
+        }
+        
+        // Actualizar visualización
+        days.forEach(day => {
+            const dayDate = new Date(day.getAttribute('data-date'));
+            day.classList.remove('in-range', 'range-start', 'range-end');
+            
+            const time = dayDate.getTime();
+            const startTime = rangeStart.getTime();
+            const endTime = rangeEnd.getTime();
+            
+            if (time >= startTime && time <= endTime) {
+                day.classList.add('in-range');
+                if (time === startTime) {
+                    day.classList.add('range-start');
+                }
+                if (time === endTime) {
+                    day.classList.add('range-end');
+                }
             }
-        };
-
-        updateHeader(column1Header, this.selectedColumns.field1);
-        updateHeader(column2Header, this.selectedColumns.field2);
-        updateHeader(column3Header, this.selectedColumns.field3);
+        });
     },
 
-
+    /**
+     * Configura los listeners de eventos
+     */
     setupEventListeners() {
         // Esperar a que el DOM esté completamente cargado
         setTimeout(() => {
-            // Inicializar el calendario
-            this.initCalendar();
+            // Inicializar el calendario local
+            this.setupCalendar();
             
             // Event listener para "Seleccionar todos"
             const selectAllCheckbox = document.getElementById('select-all-records');
@@ -1813,167 +1937,32 @@ const ReportsView = {
      * @param {Function} callback Función a ejecutar cuando las dependencias estén cargadas
      */
     loadCalendarDependencies(callback) {
-        const loadScript = (url, onLoad, onError) => {
-            const script = document.createElement('script');
-            script.src = url;
-            script.onload = onLoad;
-            script.onerror = onError;
-            document.head.appendChild(script);
-            console.log(`Cargando script: ${url}`);
-        };
-
-        const loadStylesheet = (url, onLoad, onError) => {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = url;
-            link.onload = onLoad;
-            link.onerror = onError;
-            document.head.appendChild(link);
-            console.log(`Cargando stylesheet: ${url}`);
-        };
-
-        // Mostrar cargando en el contenedor
-        const calendarEl = document.getElementById('date-calendar');
-        if (calendarEl) {
-            calendarEl.innerHTML = `
-                <div class="d-flex justify-content-center align-items-center h-100">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Cargando calendario...</span>
-                    </div>
-                    <span class="ms-2">Cargando calendario...</span>
-                </div>
-            `;
-        }
-
-        // Contador y detector de fallos
-        let loadedCount = 0;
-        let errorCount = 0;
-        const totalToLoad = 3; // CSS, main JS, y locale JS
+        console.log("Implementando calendario simple sin dependencias externas");
         
-        const checkAllLoaded = () => {
-            loadedCount++;
-            console.log(`Recursos cargados: ${loadedCount}/${totalToLoad}`);
-            if (loadedCount + errorCount >= totalToLoad) {
-                if (errorCount > 0) {
-                    console.warn(`Completado con ${errorCount} errores. Intentando cargar de CDN alternativo o mostrando fallback`);
-                    // Si fallaron las cargas, intentar con un CDN alternativo o mostrar un calendario alternativo
-                    this.loadAlternativeCalendar();
-                } else {
-                    console.log('Todos los recursos de FullCalendar cargados correctamente');
-                    callback();
-                }
-            }
-        };
-        
-        const handleError = (resource) => {
-            errorCount++;
-            console.error(`Error al cargar ${resource}`);
-            checkAllLoaded();
-        };
-
-        // Intentar con unpkg como CDN primario
-        // Cargar CSS de FullCalendar (actualizado a la última versión 6.1.17)
-        loadStylesheet(
-            'https://unpkg.com/fullcalendar@6.1.17/main.min.css',
-            checkAllLoaded,
-            () => handleError('CSS principal')
-        );
-        
-        // Cargar JavaScript de FullCalendar 
-        loadScript(
-            'https://unpkg.com/fullcalendar@6.1.17/main.min.js',
-            checkAllLoaded,
-            () => handleError('JavaScript principal')
-        );
-        
-        // Cargar locales para español
-        loadScript(
-            'https://unpkg.com/fullcalendar@6.1.17/locales/es.js',
-            checkAllLoaded,
-            () => handleError('Locale español')
-        );
-        
-        // Añadir estilos personalizados para mejorar la apariencia
+        // Añadir estilos personalizados para el calendario simple
         const customStyles = document.createElement('style');
         customStyles.textContent = `
-            .fc-theme-standard .fc-scrollgrid {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-            }
-            .fc .fc-daygrid-day-frame {
-                padding: 4px 2px 2px 2px;
-            }
-            .fc .fc-daygrid-day.fc-day-today {
-                background-color: rgba(66, 135, 245, 0.15);
-            }
-            .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-                font-weight: bold;
-                color: #1967d2;
-            }
-            .fc .fc-daygrid-day-number {
-                font-size: 0.9em;
-                padding: 3px 6px;
-                opacity: 1 !important; /* Asegurar que los números sean visibles */
-                color: #333; /* Color más oscuro para mejor visibilidad */
-            }
-            .fc .fc-toolbar-title {
-                font-size: 1.2rem;
-                font-weight: 500;
-            }
-            .fc .fc-button-primary {
-                background-color: #3788d8;
-                border-color: #3788d8;
-            }
-            .fc .fc-button-primary:not(:disabled):hover {
-                background-color: #2c6db2;
-                border-color: #2c6db2;
-            }
-            .fc .fc-button-primary:not(:disabled):active,
-            .fc .fc-button-primary:not(:disabled).fc-button-active {
-                background-color: #1d5187;
-                border-color: #1d5187;
-            }
-            .fc .fc-col-header-cell {
-                padding: 6px 0;
-                background-color: #f8f9fa;
-                font-weight: 500;
-            }
-            .fc .fc-highlight {
-                background-color: rgba(66, 135, 245, 0.2);
-            }
-            .fc-event {
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            /* Asegurar que el contenido del día sea visible */
-            .fc-daygrid-day-top {
-                display: block !important;
-                text-align: center;
-                margin-bottom: 2px;
-            }
-            .fc-daygrid-day-number {
-                display: inline-block !important;
-                float: none !important;
-                font-weight: 500;
-            }
-            /* Estilo para día seleccionado */
-            .clicked-day {
-                box-shadow: inset 0 0 0 2px #3788d8;
-                background-color: rgba(66, 135, 245, 0.1);
-            }
-            /* Estilos para calendario alternativo */
+            /* Estilos para calendario simple */
             .simple-calendar {
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 overflow: hidden;
+                background-color: #fff;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             }
             .simple-calendar .calendar-header {
                 background-color: #f8f9fa;
-                padding: 10px;
+                padding: 12px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 border-bottom: 1px solid #ddd;
+            }
+            .simple-calendar .calendar-header .month-title {
+                font-size: 1.1rem;
+                font-weight: 500;
+                color: #333;
+                margin: 0;
             }
             .simple-calendar .calendar-days {
                 display: grid;
@@ -1982,24 +1971,42 @@ const ReportsView = {
             }
             .simple-calendar .calendar-days .day-name {
                 background-color: #f5f5f5;
-                padding: 8px 0;
+                padding: 10px 0;
                 font-weight: 500;
                 font-size: 0.9em;
                 border-bottom: 1px solid #eee;
             }
             .simple-calendar .calendar-days .day {
                 padding: 10px 5px;
-                min-height: 40px;
+                height: 42px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
                 border: 1px solid #f0f0f0;
                 cursor: pointer;
+                transition: all 0.2s ease;
             }
             .simple-calendar .calendar-days .day:hover {
                 background-color: #f5f9ff;
+                box-shadow: inset 0 0 0 1px #d5e6ff;
             }
             .simple-calendar .calendar-days .day.today {
                 background-color: #ecf4fe;
                 font-weight: bold;
                 color: #3788d8;
+                position: relative;
+            }
+            .simple-calendar .calendar-days .day.today:after {
+                content: '';
+                position: absolute;
+                bottom: 4px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background-color: #3788d8;
             }
             .simple-calendar .calendar-days .day.selected {
                 background-color: #e4efff;
@@ -2009,186 +2016,73 @@ const ReportsView = {
                 color: #aaa;
                 background-color: #f8f8f8;
             }
-            @media (max-width: 768px) {
-                .fc .fc-toolbar {
-                    flex-direction: column;
-                    gap: 8px;
-                }
-                .fc .fc-toolbar-title {
-                    font-size: 1rem;
-                }
+            .simple-calendar .btn {
+                transition: all 0.2s ease;
+            }
+            .simple-calendar .btn:active {
+                transform: scale(0.95);
+            }
+            .simple-calendar .btn:focus {
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            }
+            /* Rangos de selección */
+            .simple-calendar .calendar-days .day.in-range {
+                background-color: #e9f2ff;
+            }
+            .simple-calendar .calendar-days .day.range-start {
+                background-color: #3788d8;
+                color: white;
+                border-radius: 4px 0 0 4px;
+            }
+            .simple-calendar .calendar-days .day.range-end {
+                background-color: #3788d8;
+                color: white;
+                border-radius: 0 4px 4px 0;
+            }
+            /* Botones de navegación */
+            .simple-calendar .navigation-buttons {
+                display: flex;
+                gap: 5px;
+            }
+            .simple-calendar .navigation-buttons .today-btn {
+                margin-right: 10px;
+            }
+            /* Selectores de vista */
+            .simple-calendar .view-selectors {
+                display: flex;
+                margin-left: auto;
+                gap: 5px;
             }
         `;
         document.head.appendChild(customStyles);
+        
+        // Renderizar calendario directamente sin dependencia externa
+        this.renderSimpleCalendar();
     },
 
-    // Método alternativo si falla la carga de FullCalendar
-    loadAlternativeCalendar() {
-        console.log("Intentando cargar calendario alternativo simple");
-        const calendarEl = document.getElementById('date-calendar');
-        if (!calendarEl) return;
+    // Sustituir los métodos antiguos relacionados con FullCalendar
 
-        try {
-            // Intentar cargar desde un CDN alternativo
-            const scripts = document.querySelectorAll('script[src*="fullcalendar"]');
-            if (scripts.length > 0) {
-                // Eliminar scripts anteriores que pudieron fallar
-                scripts.forEach(s => s.remove());
-            }
-            
-            // Intentar un último CDN alternativo
-            const alternativeScript = document.createElement('script');
-            alternativeScript.src = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.js';
-            alternativeScript.onload = () => {
-                console.log("Carga alternativa exitosa, inicializando calendario");
-                setTimeout(() => this.initCalendarInstance(), 500);
-            };
-            alternativeScript.onerror = () => {
-                console.error("No se pudo cargar FullCalendar desde ningún CDN");
-                this.renderSimpleCalendar();
-            };
-            document.head.appendChild(alternativeScript);
-            
-        } catch (error) {
-            console.error("Error en intento alternativo, mostrando calendario simple:", error);
-            this.renderSimpleCalendar();
-        }
-    },
-
-    // Renderiza un calendario simple HTML/CSS si todo lo demás falla
+    /**
+     * Renderiza un calendario simple HTML/CSS
+     */
     renderSimpleCalendar() {
-        console.log("Renderizando calendario simple fallback");
+        console.log("Renderizando calendario simple nativo");
         const calendarEl = document.getElementById('date-calendar');
         if (!calendarEl) return;
-
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth();
         
-        // Primer día del mes
-        const firstDay = new Date(currentYear, currentMonth, 1);
-        // Último día del mes
-        const lastDay = new Date(currentYear, currentMonth + 1, 0);
+        // Guardar la fecha actual del calendario
+        this.calendarCurrentDate = new Date();
         
-        // Obtener día de la semana del primer día (0 = Domingo, 1 = Lunes, etc.)
-        let firstDayOfWeek = firstDay.getDay();
-        // Ajustar para que la semana empiece en lunes (0 = Lunes, 6 = Domingo)
-        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-        
-        // Nombres de los meses
-        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        
-        // Nombres de los días
-        const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-        
-        // Crear estructura HTML del calendario
-        let calendarHTML = `
-            <div class="simple-calendar">
-                <div class="calendar-header">
-                    <button class="btn btn-sm btn-outline-secondary prev-month">
-                        <i class="bi bi-chevron-left"></i>
-                    </button>
-                    <h5 class="mb-0">${monthNames[currentMonth]} ${currentYear}</h5>
-                    <button class="btn btn-sm btn-outline-secondary next-month">
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-                </div>
-                <div class="calendar-days">
-        `;
-        
-        // Añadir nombres de los días
-        dayNames.forEach(day => {
-            calendarHTML += `<div class="day-name">${day}</div>`;
-        });
-        
-        // Añadir días del mes anterior para completar la primera semana
-        for (let i = 0; i < firstDayOfWeek; i++) {
-            const prevMonthDay = new Date(currentYear, currentMonth, -firstDayOfWeek + i + 1);
-            calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(prevMonthDay)}">${prevMonthDay.getDate()}</div>`;
-        }
-        
-        // Añadir días del mes actual
-        for (let day = 1; day <= lastDay.getDate(); day++) {
-            const date = new Date(currentYear, currentMonth, day);
-            const isToday = date.toDateString() === today.toDateString();
-            calendarHTML += `<div class="day${isToday ? ' today' : ''}" data-date="${this.formatDateForInput(date)}">${day}</div>`;
-        }
-        
-        // Añadir días del mes siguiente para completar la última semana
-        const totalDaysShown = firstDayOfWeek + lastDay.getDate();
-        const remainingCells = 7 - (totalDaysShown % 7);
-        if (remainingCells < 7) {
-            for (let i = 1; i <= remainingCells; i++) {
-                const nextMonthDay = new Date(currentYear, currentMonth + 1, i);
-                calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(nextMonthDay)}">${i}</div>`;
-            }
-        }
-        
-        // Cerrar estructura HTML
-        calendarHTML += `
-                </div>
-            </div>
-        `;
-        
-        // Insertar calendario en el elemento
-        calendarEl.innerHTML = calendarHTML;
-        
-        // Añadir eventos
-        const days = calendarEl.querySelectorAll('.day');
-        days.forEach(day => {
-            day.addEventListener('click', () => {
-                const dateStr = day.getAttribute('data-date');
-                if (!dateStr) return;
-                
-                // Marcar día seleccionado
-                days.forEach(d => d.classList.remove('selected'));
-                day.classList.add('selected');
-                
-                // Actualizar inputs de fecha
-                const fromDateInput = document.getElementById('filter-from-date');
-                const toDateInput = document.getElementById('filter-to-date');
-                
-                if (fromDateInput && toDateInput) {
-                    fromDateInput.value = dateStr;
-                    toDateInput.value = dateStr;
-                    
-                    // Aplicar filtros automáticamente
-                    const filterForm = document.getElementById('filter-form');
-                    if (filterForm) {
-                        filterForm.dispatchEvent(new Event('submit'));
-                    }
-                }
-            });
-        });
-        
-        // Añadir navegación entre meses
-        const prevMonthBtn = calendarEl.querySelector('.prev-month');
-        const nextMonthBtn = calendarEl.querySelector('.next-month');
-        
-        if (prevMonthBtn) {
-            prevMonthBtn.addEventListener('click', () => {
-                const newDate = new Date(currentYear, currentMonth - 1, 1);
-                this.renderSimpleCalendarForDate(newDate);
-            });
-        }
-        
-        if (nextMonthBtn) {
-            nextMonthBtn.addEventListener('click', () => {
-                const newDate = new Date(currentYear, currentMonth + 1, 1);
-                this.renderSimpleCalendarForDate(newDate);
-            });
-        }
+        this.renderCalendarMonth(calendarEl);
     },
     
-    // Renderiza el calendario simple para un mes específico
-    renderSimpleCalendarForDate(date) {
-        const calendarEl = document.getElementById('date-calendar');
-        if (!calendarEl) return;
-        
+    /**
+     * Renderiza el mes actual en el calendario
+     */
+    renderCalendarMonth(container) {
+        const date = this.calendarCurrentDate || new Date();
         const year = date.getFullYear();
         const month = date.getMonth();
-        
-        // Reutilizar la misma lógica de renderSimpleCalendar pero con la fecha proporcionada
         const today = new Date();
         
         // Primer día del mes
@@ -2207,17 +2101,43 @@ const ReportsView = {
         // Nombres de los días
         const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
         
+        // Verificar el rango seleccionado actual
+        const fromDateInput = document.getElementById('filter-from-date');
+        const toDateInput = document.getElementById('filter-to-date');
+        
+        let selectedStartDate = null;
+        let selectedEndDate = null;
+        
+        if (fromDateInput && fromDateInput.value) {
+            selectedStartDate = new Date(fromDateInput.value);
+            selectedStartDate.setHours(0, 0, 0, 0);
+        }
+        
+        if (toDateInput && toDateInput.value) {
+            selectedEndDate = new Date(toDateInput.value);
+            selectedEndDate.setHours(0, 0, 0, 0);
+        }
+        
         // Crear estructura HTML del calendario
         let calendarHTML = `
             <div class="simple-calendar">
                 <div class="calendar-header">
-                    <button class="btn btn-sm btn-outline-secondary prev-month">
-                        <i class="bi bi-chevron-left"></i>
-                    </button>
-                    <h5 class="mb-0">${monthNames[month]} ${year}</h5>
-                    <button class="btn btn-sm btn-outline-secondary next-month">
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
+                    <div class="navigation-buttons">
+                        <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
+                            Hoy
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary prev-month" title="Mes anterior">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary next-month" title="Mes siguiente">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                    <h5 class="month-title mb-0">${monthNames[month]} ${year}</h5>
+                    <div class="view-selectors">
+                        <button class="btn btn-sm btn-outline-secondary active" id="month-view-btn">Mes</button>
+                        <button class="btn btn-sm btn-outline-secondary" id="week-view-btn">Semana</button>
+                    </div>
                 </div>
                 <div class="calendar-days">
         `;
@@ -2227,17 +2147,52 @@ const ReportsView = {
             calendarHTML += `<div class="day-name">${day}</div>`;
         });
         
+        // Función para determinar si una fecha está en el rango seleccionado
+        const isInSelectedRange = (date) => {
+            if (!selectedStartDate || !selectedEndDate) return false;
+            date.setHours(0, 0, 0, 0);
+            return date >= selectedStartDate && date <= selectedEndDate;
+        };
+        
+        // Función para determinar si una fecha es el inicio o fin del rango
+        const isRangeEdge = (date) => {
+            if (!selectedStartDate || !selectedEndDate) return '';
+            date.setHours(0, 0, 0, 0);
+            if (date.getTime() === selectedStartDate.getTime()) return 'range-start';
+            if (date.getTime() === selectedEndDate.getTime()) return 'range-end';
+            return '';
+        };
+        
         // Añadir días del mes anterior para completar la primera semana
         for (let i = 0; i < firstDayOfWeek; i++) {
             const prevMonthDay = new Date(year, month, -firstDayOfWeek + i + 1);
-            calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(prevMonthDay)}">${prevMonthDay.getDate()}</div>`;
+            const inRange = isInSelectedRange(prevMonthDay);
+            const rangeEdgeClass = isRangeEdge(prevMonthDay);
+            
+            calendarHTML += `
+                <div class="day other-month ${inRange ? 'in-range' : ''} ${rangeEdgeClass}" 
+                     data-date="${this.formatDateForInput(prevMonthDay)}">
+                    ${prevMonthDay.getDate()}
+                </div>
+            `;
         }
         
         // Añadir días del mes actual
         for (let day = 1; day <= lastDay.getDate(); day++) {
             const currentDate = new Date(year, month, day);
-            const isToday = currentDate.toDateString() === today.toDateString();
-            calendarHTML += `<div class="day${isToday ? ' today' : ''}" data-date="${this.formatDateForInput(currentDate)}">${day}</div>`;
+            const isToday = currentDate.getDate() === today.getDate() && 
+                           currentDate.getMonth() === today.getMonth() && 
+                           currentDate.getFullYear() === today.getFullYear();
+            
+            const inRange = isInSelectedRange(currentDate);
+            const rangeEdgeClass = isRangeEdge(currentDate);
+            
+            calendarHTML += `
+                <div class="day ${isToday ? 'today' : ''} ${inRange ? 'in-range' : ''} ${rangeEdgeClass}" 
+                     data-date="${this.formatDateForInput(currentDate)}">
+                    ${day}
+                </div>
+            `;
         }
         
         // Añadir días del mes siguiente para completar la última semana
@@ -2246,7 +2201,15 @@ const ReportsView = {
         if (remainingCells < 7) {
             for (let i = 1; i <= remainingCells; i++) {
                 const nextMonthDay = new Date(year, month + 1, i);
-                calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(nextMonthDay)}">${i}</div>`;
+                const inRange = isInSelectedRange(nextMonthDay);
+                const rangeEdgeClass = isRangeEdge(nextMonthDay);
+                
+                calendarHTML += `
+                    <div class="day other-month ${inRange ? 'in-range' : ''} ${rangeEdgeClass}" 
+                         data-date="${this.formatDateForInput(nextMonthDay)}">
+                        ${i}
+                    </div>
+                `;
             }
         }
         
@@ -2257,26 +2220,93 @@ const ReportsView = {
         `;
         
         // Insertar calendario en el elemento
-        calendarEl.innerHTML = calendarHTML;
+        container.innerHTML = calendarHTML;
         
-        // Añadir eventos (reutilizar la misma lógica)
-        const days = calendarEl.querySelectorAll('.day');
+        // Añadir event listeners
+        this.addCalendarEventListeners(container);
+    },
+    
+    /**
+     * Añade los event listeners al calendario
+     */
+    addCalendarEventListeners(container) {
+        // Eventos para los días
+        const days = container.querySelectorAll('.day');
+        let isDragging = false;
+        let dragStartDate = null;
+        let lastHoveredDate = null;
+        
         days.forEach(day => {
-            day.addEventListener('click', () => {
+            // Manejo de clic simple
+            day.addEventListener('click', (e) => {
                 const dateStr = day.getAttribute('data-date');
                 if (!dateStr) return;
                 
-                // Marcar día seleccionado
-                days.forEach(d => d.classList.remove('selected'));
-                day.classList.add('selected');
+                // Si no estamos en modo arrastrar, tratar como clic simple
+                if (!isDragging) {
+                    // Marcar día seleccionado
+                    days.forEach(d => d.classList.remove('selected'));
+                    day.classList.add('selected');
+                    
+                    // Actualizar inputs de fecha
+                    const fromDateInput = document.getElementById('filter-from-date');
+                    const toDateInput = document.getElementById('filter-to-date');
+                    
+                    if (fromDateInput && toDateInput) {
+                        fromDateInput.value = dateStr;
+                        toDateInput.value = dateStr;
+                        
+                        // Aplicar filtros automáticamente
+                        const filterForm = document.getElementById('filter-form');
+                        if (filterForm) {
+                            filterForm.dispatchEvent(new Event('submit'));
+                        }
+                    }
+                }
+            });
+            
+            // Eventos para selección por arrastre
+            day.addEventListener('mousedown', (e) => {
+                // Iniciar arrastre
+                isDragging = true;
+                dragStartDate = new Date(day.getAttribute('data-date'));
+                lastHoveredDate = dragStartDate;
+                
+                // Evitar selección de texto durante el arrastre
+                e.preventDefault();
+            });
+            
+            day.addEventListener('mouseover', (e) => {
+                if (isDragging && dragStartDate) {
+                    const currentDate = new Date(day.getAttribute('data-date'));
+                    lastHoveredDate = currentDate;
+                    
+                    // Actualizar visualización de rango
+                    this.updateRangeSelection(days, dragStartDate, currentDate);
+                }
+            });
+        });
+        
+        // Manejo del fin del arrastre
+        document.addEventListener('mouseup', (e) => {
+            if (isDragging && dragStartDate && lastHoveredDate) {
+                // Ordenar fechas
+                let startDate, endDate;
+                if (dragStartDate <= lastHoveredDate) {
+                    startDate = dragStartDate;
+                    endDate = lastHoveredDate;
+                } else {
+                    startDate = lastHoveredDate;
+                    endDate = dragStartDate;
+                }
                 
                 // Actualizar inputs de fecha
                 const fromDateInput = document.getElementById('filter-from-date');
                 const toDateInput = document.getElementById('filter-to-date');
                 
                 if (fromDateInput && toDateInput) {
-                    fromDateInput.value = dateStr;
-                    toDateInput.value = dateStr;
+                    fromDateInput.value = this.formatDateForInput(startDate);
+                    toDateInput.value = this.formatDateForInput(endDate);
                     
                     // Aplicar filtros automáticamente
                     const filterForm = document.getElementById('filter-form');
@@ -2284,188 +2314,144 @@ const ReportsView = {
                         filterForm.dispatchEvent(new Event('submit'));
                     }
                 }
-            });
+            }
+            
+            // Resetear estado de arrastre
+            isDragging = false;
+            dragStartDate = null;
+            lastHoveredDate = null;
         });
         
-        // Añadir navegación entre meses
-        const prevMonthBtn = calendarEl.querySelector('.prev-month');
-        const nextMonthBtn = calendarEl.querySelector('.next-month');
+        // Navegar entre meses
+        const prevMonthBtn = container.querySelector('.prev-month');
+        const nextMonthBtn = container.querySelector('.next-month');
+        const todayBtn = container.querySelector('.today-btn');
         
         if (prevMonthBtn) {
             prevMonthBtn.addEventListener('click', () => {
-                const newDate = new Date(year, month - 1, 1);
-                this.renderSimpleCalendarForDate(newDate);
+                this.calendarCurrentDate.setMonth(this.calendarCurrentDate.getMonth() - 1);
+                this.renderCalendarMonth(container);
             });
         }
         
         if (nextMonthBtn) {
             nextMonthBtn.addEventListener('click', () => {
-                const newDate = new Date(year, month + 1, 1);
-                this.renderSimpleCalendarForDate(newDate);
+                this.calendarCurrentDate.setMonth(this.calendarCurrentDate.getMonth() + 1);
+                this.renderCalendarMonth(container);
+            });
+        }
+        
+        if (todayBtn) {
+            todayBtn.addEventListener('click', () => {
+                this.calendarCurrentDate = new Date();
+                this.renderCalendarMonth(container);
+            });
+        }
+        
+        // Cambio de vista (mes/semana)
+        const monthViewBtn = container.querySelector('#month-view-btn');
+        const weekViewBtn = container.querySelector('#week-view-btn');
+        
+        if (monthViewBtn && weekViewBtn) {
+            monthViewBtn.addEventListener('click', () => {
+                monthViewBtn.classList.add('active');
+                weekViewBtn.classList.remove('active');
+                this.renderCalendarMonth(container);
+            });
+            
+            weekViewBtn.addEventListener('click', () => {
+                weekViewBtn.classList.add('active');
+                monthViewBtn.classList.remove('active');
+                // Aquí podríamos implementar una vista semanal si fuera necesario
+                // Por ahora, mostramos un mensaje
+                container.innerHTML = `
+                    <div class="simple-calendar">
+                        <div class="calendar-header">
+                            <div class="navigation-buttons">
+                                <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
+                                    Hoy
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary prev-week" title="Semana anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary next-week" title="Semana siguiente">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                            <h5 class="month-title mb-0">Vista Semanal</h5>
+                            <div class="view-selectors">
+                                <button class="btn btn-sm btn-outline-secondary" id="month-view-btn">Mes</button>
+                                <button class="btn btn-sm btn-outline-secondary active" id="week-view-btn">Semana</button>
+                            </div>
+                        </div>
+                        <div class="p-3 text-center">
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle"></i> Vista semanal en desarrollo. Por favor, utilice la vista mensual.
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Volver a añadir listeners
+                this.addCalendarEventListeners(container);
             });
         }
     },
-
-    initCalendarInstance() {
-        const calendarEl = document.getElementById('date-calendar');
-        if (!calendarEl) {
-            console.error("No se encontró el elemento del calendario");
-            return;
+    
+    /**
+     * Actualiza la visualización de selección de rango durante el arrastre
+     */
+    updateRangeSelection(days, startDate, endDate) {
+        // Ordenar las fechas si es necesario
+        let rangeStart, rangeEnd;
+        if (startDate <= endDate) {
+            rangeStart = startDate;
+            rangeEnd = endDate;
+        } else {
+            rangeStart = endDate;
+            rangeEnd = startDate;
         }
         
-        // Mostrar mensaje de carga
-        calendarEl.innerHTML = `
-            <div class="d-flex justify-content-center align-items-center h-100">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Inicializando calendario...</span>
-                </div>
-                <span class="ms-2">Inicializando calendario...</span>
-            </div>
-        `;
-
-        // Esperar un momento para asegurar que todo está cargado
-        setTimeout(() => {
-            try {
-                // Verificar si FullCalendar está disponible
-                if (typeof FullCalendar === 'undefined') {
-                    console.error("FullCalendar no está disponible después de cargar los scripts");
-                    this.renderSimpleCalendar();
-                    return;
+        // Convertir a timestamps para comparación
+        const startTime = rangeStart.getTime();
+        const endTime = rangeEnd.getTime();
+        
+        // Actualizar visualización
+        days.forEach(day => {
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            const dayDate = new Date(dateStr);
+            const dayTime = dayDate.getTime();
+            
+            // Eliminar todas las clases relacionadas con rangos
+            day.classList.remove('in-range', 'range-start', 'range-end');
+            
+            // Añadir clases apropiadas
+            if (dayTime >= startTime && dayTime <= endTime) {
+                day.classList.add('in-range');
+                
+                if (dayTime === startTime) {
+                    day.classList.add('range-start');
                 }
                 
-                // Verificar versión
-                console.log(`FullCalendar versión: ${FullCalendar.version || 'desconocida'}`);
-                
-                // Configuración del calendario
-                const calendarConfig = {
-                    initialView: 'dayGridMonth',
-                    headerToolbar: {
-                        left: 'title',
-                        center: '',
-                        right: 'prev,next today'
-                    },
-                    buttonText: {
-                        today: 'Hoy'
-                    },
-                    selectable: true,
-                    selectMirror: true,
-                    unselectAuto: false,
-                    locale: 'es',
-                    firstDay: 1, // Lunes como primer día de la semana
-                    height: 'auto',
-                    aspectRatio: 1.35, // Mejor proporción para visualización
-                    fixedWeekCount: false, // Muestra solo las semanas del mes actual
-                    showNonCurrentDates: true, // Mostrar días que no son del mes actual pero en gris
-                    dayMaxEvents: 0, // Muestra "más" en lugar de todos los eventos
-                    
-                    // Mejoras visuales para v6
-                    dayHeaderFormat: { weekday: 'short' }, // Formato corto para los días de la semana
-                    titleFormat: { year: 'numeric', month: 'long' }, // Formato para el título del mes
-                    
-                    // Asegurar que los números de día sean visibles
-                    dayCellClassNames: 'calendar-day-cell',
-                    
-                    select: (info) => {
-                        // Convertir fechas a formato ISO (considerando zona horaria)
-                        const startDate = new Date(info.start);
-                        let endDate = new Date(info.end);
-                        
-                        // La fecha de fin en FullCalendar es exclusiva, restar un día
-                        endDate.setDate(endDate.getDate() - 1);
-                        
-                        // Actualizar los inputs del formulario de filtro
-                        const fromDateInput = document.getElementById('filter-from-date');
-                        const toDateInput = document.getElementById('filter-to-date');
-                        
-                        if (fromDateInput && toDateInput) {
-                            fromDateInput.value = this.formatDateForInput(startDate);
-                            toDateInput.value = this.formatDateForInput(endDate);
-                            
-                            // Aplicar filtros automáticamente
-                            const filterForm = document.getElementById('filter-form');
-                            if (filterForm) {
-                                filterForm.dispatchEvent(new Event('submit'));
-                            }
-                            
-                            // Proporcionar feedback visual
-                            calendarEl.classList.add('bg-light');
-                            setTimeout(() => calendarEl.classList.remove('bg-light'), 300);
-                        }
-                    },
-                    dateClick: (info) => this.dateClick(info), // Usar función separada para mejor organización
-                };
-                
-                // Crear instancia del calendario
-                this.calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
-                // Limpiar el contenedor antes de renderizar
-                calendarEl.innerHTML = '';
-                // Renderizar el calendario
-                this.calendar.render();
-                
-                // Verificar si el calendario fue renderizado correctamente
-                setTimeout(() => {
-                    // Buscar elementos clave
-                    const headerVisible = calendarEl.querySelector('.fc-toolbar');
-                    const daysVisible = calendarEl.querySelectorAll('.fc-daygrid-day-number');
-                    
-                    if (!headerVisible || daysVisible.length === 0) {
-                        console.warn("FullCalendar no se renderizó correctamente - usando alternativa");
-                        this.renderSimpleCalendar();
-                    } else {
-                        console.log("FullCalendar se renderizó correctamente");
-                    }
-                }, 300);
-                
-                // Configurar botones de vista
-                const monthViewBtn = document.getElementById('calendar-month-view');
-                const weekViewBtn = document.getElementById('calendar-week-view');
-                
-                if (monthViewBtn && weekViewBtn) {
-                    monthViewBtn.classList.add('active');
-                    
-                    monthViewBtn.addEventListener('click', () => {
-                        this.calendar.changeView('dayGridMonth');
-                        monthViewBtn.classList.add('active');
-                        weekViewBtn.classList.remove('active');
-                    });
-                    
-                    weekViewBtn.addEventListener('click', () => {
-                        this.calendar.changeView('dayGridWeek');
-                        weekViewBtn.classList.add('active');
-                        monthViewBtn.classList.remove('active');
-                    });
+                if (dayTime === endTime) {
+                    day.classList.add('range-end');
                 }
-            } catch (error) {
-                console.error("Error al inicializar FullCalendar:", error);
-                // Si hay error, mostrar un calendario simple
-                this.renderSimpleCalendar();
             }
-        }, 500); // Esperar medio segundo para asegurar que todo está cargado
+        });
     },
-
-    dateClick(info) {
-        // Al hacer clic en un solo día
-        const clickedDate = new Date(info.date);
-        
-        // Actualizar inputs de fecha con el mismo día en ambos
-        const fromDateInput = document.getElementById('filter-from-date');
-        const toDateInput = document.getElementById('filter-to-date');
-        
-        if (fromDateInput && toDateInput) {
-            const formattedDate = this.formatDateForInput(clickedDate);
-            fromDateInput.value = formattedDate;
-            toDateInput.value = formattedDate;
-            
-            // Aplicar filtros automáticamente
-            const filterForm = document.getElementById('filter-form');
-            if (filterForm) {
-                filterForm.dispatchEvent(new Event('submit'));
-            }
-            
-            // Proporcionar feedback visual del día seleccionado
-            const cells = document.querySelectorAll('.fc-daygrid-day');
-            cells.forEach(cell => cell.classList.remove('clicked-day'));
-            info.dayEl.classList.add('clicked-day');
-        }
+    
+    // Reemplazar métodos relacionados con FullCalendar
+    initCalendarInstance() {
+        // Este método ya no se usa, nos aseguramos de que no cause problemas si se llama
+        console.log("Método obsoleto, usando renderSimpleCalendar en su lugar");
+        this.renderSimpleCalendar();
+    },
+    
+    loadAlternativeCalendar() {
+        // Este método ya no se usa, nos aseguramos de que no cause problemas si se llama
+        console.log("Método obsoleto, usando renderSimpleCalendar en su lugar");
+        this.renderSimpleCalendar();
     },
 }; // Fin del objeto ReportsView
