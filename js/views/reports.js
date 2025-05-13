@@ -414,12 +414,14 @@ const ReportsView = {
                 });
             }
 
-            // Resto de event listeners...
+            // Escuchar clics en registros
             const recordsListContainer = document.getElementById('records-list');
             if (recordsListContainer) {
                 recordsListContainer.addEventListener('click', (e) => {
+                    // Busca si el clic ocurrió dentro de un botón con la clase '.view-record'
                     const viewButton = e.target.closest('.view-record');
                     if (viewButton) {
+                        // Si se encontró el botón, obtén el ID y llama a la función
                         const recordId = viewButton.dataset.recordId;
                         this.showRecordDetails(recordId);
                     }
@@ -441,8 +443,131 @@ const ReportsView = {
                 });
             }
 
-            // Resto del código de setupEventListeners...
-        }, 0);
+            // Generar reporte comparativo
+            const reportForm = document.getElementById('report-form');
+            if (reportForm) {
+                reportForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.generateReport();
+                });
+            }
+
+            // Exportar a CSV
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            if (exportCsvBtn) {
+                exportCsvBtn.addEventListener('click', () => {
+                    // Código existente para exportar a CSV
+                    const entityFilterSelect = document.getElementById('filter-entity');
+                    const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
+
+                    const entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
+                        ? []
+                        : selectedEntities;
+
+                    const fromDateFilter = document.getElementById('filter-from-date').value;
+                    const toDateFilter = document.getElementById('filter-to-date').value;
+
+                    const filters = {
+                        entityIds: entityFilter.length > 0 ? entityFilter : undefined,
+                        fromDate: fromDateFilter || undefined,
+                        toDate: toDateFilter || undefined
+                    };
+
+                    const recordsToExport = this.searchedRecords || this.filteredRecords || RecordModel.filterMultiple(filters);
+                    let sortedRecords = [...recordsToExport];
+                    
+                    if (!this.sorting.column || this.sorting.column === 'timestamp') {
+                        sortedRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    } else {
+                        sortedRecords = this.searchedRecords ? [...this.searchedRecords] : sortedRecords;
+                    }
+
+                    ExportUtils.exportToCSV(
+                        sortedRecords,
+                        this.selectedColumns.field1,
+                        this.selectedColumns.field2,
+                        this.selectedColumns.field3
+                    );
+                });
+            }
+
+            // Buscador en la tabla de registros
+            const searchInput = document.getElementById('search-records');
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    this.filterRecordsBySearch();
+                });
+            }
+
+            // Añadir event listener para el selector de registros por página
+            const itemsPerPageSelect = document.getElementById('items-per-page');
+            if (itemsPerPageSelect) {
+                itemsPerPageSelect.value = this.pagination.itemsPerPage; // Asegurar valor inicial
+                itemsPerPageSelect.addEventListener('change', () => {
+                    this.pagination.itemsPerPage = parseInt(itemsPerPageSelect.value);
+                    this.pagination.currentPage = 1; // Volver a la primera página al cambiar
+                    this.filterRecordsBySearch(); // Actualizar la visualización
+                });
+            }
+
+            // Atajos de fecha
+            document.querySelectorAll('.date-shortcut').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const range = e.target.getAttribute('data-range');
+                    this.setDateRange(range);
+                    // Aplicar filtros automáticamente
+                    document.getElementById('filter-form').dispatchEvent(new Event('submit'));
+                });
+            });
+
+            // Event listeners para selectores de columnas
+            document.querySelectorAll('.column-selector').forEach((select, index) => {
+                select.addEventListener('change', () => {
+                    const fieldNumber = index + 1; // 1, 2, or 3
+                    const columnKey = `field${fieldNumber}`; // field1, field2, field3
+                    const newValue = select.value; // ID del campo seleccionado o ""
+
+                    // Actualizar el estado interno
+                    this.selectedColumns[columnKey] = newValue;
+
+                    // Actualizar el encabezado de la columna inmediatamente
+                    this.updateColumnHeaders();
+
+                    // Actualizar la tabla con los nuevos datos de la columna
+                    this.filterRecordsBySearch(); // Esto reordena y repagina si es necesario
+                });
+            });
+
+            // Event listeners para ordenar las columnas
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const column = th.getAttribute('data-sort');
+
+                    // Si ya estamos ordenando por esta columna, invertir dirección
+                    if (this.sorting.column === column) {
+                        this.sorting.direction = this.sorting.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        // Nueva columna seleccionada, establecer ordenación ascendente por defecto
+                        this.sorting.column = column;
+                        this.sorting.direction = 'asc';
+                    }
+
+                    // Actualizar íconos de ordenación en todas las columnas
+                    document.querySelectorAll('th.sortable i.bi').forEach(icon => {
+                        icon.className = 'bi'; // Resetear clase
+                    });
+
+                    // Actualizar ícono de la columna seleccionada
+                    const icon = th.querySelector('i.bi');
+                    if (icon) { // Asegurarse que el icono existe
+                       icon.className = `bi bi-sort-${this.sorting.direction === 'asc' ? 'up' : 'down'}`;
+                    }
+
+                    // Actualizar la tabla
+                    this.filterRecordsBySearch(); // Esto ya llama a sortRecords y displayPaginatedRecords
+                });
+            });
+        }, 100); // Dar tiempo para que el DOM esté completamente cargado
     },
 
     applyFilters() {
@@ -783,9 +908,23 @@ const ReportsView = {
             selectAllCheckbox.checked = false;
         }
 
-        // Ocultar el botón de edición masiva
+        // Añadir botón de edición masiva si no existe
         const bulkEditBtn = document.getElementById('bulk-edit-btn');
-        if (bulkEditBtn) {
+        if (!bulkEditBtn) {
+            const newBulkEditBtn = document.createElement('button');
+            newBulkEditBtn.id = 'bulk-edit-btn';
+            newBulkEditBtn.className = 'btn btn-warning btn-sm ms-2';
+            newBulkEditBtn.innerHTML = '<i class="bi bi-clock"></i> Editar Fechas Seleccionadas';
+            newBulkEditBtn.style.display = 'none';
+            newBulkEditBtn.addEventListener('click', () => this.showBulkEditModal());
+            
+            // Buscar el contenedor correcto para el botón
+            const headerDiv = document.querySelector('.card-header.bg-primary.text-white.d-flex');
+            if (headerDiv && headerDiv.querySelector('div')) {
+                headerDiv.querySelector('div').appendChild(newBulkEditBtn);
+            }
+        } else {
+            // Si ya existe el botón, solo ocultar
             bulkEditBtn.style.display = 'none';
         }
 
@@ -810,18 +949,6 @@ const ReportsView = {
 
         // Obtener todos los campos una vez para optimizar
         const allFields = FieldModel.getAll();
-
-        // Añadir botón de edición masiva si no existe
-        const cardHeader = document.querySelector('.card-header .d-flex');
-        if (cardHeader && !document.getElementById('bulk-edit-btn')) {
-            const bulkEditBtn = document.createElement('button');
-            bulkEditBtn.id = 'bulk-edit-btn';
-            bulkEditBtn.className = 'btn btn-warning btn-sm ms-2';
-            bulkEditBtn.innerHTML = '<i class="bi bi-clock"></i> Editar Fechas Seleccionadas';
-            bulkEditBtn.style.display = 'none';
-            bulkEditBtn.addEventListener('click', () => this.showBulkEditModal());
-            cardHeader.appendChild(bulkEditBtn);
-        }
 
         // Renderizar cada registro
         records.forEach(record => {
@@ -1071,7 +1198,6 @@ const ReportsView = {
                     editCell.innerHTML = this.generateInputHTMLFallback(fieldId, fieldType, currentValue, fieldDefinition);
                     // --- FIN CORRECCIÓN ---
                 }
-                // --- CORRECCIÓN: El bloque duplicado que estaba aquí fue eliminado ---
             });
         }
     },
@@ -1416,7 +1542,10 @@ const ReportsView = {
         const selectedRecords = Array.from(document.querySelectorAll('.record-checkbox:checked'))
             .map(checkbox => checkbox.value);
 
-        if (selectedRecords.length === 0) return;
+        if (selectedRecords.length === 0) {
+            UIUtils.showAlert('No hay registros seleccionados', 'warning');
+            return;
+        }
 
         // Crear el modal si no existe
         let modalElement = document.getElementById('bulkEditModal');
@@ -1424,20 +1553,24 @@ const ReportsView = {
             modalElement = document.createElement('div');
             modalElement.id = 'bulkEditModal';
             modalElement.className = 'modal fade';
+            modalElement.tabIndex = '-1';
+            modalElement.setAttribute('aria-labelledby', 'bulkEditModalLabel');
+            modalElement.setAttribute('aria-hidden', 'true');
+            
             modalElement.innerHTML = `
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">Editar Fechas de Registros Seleccionados</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <h5 class="modal-title" id="bulkEditModalLabel">Editar Fechas de Registros Seleccionados</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label for="bulk-new-date" class="form-label">Nueva Fecha y Hora:</label>
-                                <input type="datetime-local" class="form-control" id="bulk-new-date">
+                                <input type="datetime-local" class="form-control" id="bulk-new-date" required>
                             </div>
                             <div class="alert alert-info">
-                                Se modificarán ${selectedRecords.length} registros.
+                                Se modificarán <strong>${selectedRecords.length}</strong> registros.
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -1448,40 +1581,70 @@ const ReportsView = {
                 </div>
             `;
             document.body.appendChild(modalElement);
+        } else {
+            // Actualizar el mensaje si el modal ya existe
+            const infoAlert = modalElement.querySelector('.alert-info');
+            if (infoAlert) {
+                infoAlert.innerHTML = `Se modificarán <strong>${selectedRecords.length}</strong> registros.`;
+            }
         }
 
-        const modal = new bootstrap.Modal(modalElement);
+        // Crear o obtener la instancia del modal
+        let modal;
+        try {
+            modal = new bootstrap.Modal(modalElement);
+        } catch (error) {
+            console.error("Error al crear el modal:", error);
+            UIUtils.showAlert('Error al crear el modal para edición masiva', 'danger');
+            return;
+        }
+
+        // Mostrar el modal
         modal.show();
 
         // Configurar el botón de guardar
         const saveButton = modalElement.querySelector('#save-bulk-dates');
-        saveButton.onclick = () => {
-            const newDate = document.getElementById('bulk-new-date').value;
-            if (!newDate) {
-                UIUtils.showAlert('Por favor, seleccione una fecha válida', 'warning', modalElement.querySelector('.modal-body'));
-                return;
-            }
-
-            const newTimestamp = new Date(newDate).toISOString();
-            let success = true;
-
-            // Actualizar cada registro seleccionado
-            selectedRecords.forEach(recordId => {
-                const record = RecordModel.getById(recordId);
-                if (record) {
-                    const updateSuccess = RecordModel.update(recordId, record.data, newTimestamp);
-                    if (!updateSuccess) success = false;
+        if (saveButton) {
+            // Remover event listeners anteriores
+            const newSaveButton = saveButton.cloneNode(true);
+            saveButton.parentNode.replaceChild(newSaveButton, saveButton);
+            
+            newSaveButton.addEventListener('click', () => {
+                const newDateInput = document.getElementById('bulk-new-date');
+                const newDate = newDateInput?.value;
+                
+                if (!newDate) {
+                    UIUtils.showAlert('Por favor, seleccione una fecha válida', 'warning', modalElement.querySelector('.modal-body'));
+                    return;
                 }
+
+                const newTimestamp = new Date(newDate).toISOString();
+                let success = true;
+                let failedCount = 0;
+
+                // Actualizar cada registro seleccionado
+                selectedRecords.forEach(recordId => {
+                    const record = RecordModel.getById(recordId);
+                    if (record) {
+                        const updateSuccess = RecordModel.update(recordId, record.data, newTimestamp);
+                        if (!updateSuccess) {
+                            success = false;
+                            failedCount++;
+                        }
+                    }
+                });
+
+                modal.hide();
+
+                if (success) {
+                    UIUtils.showAlert(`Fechas actualizadas correctamente para ${selectedRecords.length} registros`, 'success', document.querySelector('.container.mt-4'));
+                } else {
+                    UIUtils.showAlert(`Hubo errores al actualizar ${failedCount} de ${selectedRecords.length} registros`, 'warning', document.querySelector('.container.mt-4'));
+                }
+
+                // Actualizar la vista
+                this.applyFilters();
             });
-
-            modal.hide();
-
-            if (success) {
-                UIUtils.showAlert('Fechas actualizadas correctamente', 'success', document.querySelector('.container.mt-4'));
-                this.applyFilters(); // Actualizar la vista
-            } else {
-                UIUtils.showAlert('Hubo errores al actualizar algunas fechas', 'warning', document.querySelector('.container.mt-4'));
-            }
-        };
+        }
     },
 }; // Fin del objeto ReportsView
