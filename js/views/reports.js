@@ -207,22 +207,18 @@ const ReportsView = {
                                         </div>
                                     </div>
                                     
-                                    <!-- Días última semana -->
+                                    <!-- Calendario interactivo -->
                                     <div class="col-md-6">
                                         <div class="card h-100 border-light">
-                                            <div class="card-header bg-light py-2">
-                                                <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Días última semana</h6>
+                                            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Calendario</h6>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="calendar-month-view">Mes</button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="calendar-week-view">Semana</button>
+                                                </div>
                                             </div>
                                             <div class="card-body p-2">
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastMonday">Lun</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastTuesday">Mar</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastWednesday">Mié</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastThursday">Jue</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastFriday">Vie</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSaturday">Sáb</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSunday">Dom</button>
-                                                </div>
+                                                <div id="date-calendar" style="height: 300px;"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -465,6 +461,9 @@ const ReportsView = {
     setupEventListeners() {
         // Esperar a que el DOM esté completamente cargado
         setTimeout(() => {
+            // Inicializar el calendario
+            this.initCalendar();
+            
             // Event listener para "Seleccionar todos"
             const selectAllCheckbox = document.getElementById('select-all-records');
             if (selectAllCheckbox) {
@@ -1749,5 +1748,327 @@ const ReportsView = {
             const option = Array.from(entityFilterSelect.options).find(opt => opt.value === entity.id);
             if (option) option.selected = true;
         });
+    },
+
+    /**
+     * Inicializa el calendario interactivo usando FullCalendar
+     */
+    initCalendar() {
+        // Verificar si FullCalendar ya está cargado
+        if (typeof FullCalendar === 'undefined') {
+            // Si FullCalendar no está cargado, cargar las dependencias necesarias
+            this.loadCalendarDependencies(() => {
+                this.initCalendarInstance();
+            });
+        } else {
+            // Si ya está cargado, inicializar directamente
+            this.initCalendarInstance();
+        }
+    },
+
+    /**
+     * Carga las dependencias de FullCalendar si no están presentes
+     * @param {Function} callback Función a ejecutar cuando las dependencias estén cargadas
+     */
+    loadCalendarDependencies(callback) {
+        const loadScript = (url, onLoad) => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.onload = onLoad;
+            document.head.appendChild(script);
+        };
+
+        const loadStylesheet = (url) => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = url;
+            document.head.appendChild(link);
+        };
+
+        // Cargar CSS de FullCalendar
+        loadStylesheet('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css');
+
+        // Cargar JavaScript de FullCalendar
+        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js', callback);
+    },
+
+    /**
+     * Inicializa la instancia del calendario una vez que las dependencias están cargadas
+     */
+    initCalendarInstance() {
+        const calendarEl = document.getElementById('date-calendar');
+        if (!calendarEl) return;
+
+        // Configuración del calendario
+        const calendarConfig = {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'title',
+                center: '',
+                right: 'prev,next'
+            },
+            selectable: true,
+            selectMirror: true,
+            unselectAuto: false,
+            locale: 'es',
+            firstDay: 1, // Lunes como primer día de la semana
+            height: '100%',
+            select: (info) => {
+                // Convertir fechas a formato ISO (considerando zona horaria)
+                const startDate = new Date(info.start);
+                let endDate = new Date(info.end);
+                
+                // La fecha de fin en FullCalendar es exclusiva, restar un día
+                endDate.setDate(endDate.getDate() - 1);
+                
+                // Actualizar los inputs del formulario de filtro
+                const fromDateInput = document.getElementById('filter-from-date');
+                const toDateInput = document.getElementById('filter-to-date');
+                
+                if (fromDateInput && toDateInput) {
+                    fromDateInput.value = this.formatDateForInput(startDate);
+                    toDateInput.value = this.formatDateForInput(endDate);
+                    
+                    // Aplicar filtros automáticamente
+                    const filterForm = document.getElementById('filter-form');
+                    if (filterForm) {
+                        filterForm.dispatchEvent(new Event('submit'));
+                    }
+                }
+            },
+            dateClick: (info) => {
+                // Al hacer clic en un solo día
+                const clickedDate = new Date(info.date);
+                
+                // Actualizar inputs de fecha con el mismo día en ambos
+                const fromDateInput = document.getElementById('filter-from-date');
+                const toDateInput = document.getElementById('filter-to-date');
+                
+                if (fromDateInput && toDateInput) {
+                    const formattedDate = this.formatDateForInput(clickedDate);
+                    fromDateInput.value = formattedDate;
+                    toDateInput.value = formattedDate;
+                    
+                    // Aplicar filtros automáticamente
+                    const filterForm = document.getElementById('filter-form');
+                    if (filterForm) {
+                        filterForm.dispatchEvent(new Event('submit'));
+                    }
+                }
+            }
+        };
+
+        // Crear instancia del calendario
+        this.calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
+        this.calendar.render();
+
+        // Configurar botones de vista
+        const monthViewBtn = document.getElementById('calendar-month-view');
+        const weekViewBtn = document.getElementById('calendar-week-view');
+        
+        if (monthViewBtn && weekViewBtn) {
+            monthViewBtn.classList.add('active');
+            
+            monthViewBtn.addEventListener('click', () => {
+                this.calendar.changeView('dayGridMonth');
+                monthViewBtn.classList.add('active');
+                weekViewBtn.classList.remove('active');
+            });
+            
+            weekViewBtn.addEventListener('click', () => {
+                this.calendar.changeView('dayGridWeek');
+                weekViewBtn.classList.add('active');
+                monthViewBtn.classList.remove('active');
+            });
+        }
+    },
+
+    // Actualizar setupEventListeners para inicializar el calendario
+    setupEventListeners() {
+        // Esperar a que el DOM esté completamente cargado
+        setTimeout(() => {
+            // Inicializar el calendario
+            this.initCalendar();
+            
+            // Event listener para "Seleccionar todos"
+            const selectAllCheckbox = document.getElementById('select-all-records');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', (e) => {
+                    const isChecked = e.target.checked;
+                    document.querySelectorAll('.record-checkbox').forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                    });
+                    // Actualizar visibilidad del botón de edición masiva
+                    const bulkEditBtn = document.getElementById('bulk-edit-btn');
+                    if (bulkEditBtn) {
+                        bulkEditBtn.style.display = isChecked ? 'inline-block' : 'none';
+                    }
+                });
+            }
+
+            // Escuchar clics en registros
+            const recordsListContainer = document.getElementById('records-list');
+            if (recordsListContainer) {
+                recordsListContainer.addEventListener('click', (e) => {
+                    // Busca si el clic ocurrió dentro de un botón con la clase '.view-record'
+                    const viewButton = e.target.closest('.view-record');
+                    if (viewButton) {
+                        // Si se encontró el botón, obtén el ID y llama a la función
+                        const recordId = viewButton.dataset.recordId;
+                        this.showRecordDetails(recordId);
+                    }
+                });
+            }
+
+            // Aplicar filtros
+            const filterForm = document.getElementById('filter-form');
+            if (filterForm) {
+                filterForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.applyFilters();
+
+                    // Si hay un reporte generado, actualizarlo con los nuevos filtros
+                    const reportContainer = document.getElementById('report-container');
+                    if (reportContainer && reportContainer.style.display === 'block') {
+                        this.generateReport();
+                    }
+                });
+            }
+
+            // Generar reporte comparativo
+            const reportForm = document.getElementById('report-form');
+            if (reportForm) {
+                reportForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.generateReport();
+                });
+            }
+
+            // Exportar a CSV
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            if (exportCsvBtn) {
+                exportCsvBtn.addEventListener('click', () => {
+                    // Código existente para exportar a CSV
+                    const entityFilterSelect = document.getElementById('filter-entity');
+                    const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
+
+                    const entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
+                        ? []
+                        : selectedEntities;
+
+                    const fromDateFilter = document.getElementById('filter-from-date').value;
+                    const toDateFilter = document.getElementById('filter-to-date').value;
+
+                    const filters = {
+                        entityIds: entityFilter.length > 0 ? entityFilter : undefined,
+                        fromDate: fromDateFilter || undefined,
+                        toDate: toDateFilter || undefined
+                    };
+
+                    const recordsToExport = this.searchedRecords || this.filteredRecords || RecordModel.filterMultiple(filters);
+                    let sortedRecords = [...recordsToExport];
+                    
+                    if (!this.sorting.column || this.sorting.column === 'timestamp') {
+                        sortedRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    } else {
+                        sortedRecords = this.searchedRecords ? [...this.searchedRecords] : sortedRecords;
+                    }
+
+                    ExportUtils.exportToCSV(
+                        sortedRecords,
+                        this.selectedColumns.field1,
+                        this.selectedColumns.field2,
+                        this.selectedColumns.field3
+                    );
+                });
+            }
+
+            // Buscador en la tabla de registros
+            const searchInput = document.getElementById('search-records');
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    this.filterRecordsBySearch();
+                });
+            }
+
+            // Añadir event listener para el selector de registros por página
+            const itemsPerPageSelect = document.getElementById('items-per-page');
+            if (itemsPerPageSelect) {
+                itemsPerPageSelect.value = this.pagination.itemsPerPage; // Asegurar valor inicial
+                itemsPerPageSelect.addEventListener('change', () => {
+                    this.pagination.itemsPerPage = parseInt(itemsPerPageSelect.value);
+                    this.pagination.currentPage = 1; // Volver a la primera página al cambiar
+                    this.filterRecordsBySearch(); // Actualizar la visualización
+                });
+            }
+
+            // Atajos de fecha
+            document.querySelectorAll('.date-shortcut').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const range = e.target.getAttribute('data-range');
+                    this.setDateRange(range);
+                    // Aplicar filtros automáticamente
+                    document.getElementById('filter-form').dispatchEvent(new Event('submit'));
+                });
+            });
+
+            // Filtros de grupo de entidades
+            document.querySelectorAll('.entity-group-filter').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const group = e.target.getAttribute('data-group');
+                    this.filterByEntityGroup(group);
+                    // Aplicar filtros automáticamente
+                    document.getElementById('filter-form').dispatchEvent(new Event('submit'));
+                });
+            });
+
+            // Event listeners para selectores de columnas
+            document.querySelectorAll('.column-selector').forEach((select, index) => {
+                select.addEventListener('change', () => {
+                    const fieldNumber = index + 1; // 1, 2, or 3
+                    const columnKey = `field${fieldNumber}`; // field1, field2, field3
+                    const newValue = select.value; // ID del campo seleccionado o ""
+
+                    // Actualizar el estado interno
+                    this.selectedColumns[columnKey] = newValue;
+
+                    // Actualizar el encabezado de la columna inmediatamente
+                    this.updateColumnHeaders();
+
+                    // Actualizar la tabla con los nuevos datos de la columna
+                    this.filterRecordsBySearch(); // Esto reordena y repagina si es necesario
+                });
+            });
+
+            // Event listeners para ordenar las columnas
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const column = th.getAttribute('data-sort');
+
+                    // Si ya estamos ordenando por esta columna, invertir dirección
+                    if (this.sorting.column === column) {
+                        this.sorting.direction = this.sorting.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        // Nueva columna seleccionada, establecer ordenación ascendente por defecto
+                        this.sorting.column = column;
+                        this.sorting.direction = 'asc';
+                    }
+
+                    // Actualizar íconos de ordenación en todas las columnas
+                    document.querySelectorAll('th.sortable i.bi').forEach(icon => {
+                        icon.className = 'bi'; // Resetear clase
+                    });
+
+                    // Actualizar ícono de la columna seleccionada
+                    const icon = th.querySelector('i.bi');
+                    if (icon) { // Asegurarse que el icono existe
+                       icon.className = `bi bi-sort-${this.sorting.direction === 'asc' ? 'up' : 'down'}`;
+                    }
+
+                    // Actualizar la tabla
+                    this.filterRecordsBySearch(); // Esto ya llama a sortRecords y displayPaginatedRecords
+                });
+            });
+        }, 100); // Dar tiempo para que el DOM esté completamente cargado
     },
 }; // Fin del objeto ReportsView
