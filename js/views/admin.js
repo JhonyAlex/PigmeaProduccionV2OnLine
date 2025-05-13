@@ -55,6 +55,11 @@ const AdminView = {
                                     <small class="text-muted">Este nombre reemplazará la palabra "Entidad" en todo el sistema</small>
                                 </div>
                                 <div class="mb-3">
+                                    <label for="record-name-config" class="form-label">Nombre de Registro</label>
+                                    <input type="text" class="form-control" id="record-name-config" value="${config.recordName || 'Registro'}" required>
+                                    <small class="text-muted">Este nombre reemplazará la palabra "Registro" en todo el sistema</small>
+                                </div>
+                                <div class="mb-3">
                                     <label for="navbar-title" class="form-label">Título del Sistema</label>
                                     <input type="text" class="form-control" id="navbar-title" value="${config.navbarTitle || 'Sistema de Registro Flexible'}" required>
                                     <small class="text-muted">Este título aparecerá en la barra de navegación</small>
@@ -500,12 +505,14 @@ const AdminView = {
         const title = document.getElementById('app-title').value;
         const description = document.getElementById('app-description').value;
         const entityName = document.getElementById('entity-name-config').value;
+        const recordName = document.getElementById('record-name-config').value;
         const navbarTitle = document.getElementById('navbar-title').value;
         
         const config = {
             title: title,
             description: description,
             entityName: entityName,
+            recordName: recordName,
             navbarTitle: navbarTitle
         };
         
@@ -517,6 +524,9 @@ const AdminView = {
         
         // Actualizar menciones de "Entidad" visibles en la página actual
         this.updateEntityNameReferences(entityName);
+        
+        // Actualizar menciones de "Registro" visibles en la página actual
+        this.updateRecordNameReferences(recordName);
         
         console.log("Configuración guardada:", config);
     },
@@ -1239,6 +1249,25 @@ const AdminView = {
                 entityModalTitle.textContent = "Editar " + newEntityName + " Principal";
             }
         }
+    },
+
+    /**
+     * Actualiza las referencias visibles a "Registro" con el nuevo nombre
+     * @param {string} newRecordName El nuevo nombre para "Registro"
+     */
+    updateRecordNameReferences(newRecordName) {
+        console.log("Actualizando referencias a Registro con:", newRecordName);
+        
+        // Actualizar encabezado "Importación Masiva de Registros"
+        const importHeader = document.querySelector('.card-header h5');
+        if (importHeader && importHeader.textContent.includes("Registros")) {
+            importHeader.textContent = importHeader.textContent.replace("Registros", newRecordName + "s");
+        }
+        
+        // No hay referencias directas a "Registro" en la vista de administración
+        // que necesiten ser actualizadas en tiempo real
+        
+        // Si se implementa vista de registro en esta sección, añadir aquí
     },
 
     /**

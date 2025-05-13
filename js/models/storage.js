@@ -116,6 +116,7 @@ const StorageService = {
                 title: "Sistema de Registro de Datos",
                 description: "Registre sus datos de manera flexible y personalizada",
                 entityName: "Entidad",
+                recordName: "Registro",
                 navbarTitle: "Sistema de Registro Flexible",
                 kpiFields: []
             },
@@ -209,6 +210,7 @@ const StorageService = {
                 title: "Sistema de Registro de Datos",
                 description: "Registre sus datos de manera flexible y personalizada",
                 entityName: "Entidad",
+                recordName: "Registro",
                 navbarTitle: "Sistema de Registro Flexible",
                 kpiFields: []
             };
