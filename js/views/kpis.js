@@ -42,7 +42,7 @@ const KPIsView = {
     },
     
     /**
-     * Renderiza el contenido de la vista
+     * Renderiza el contenido principal de la vista
      */
     render() {
         try {
@@ -53,220 +53,196 @@ const KPIsView = {
                 return;
             }
             
-            const fields = FieldModel.getAll();
-            const numericFields = fields.filter(field => field.type === 'number');
-            
-            // Obtener las entidades para filtros
-            const entities = EntityModel.getAll();
-            
-            // Formatear fecha actual para los inputs de fecha
-            const today = new Date().toISOString().split('T')[0];
-            const lastMonth = new Date();
-            lastMonth.setMonth(lastMonth.getMonth() - 1);
-            const lastMonthStr = lastMonth.toISOString().split('T')[0];
-            
-            // Obtener nombre personalizado de la entidad
+            // Obtener nombre personalizado
             const config = StorageService.getConfig();
             const entityName = config.entityName || 'Entidad';
+            const recordName = config.recordName || 'Registro';
+            
+            // Obtener campos numéricos para KPIs
+            const numericFields = FieldModel.getNumericFields();
+            
+            // Formatear fechas
+            const lastYear = new Date();
+            lastYear.setFullYear(lastYear.getFullYear() - 1);
+            const lastYearStr = this.formatDateForInput(lastYear);
+            const today = this.formatDateForInput(new Date());
             
             const template = `
                 <div class="container mt-4">
-                    <h2>KPIs y Métricas Clave</h2>
+                    <h2>KPIs y Métricas</h2>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <!-- Filtros -->
+                            <div class="card mb-0">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Filtros</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="kpi-filter-form" class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="kpi-filter-entity" class="form-label">${entityName}(s)</label>
+                                            <select class="form-select" id="kpi-filter-entity" multiple size="2">
+                                                <option value="">Todas</option>
+                                                ${EntityModel.getAll().map(entity =>
+                                                    `<option value="${entity.id}">${entity.name}</option>`
+                                                ).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="kpi-filter-from-date" class="form-label">Desde</label>
+                                            <input type="date" class="form-control" id="kpi-filter-from-date" value="${lastYearStr}">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="kpi-filter-to-date" class="form-label">Hasta</label>
+                                            <input type="date" class="form-control" id="kpi-filter-to-date" value="${today}">
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <!-- Atajos de fecha -->
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Atajos de fecha</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="btn-group d-flex flex-wrap" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="yesterday">Ayer</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisWeek">Esta semana</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastWeek">Semana pasada</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisMonth">Mes actual</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastMonth">Mes pasado</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisYear">Año actual</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastYear">Año pasado</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Filtros</h5>
+                            <h5 class="mb-0">Campos para KPIs</h5>
                         </div>
                         <div class="card-body">
-                            <form id="kpi-filter-form" class="row g-3">
-                                <div class="col-md-4">
-                                    <label for="kpi-filter-entity" class="form-label">${entityName}(es)</label>
-                                    <select class="form-select" id="kpi-filter-entity" multiple size="4">
-                                        <option value="">Todas las ${entityName.toLowerCase()}s</option>
-                                        ${entities.map(entity =>
-                                            `<option value="${entity.id}">${entity.name}</option>`
-                                        ).join('')}
-                                    </select>
-                                    <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples ${entityName.toLowerCase()}s</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="kpi-filter-from-date" class="form-label">Desde</label>
-                                    <input type="date" class="form-control" id="kpi-filter-from-date" value="${lastMonthStr}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="kpi-filter-to-date" class="form-label">Hasta</label>
-                                    <input type="date" class="form-control" id="kpi-filter-to-date" value="${today}">
-                                </div>
+                            <div class="row mb-2">
                                 <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+                                    <p class="mb-2">Seleccione los campos numéricos que desea incluir en los KPIs:</p>
+                                    <button id="select-all-kpi-fields" class="btn btn-sm btn-outline-primary mb-2">Seleccionar Todos</button>
                                 </div>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Atajos de fecha</h5>
-                        </div>
-                        <div class="card-body text-center">
-                            <div class="btn-group" role="group" aria-label="Atajos de fecha">
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="yesterday">Ayer</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisWeek">Esta semana</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastWeek">Semana pasada</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisMonth">Mes actual</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastMonth">Mes pasado</button>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Configuración de KPIs</h5>
-                            <div>
-                                <button type="button" class="btn btn-outline-light btn-sm me-2" id="select-all-kpi-fields">
-                                    <i class="bi bi-check-all"></i> Seleccionar Todo
-                                </button>
-                                <button type="button" class="btn btn-light btn-sm" id="save-kpi-config-btn">
-                                    <i class="bi bi-save"></i> Guardar Configuración
-                                </button>
+                            <div class="row">
+                                ${numericFields.map(field => `
+                                    <div class="col-md-4 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input kpi-field-check" type="checkbox" value="${field.id}" id="kpi-field-${field.id}" ${this.selectedFields.includes(field.id) ? 'checked' : ''}>
+                                            <label class="form-check-label" for="kpi-field-${field.id}">
+                                                ${field.name}
+                                            </label>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-4">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <div class="card h-100 border-primary">
-                                            <div class="card-header bg-primary text-white">
-                                                <h6 class="mb-0">Campos Numéricos</h6>
-                                            </div>
-                                            <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                                                ${numericFields.length === 0 ? `
-                                                    <div class="alert alert-info">
-                                                        No hay campos numéricos disponibles. Cree campos numéricos en la sección de Administración.
-                                                    </div>
-                                                ` : `
-                                                    <div class="row">
-                                                        ${numericFields.map(field => `
-                                                            <div class="col-md-6 mb-2">
-                                                                <div class="form-check">
-                                                                    <input class="form-check-input kpi-field-check" type="checkbox" 
-                                                                        id="kpi-field-${field.id}" value="${field.id}" 
-                                                                        ${this.selectedFields.includes(field.id) ? 'checked' : ''}>
-                                                                    <label class="form-check-label" for="kpi-field-${field.id}">
-                                                                        ${field.name}
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        `).join('')}
-                                                    </div>
-                                                `}
-                                            </div>
+                            <hr>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <h6>Opciones de Visualización</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Estilo de KPI</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-classic" value="classic" ${this.kpiStyle === 'classic' ? 'checked' : ''}>
+                                            <label class="form-check-label" for="kpi-style-classic">
+                                                Clásico
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-modern" value="modern" ${this.kpiStyle === 'modern' ? 'checked' : ''}>
+                                            <label class="form-check-label" for="kpi-style-modern">
+                                                Moderno
+                                            </label>
                                         </div>
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <div class="card h-100 border-info">
-                                            <div class="card-header bg-info text-white">
-                                                <h6 class="mb-0">Opciones de Visualización</h6>
+                                    <div class="mb-3">
+                                        <label for="decimal-places" class="form-label">Lugares Decimales</label>
+                                        <select class="form-select form-select-sm" id="decimal-places">
+                                            <option value="0" ${this.kpiDecimalPlaces === 0 ? 'selected' : ''}>0</option>
+                                            <option value="1" ${this.kpiDecimalPlaces === 1 ? 'selected' : ''}>1</option>
+                                            <option value="2" ${this.kpiDecimalPlaces === 2 ? 'selected' : ''}>2</option>
+                                            <option value="3" ${this.kpiDecimalPlaces === 3 ? 'selected' : ''}>3</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="default-aggregation" class="form-label">Agregación Predeterminada</label>
+                                        <select class="form-select form-select-sm" id="default-aggregation">
+                                            <option value="sum" ${this.kpiDefaultAggregation === 'sum' ? 'selected' : ''}>Suma</option>
+                                            <option value="avg" ${this.kpiDefaultAggregation === 'avg' ? 'selected' : ''}>Promedio</option>
+                                            <option value="max" ${this.kpiDefaultAggregation === 'max' ? 'selected' : ''}>Máximo</option>
+                                            <option value="min" ${this.kpiDefaultAggregation === 'min' ? 'selected' : ''}>Mínimo</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Métricas Adicionales</h6>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="show-count" ${this.kpiMetrics.showCount ? 'checked' : ''}>
+                                                <label class="form-check-label" for="show-count">
+                                                    Mostrar conteo total
+                                                </label>
                                             </div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label class="form-label">Estilo de tarjetas KPI:</label>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-modern" value="modern" checked>
-                                                        <label class="form-check-label" for="kpi-style-modern">
-                                                            Moderno (tarjetas de colores)
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="radio" name="kpi-style" id="kpi-style-classic" value="classic">
-                                                        <label class="form-check-label" for="kpi-style-classic">
-                                                            Clásico (tarjetas blancas)
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="default-aggregation">Agregación por defecto:</label>
-                                                    <select class="form-select" id="default-aggregation">
-                                                        <option value="sum">Suma</option>
-                                                        <option value="avg">Promedio</option>
-                                                        <option value="max">Máximo</option>
-                                                        <option value="min">Mínimo</option>
-                                                    </select>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="decimal-places">Decimales a mostrar:</label>
-                                                    <select class="form-select" id="decimal-places">
-                                                        <option value="0">0 (números enteros)</option>
-                                                        <option value="1">1 decimal</option>
-                                                        <option value="2" selected>2 decimales</option>
-                                                        <option value="3">3 decimales</option>
-                                                    </select>
-                                                </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="show-daily-avg" ${this.kpiMetrics.showDailyAvg ? 'checked' : ''}>
+                                                <label class="form-check-label" for="show-daily-avg">
+                                                    Mostrar promedio diario
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="show-entities-count" ${this.kpiMetrics.showEntitiesCount ? 'checked' : ''}>
+                                                <label class="form-check-label" for="show-entities-count">
+                                                    Mostrar conteo de ${entityName}s
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="show-growth-rate" ${this.kpiMetrics.showGrowthRate ? 'checked' : ''}>
+                                                <label class="form-check-label" for="show-growth-rate">
+                                                    Mostrar tasa de crecimiento
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="show-predictions">
+                                                <label class="form-check-label" for="show-predictions">
+                                                    Mostrar predicciones simples
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="show-percent-change">
+                                                <label class="form-check-label" for="show-percent-change">
+                                                    Mostrar cambio porcentual
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="row mt-3">
-                                    <div class="col-md-12 mb-3">
-                                        <div class="card border-success">
-                                            <div class="card-header bg-success text-white">
-                                                <h6 class="mb-0">Métricas Adicionales</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="row">
-                                                    <div class="col-md-4 mb-2">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="show-count" checked>
-                                                            <label class="form-check-label" for="show-count">
-                                                                Mostrar conteo de registros
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-4 mb-2">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="show-daily-avg" checked>
-                                                            <label class="form-check-label" for="show-daily-avg">
-                                                                Mostrar promedio diario
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-4 mb-2">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="show-entities-count" checked>
-                                                            <label class="form-check-label" for="show-entities-count">
-                                                                Mostrar número de entidades
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-4 mb-2">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="show-growth-rate">
-                                                            <label class="form-check-label" for="show-growth-rate">
-                                                                Mostrar tasa de crecimiento
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-4 mb-2">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="show-predictions">
-                                                            <label class="form-check-label" for="show-predictions">
-                                                                Mostrar predicciones simples
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-4 mb-2">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="show-percent-change">
-                                                            <label class="form-check-label" for="show-percent-change">
-                                                                Mostrar cambio porcentual
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button id="save-kpi-config-btn" class="btn btn-primary">Guardar Configuración de KPIs</button>
                             </div>
                         </div>
                     </div>
@@ -276,9 +252,9 @@ const KPIsView = {
                         <div class="col-md-4 mb-4">
                             <div class="card border-0 shadow-sm h-100 bg-primary text-white">
                                 <div class="card-body text-center">
-                                    <h6 class="text-uppercase">Total de Registros</h6>
+                                    <h6 class="text-uppercase">Total de ${recordName}s</h6>
                                     <h1 class="display-4" id="total-records-kpi">0</h1>
-                                    <p class="small mb-0">Registros en el sistema</p>
+                                    <p class="small mb-0">${recordName}s en el sistema</p>
                                 </div>
                             </div>
                         </div>
@@ -288,7 +264,7 @@ const KPIsView = {
                                 <div class="card-body text-center">
                                     <h6 class="text-uppercase">Promedio Diario</h6>
                                     <h1 class="display-4" id="avg-records-kpi">0</h1>
-                                    <p class="small mb-0">Registros por día</p>
+                                    <p class="small mb-0">${recordName}s por día</p>
                                 </div>
                             </div>
                         </div>
@@ -778,292 +754,343 @@ const KPIsView = {
     },
     
     /**
-     * Genera y muestra los KPIs basados en los filtros y campos seleccionados
+     * Genera los KPIs basados en los datos y configuración
      */
     generateKPIs() {
-        const filters = this.applyFilters();
-        const filteredRecords = RecordModel.filterMultiple(filters);
+        // Obtener configuración
+        const config = StorageService.getConfig();
+        const entityName = config.entityName || 'Entidad';
+        const recordName = config.recordName || 'Registro';
         
+        // Aplicar filtros para obtener datos
+        const filters = this.applyFilters();
+        const records = RecordModel.filterMultiple(filters);
+        
+        // Actualizar KPIs básicos
+        const totalRecordsKPI = document.getElementById('total-records-kpi');
+        const avgRecordsKPI = document.getElementById('avg-records-kpi');
+        const totalEntitiesKPI = document.getElementById('total-entities-kpi');
+        
+        if (totalRecordsKPI) {
+            totalRecordsKPI.textContent = records.length.toLocaleString();
+        }
+        
+        if (avgRecordsKPI) {
+            // Calcular promedio diario solo si hay registros
+            let avgPerDay = 0;
+            if (records.length > 0) {
+                // Obtener fechas únicas
+                const uniqueDates = new Set();
+                records.forEach(record => {
+                    const date = new Date(record.timestamp).toLocaleDateString();
+                    uniqueDates.add(date);
+                });
+                const daysCount = uniqueDates.size || 1; // Evitar división por cero
+                avgPerDay = records.length / daysCount;
+            }
+            
+            avgRecordsKPI.textContent = avgPerDay.toLocaleString(undefined, { maximumFractionDigits: 1 });
+        }
+        
+        if (totalEntitiesKPI) {
+            // Contar entidades únicas
+            const uniqueEntities = new Set();
+            records.forEach(record => uniqueEntities.add(record.entityId));
+            totalEntitiesKPI.textContent = uniqueEntities.size.toLocaleString();
+        }
+        
+        // Generar KPIs para campos seleccionados
+        this.generateFieldKPIs(records);
+    },
+    
+    /**
+     * Genera tarjetas KPI para cada campo
+     * @param {Array} records Registros filtrados
+     * @param {String} recordName Nombre personalizado para "Registro"
+     */
+    generateFieldKPIs(records) {
         // Obtener configuraciones
         const config = StorageService.getConfig();
-        const kpiStyle = config.kpiStyle || 'modern';
-        const kpiDecimalPlaces = config.kpiDecimalPlaces || 2;
-        const kpiDefaultAggregation = config.kpiDefaultAggregation || 'sum';
-        const kpiMetrics = config.kpiMetrics || {
-            showCount: true,
-            showDailyAvg: true,
-            showEntitiesCount: true,
-            showGrowthRate: false,
-            showPredictions: false,
-            showPercentChange: false
-        };
+        const entityName = config.entityName || 'Entidad';
+        const recordName = config.recordName || 'Registro';
         
-        // Obtener valores actuales de los checkboxes (si existen)
-        const showCount = document.getElementById('show-count')?.checked ?? kpiMetrics.showCount;
-        const showDailyAvg = document.getElementById('show-daily-avg')?.checked ?? kpiMetrics.showDailyAvg;
-        const showEntitiesCount = document.getElementById('show-entities-count')?.checked ?? kpiMetrics.showEntitiesCount;
-        const showGrowthRate = document.getElementById('show-growth-rate')?.checked ?? kpiMetrics.showGrowthRate;
-        const showPredictions = document.getElementById('show-predictions')?.checked ?? kpiMetrics.showPredictions;
-        const showPercentChange = document.getElementById('show-percent-change')?.checked ?? kpiMetrics.showPercentChange;
+        // Obtener opciones de la interfaz
+        const kpiStyle = document.querySelector('input[name="kpi-style"]:checked')?.value || 'modern';
+        const defaultAggregation = document.getElementById('default-aggregation')?.value || 'sum';
+        const kpiDecimalPlaces = parseInt(document.getElementById('decimal-places')?.value || '2');
         
-        // Calcular métricas básicas
-        const metricsContainer = document.getElementById('kpi-metrics-container');
-        metricsContainer.innerHTML = '';
+        // Métricas adicionales
+        const showCount = document.getElementById('show-count')?.checked || false;
+        const showDailyAvg = document.getElementById('show-daily-avg')?.checked || false;
+        const showEntitiesCount = document.getElementById('show-entities-count')?.checked || false;
+        const showGrowthRate = document.getElementById('show-growth-rate')?.checked || false;
+        const showPredictions = document.getElementById('show-predictions')?.checked || false;
+        const showPercentChange = document.getElementById('show-percent-change')?.checked || false;
         
-        // Estilo de las tarjetas basado en la configuración
-        const cardStyle = kpiStyle === 'modern' ? 'border-0 shadow-sm' : 'border';
-        const cardColors = kpiStyle === 'modern' ? [
-            'bg-primary text-white',
-            'bg-success text-white',
-            'bg-info text-white',
-            'bg-warning text-dark',
-            'bg-danger text-white',
-            'bg-secondary text-white'
-        ] : [
-            'bg-white',
-            'bg-white',
-            'bg-white',
-            'bg-white',
-            'bg-white',
-            'bg-white'
-        ];
+        // Contenedor para los KPIs de campos
+        const fieldsContainer = document.getElementById('kpi-fields-container');
+        if (!fieldsContainer) return;
         
-        // Contador para colores
-        let colorIndex = 0;
+        // Limpiar contenedor
+        fieldsContainer.innerHTML = '';
         
-        // KPI: Total de registros
-        if (showCount) {
-            const countCard = document.createElement('div');
-            countCard.className = 'col-md-4 mb-4';
-            countCard.innerHTML = `
-                <div class="card ${cardStyle} h-100 ${cardColors[colorIndex++ % cardColors.length]}">
-                    <div class="card-body text-center">
-                        <h6 class="text-uppercase">Total de Registros</h6>
-                        <h1 class="display-4">${filteredRecords.length}</h1>
-                        <p class="small mb-0">Registros en el período</p>
+        // Verificar si hay campos seleccionados
+        if (this.selectedFields.length === 0) {
+            fieldsContainer.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        Seleccione campos numéricos para visualizar KPIs adicionales
                     </div>
                 </div>
             `;
-            metricsContainer.appendChild(countCard);
+            return;
         }
         
-        // KPI: Promedio diario
+        // Generar KPIs específicos según la configuración
+        
+        // KPI: Conteo total
+        if (showCount) {
+            const countCard = document.createElement('div');
+            countCard.className = 'col-md-4 mb-4';
+            
+            // Usar estilo según configuración
+            countCard.innerHTML = `
+                <div class="card border-0 shadow-sm h-100 ${kpiStyle === 'modern' ? 'bg-info text-white' : ''}">
+                    <div class="card-body text-center">
+                        <h6 class="text-uppercase">Total de ${recordName}s</h6>
+                        <h1 class="display-4">${records.length}</h1>
+                        <p class="small mb-0">${recordName}s en el período</p>
+                    </div>
+                </div>
+            `;
+            
+            fieldsContainer.appendChild(countCard);
+        }
+        
+        // KPI: Promedio por día
         if (showDailyAvg) {
             let avgRecordsPerDay = 0;
-            if (filteredRecords.length > 0) {
+            if (records.length > 0) {
                 // Agrupar por fecha
                 const recordsByDate = {};
-                filteredRecords.forEach(record => {
+                records.forEach(record => {
                     const date = new Date(record.timestamp).toISOString().split('T')[0];
                     if (!recordsByDate[date]) {
-                        recordsByDate[date] = 0;
+                        recordsByDate[date] = [];
                     }
-                    recordsByDate[date]++;
+                    recordsByDate[date].push(record);
                 });
                 
-                // Calcular promedio
+                // Calcular promedio por día
                 const totalDays = Object.keys(recordsByDate).length;
                 if (totalDays > 0) {
-                    avgRecordsPerDay = Math.round((filteredRecords.length / totalDays) * Math.pow(10, kpiDecimalPlaces)) / Math.pow(10, kpiDecimalPlaces);
+                    avgRecordsPerDay = Math.round((records.length / totalDays) * Math.pow(10, kpiDecimalPlaces)) / Math.pow(10, kpiDecimalPlaces);
                 }
             }
             
             const avgCard = document.createElement('div');
             avgCard.className = 'col-md-4 mb-4';
-            avgCard.innerHTML = `
-                <div class="card ${cardStyle} h-100 ${cardColors[colorIndex++ % cardColors.length]}">
-                    <div class="card-body text-center">
-                        <h6 class="text-uppercase">Promedio Diario</h6>
-                        <h1 class="display-4">${avgRecordsPerDay.toFixed(kpiDecimalPlaces)}</h1>
-                        <p class="small mb-0">Registros por día</p>
-                    </div>
-                </div>
-            `;
-            metricsContainer.appendChild(avgCard);
-        }
-        
-        // KPI: Total de entidades
-        if (showEntitiesCount) {
-            const allEntities = EntityModel.getAll();
             
-            const entitiesCard = document.createElement('div');
-            entitiesCard.className = 'col-md-4 mb-4';
-            entitiesCard.innerHTML = `
-                <div class="card ${cardStyle} h-100 ${cardColors[colorIndex++ % cardColors.length]}">
+            avgCard.innerHTML = `
+                <div class="card border-0 shadow-sm h-100 ${kpiStyle === 'modern' ? 'bg-success text-white' : ''}">
                     <div class="card-body text-center">
-                        <h6 class="text-uppercase">${UIUtils.getEntityName()}s</h6>
-                        <h1 class="display-4">${allEntities.length}</h1>
-                        <p class="small mb-0">${UIUtils.getEntityName()}s registradas</p>
+                        <h6 class="text-uppercase">Promedio por Día</h6>
+                        <h1 class="display-4">${avgRecordsPerDay.toLocaleString(undefined, { maximumFractionDigits: kpiDecimalPlaces })}</h1>
+                        <p class="small mb-0">${recordName}s por día en el período</p>
                     </div>
                 </div>
             `;
-            metricsContainer.appendChild(entitiesCard);
+            
+            fieldsContainer.appendChild(avgCard);
         }
         
         // KPI: Tasa de crecimiento
-        if (showGrowthRate && filteredRecords.length > 0) {
+        if (showGrowthRate && records.length > 0) {
             // Calcular tasa de crecimiento
-            const growthRate = this.calculateGrowthRate(filteredRecords);
+            const growthRate = this.calculateGrowthRate(records);
             
             const growthCard = document.createElement('div');
             growthCard.className = 'col-md-4 mb-4';
+            
+            const isPositive = growthRate >= 0;
+            const iconClass = isPositive ? 'bi-graph-up-arrow text-success' : 'bi-graph-down-arrow text-danger';
+            
             growthCard.innerHTML = `
-                <div class="card ${cardStyle} h-100 ${cardColors[colorIndex++ % cardColors.length]}">
+                <div class="card border-0 shadow-sm h-100 ${kpiStyle === 'modern' ? 'bg-warning text-dark' : ''}">
                     <div class="card-body text-center">
                         <h6 class="text-uppercase">Tasa de Crecimiento</h6>
-                        <h1 class="display-4 ${growthRate >= 0 ? 'text-success' : 'text-danger'}">
-                            ${growthRate >= 0 ? '+' : ''}${growthRate.toFixed(1)}%
+                        <h1 class="display-4">
+                            <i class="bi ${iconClass}"></i>
+                            ${Math.abs(growthRate).toLocaleString(undefined, { maximumFractionDigits: kpiDecimalPlaces })}%
                         </h1>
-                        <p class="small mb-0">Último período vs. anterior</p>
+                        <p class="small mb-0">Comparado con período anterior</p>
                     </div>
                 </div>
             `;
-            metricsContainer.appendChild(growthCard);
+            
+            fieldsContainer.appendChild(growthCard);
         }
         
         // KPI: Predicción simple
-        if (showPredictions && filteredRecords.length > 0) {
+        if (showPredictions && records.length > 0) {
             // Calcular predicción para el próximo período
-            const prediction = this.calculateSimplePrediction(filteredRecords);
+            const prediction = this.calculateSimplePrediction(records);
             
             const predictionCard = document.createElement('div');
             predictionCard.className = 'col-md-4 mb-4';
+            
             predictionCard.innerHTML = `
-                <div class="card ${cardStyle} h-100 ${cardColors[colorIndex++ % cardColors.length]}">
+                <div class="card border-0 shadow-sm h-100 ${kpiStyle === 'modern' ? 'bg-secondary text-white' : ''}">
                     <div class="card-body text-center">
                         <h6 class="text-uppercase">Predicción</h6>
-                        <h1 class="display-4">${prediction}</h1>
-                        <p class="small mb-0">Registros esperados próximo período</p>
+                        <h1 class="display-4">${prediction.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h1>
+                        <p class="small mb-0">${recordName}s esperados próximo período</p>
                     </div>
                 </div>
             `;
-            metricsContainer.appendChild(predictionCard);
-        }
-        
-        // KPI: Cambio porcentual
-        if (showPercentChange && this.selectedFields.length > 0) {
-            const fieldId = this.selectedFields[0]; // Usar el primer campo seleccionado
-            const field = FieldModel.getById(fieldId);
             
-            if (field && field.type === 'number') {
-                // Calcular cambio porcentual entre períodos
-                const percentChange = this.calculatePercentChange(filteredRecords, fieldId);
-                
-                const changeCard = document.createElement('div');
-                changeCard.className = 'col-md-4 mb-4';
-                changeCard.innerHTML = `
-                    <div class="card ${cardStyle} h-100 ${cardColors[colorIndex++ % cardColors.length]}">
-                        <div class="card-body text-center">
-                            <h6 class="text-uppercase">Cambio en ${field.name}</h6>
-                            <h1 class="display-4 ${percentChange >= 0 ? 'text-success' : 'text-danger'}">
-                                ${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(1)}%
-                            </h1>
-                            <p class="small mb-0">Último período vs. anterior</p>
-                        </div>
-                    </div>
-                `;
-                metricsContainer.appendChild(changeCard);
-            }
+            fieldsContainer.appendChild(predictionCard);
         }
         
         // Generar KPIs para campos seleccionados
-        const kpiFieldsContainer = document.getElementById('kpi-fields-container');
-        kpiFieldsContainer.innerHTML = '';
+        this.generateFieldSpecificKPIs(records, recordName, fieldsContainer, kpiStyle, defaultAggregation, kpiDecimalPlaces);
+    },
+    
+    /**
+     * Genera KPIs específicos para cada campo seleccionado
+     * @param {Array} records Registros filtrados
+     * @param {String} recordName Nombre personalizado para "Registro"
+     * @param {HTMLElement} fieldsContainer Contenedor para las tarjetas KPI
+     * @param {String} kpiStyle Estilo de las tarjetas ('modern' o 'classic')
+     * @param {String} defaultAggregation Tipo de agregación predeterminado
+     * @param {Number} kpiDecimalPlaces Número de decimales a mostrar
+     */
+    generateFieldSpecificKPIs(records, recordName, fieldsContainer, kpiStyle, defaultAggregation, kpiDecimalPlaces) {
+        // KPI: Cambio porcentual
+        const showPercentChange = document.getElementById('show-percent-change')?.checked || false;
         
-        // Colores para las tarjetas de KPI
-        colorIndex = 0; // Reiniciar contador de colores
-        
-        // Obtener la agregación por defecto
-        const aggregation = document.getElementById('default-aggregation')?.value || kpiDefaultAggregation;
+        if (showPercentChange && this.selectedFields.length > 0) {
+            for (const fieldId of this.selectedFields) {
+                const field = FieldModel.getById(fieldId);
+                
+                if (field && field.type === 'number') {
+                    // Calcular cambio porcentual entre períodos
+                    const percentChange = this.calculatePercentChange(records, fieldId);
+                    
+                    const changeCard = document.createElement('div');
+                    changeCard.className = 'col-md-4 mb-4';
+                    
+                    // Añadir icono según si es positivo o negativo
+                    const isPositive = percentChange >= 0;
+                    const changeIcon = isPositive ? 'bi-arrow-up-circle-fill text-success' : 'bi-arrow-down-circle-fill text-danger';
+                    const changeText = isPositive ? 'aumento' : 'disminución';
+                    
+                    changeCard.innerHTML = `
+                        <div class="card border-0 shadow-sm h-100 ${kpiStyle === 'modern' ? 'bg-light' : ''}">
+                            <div class="card-body text-center">
+                                <h6 class="text-uppercase">Variación ${field.name}</h6>
+                                <h1 class="display-4">
+                                    <i class="bi ${changeIcon}"></i>
+                                    ${Math.abs(percentChange).toLocaleString(undefined, { maximumFractionDigits: kpiDecimalPlaces })}%
+                                </h1>
+                                <p class="small mb-0">${changeText} respecto al período anterior</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    fieldsContainer.appendChild(changeCard);
+                }
+            }
+        }
         
         // Generar KPIs para cada campo seleccionado
-        this.selectedFields.forEach((fieldId) => {
+        for (const fieldId of this.selectedFields) {
             const field = FieldModel.getById(fieldId);
-            if (!field || field.type !== 'number') return;
+            if (!field || field.type !== 'number') continue;
             
             // Obtener valores para este campo
-            const values = filteredRecords
+            const values = records
                 .filter(record => record.data[fieldId] !== undefined)
                 .map(record => parseFloat(record.data[fieldId]) || 0);
             
-            if (values.length === 0) return;
+            // Si no hay valores para este campo, saltar al siguiente
+            if (values.length === 0) continue;
             
-            // Calcular métricas
-            const sum = values.reduce((a, b) => a + b, 0);
-            const avg = sum / values.length;
-            const max = Math.max(...values);
-            const min = Math.min(...values);
+            // Opciones de agregación y visualización
+            const aggregationType = defaultAggregation;
             
-            // Seleccionar color de la tarjeta
-            const colorClass = cardColors[colorIndex++ % cardColors.length];
-            
-            // Valor principal según la agregación seleccionada
-            let mainValue, mainLabel;
-            switch (aggregation) {
+            // Calcular el valor según el tipo de agregación
+            let aggregatedValue = 0;
+            switch (aggregationType) {
+                case 'sum':
+                    aggregatedValue = values.reduce((sum, val) => sum + val, 0);
+                    break;
                 case 'avg':
-                    mainValue = avg;
-                    mainLabel = 'Promedio';
+                    aggregatedValue = values.length > 0 ? 
+                        values.reduce((sum, val) => sum + val, 0) / values.length : 0;
                     break;
                 case 'max':
-                    mainValue = max;
-                    mainLabel = 'Máximo';
+                    aggregatedValue = Math.max(...values);
                     break;
                 case 'min':
-                    mainValue = min;
-                    mainLabel = 'Mínimo';
+                    aggregatedValue = Math.min(...values);
                     break;
-                case 'sum':
                 default:
-                    mainValue = sum;
-                    mainLabel = 'Suma';
+                    aggregatedValue = values.reduce((sum, val) => sum + val, 0);
             }
             
-            // Crear tarjeta de KPI
+            // Redondear según decimales configurados
+            if (kpiDecimalPlaces === 0) {
+                aggregatedValue = Math.round(aggregatedValue);
+            } else {
+                const factor = Math.pow(10, kpiDecimalPlaces);
+                aggregatedValue = Math.round(aggregatedValue * factor) / factor;
+            }
+            
+            // Crear tarjeta KPI
             const kpiCard = document.createElement('div');
-            kpiCard.className = 'col-md-6 col-lg-4 mb-4';
+            kpiCard.className = 'col-md-4 mb-4';
+            
+            // Título según el tipo de agregación
+            let kpiTitle = field.name;
+            if (aggregationType === 'sum') kpiTitle = `Suma de ${field.name}`;
+            if (aggregationType === 'avg') kpiTitle = `Promedio de ${field.name}`;
+            if (aggregationType === 'max') kpiTitle = `Máximo de ${field.name}`;
+            if (aggregationType === 'min') kpiTitle = `Mínimo de ${field.name}`;
+            
+            // Crear HTML de la tarjeta
             kpiCard.innerHTML = `
-                <div class="card ${cardStyle} h-100 ${colorClass}">
-                    <div class="card-body">
-                        <h5 class="card-title text-center">${field.name}</h5>
-                        <div class="text-center mb-3">
-                            <h6 class="text-uppercase small opacity-75">${mainLabel}</h6>
-                            <h2>${ChartUtils.formatNumber(mainValue, kpiDecimalPlaces)}</h2>
-                        </div>
-                        <div class="row text-center">
-                            ${aggregation !== 'sum' ? `
-                            <div class="col-6 mb-2">
-                                <h6 class="text-uppercase small opacity-75">Suma</h6>
-                                <h4>${ChartUtils.formatNumber(sum, kpiDecimalPlaces)}</h4>
-                            </div>` : ''}
-                            ${aggregation !== 'avg' ? `
-                            <div class="col-6 mb-2">
-                                <h6 class="text-uppercase small opacity-75">Promedio</h6>
-                                <h4>${ChartUtils.formatNumber(avg, kpiDecimalPlaces)}</h4>
-                            </div>` : ''}
-                            ${aggregation !== 'max' ? `
-                            <div class="col-6">
-                                <h6 class="text-uppercase small opacity-75">Máximo</h6>
-                                <h4>${ChartUtils.formatNumber(max, kpiDecimalPlaces)}</h4>
-                            </div>` : ''}
-                            ${aggregation !== 'min' ? `
-                            <div class="col-6">
-                                <h6 class="text-uppercase small opacity-75">Mínimo</h6>
-                                <h4>${ChartUtils.formatNumber(min, kpiDecimalPlaces)}</h4>
-                            </div>` : ''}
-                        </div>
-                    </div>
-                    <div class="card-footer text-center">
-                        <small class="text-${kpiStyle === 'modern' ? 'white' : 'muted'}">
-                            ${values.length} registros analizados
-                        </small>
+                <div class="card border-0 shadow-sm h-100 ${kpiStyle === 'modern' ? this.getRandomColor() : ''}">
+                    <div class="card-body text-center">
+                        <h6 class="text-uppercase">${kpiTitle}</h6>
+                        <h1 class="display-4">${aggregatedValue.toLocaleString(undefined, { maximumFractionDigits: kpiDecimalPlaces })}</h1>
+                        <p class="small mb-0">De un total de ${values.length} ${recordName}s con datos</p>
                     </div>
                 </div>
             `;
             
-            kpiFieldsContainer.appendChild(kpiCard);
-        });
+            // Añadir al contenedor
+            fieldsContainer.appendChild(kpiCard);
+        }
     },
-
+    
+    /**
+     * Obtiene un color aleatorio para tarjetas KPI
+     * @returns {string} Clase CSS con color
+     */
+    getRandomColor() {
+        const colors = [
+            'bg-primary text-white',
+            'bg-success text-white',
+            'bg-info text-white', 
+            'bg-warning text-dark',
+            'bg-danger text-white',
+            'bg-secondary text-white'
+        ];
+        
+        return colors[Math.floor(Math.random() * colors.length)];
+    },
+    
     /**
      * Calcula la tasa de crecimiento entre períodos
      * @param {Array} records Registros filtrados

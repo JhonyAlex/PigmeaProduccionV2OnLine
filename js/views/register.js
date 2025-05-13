@@ -74,7 +74,7 @@ const RegisterView = {
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                <h5>Nuevo registro</h5>
+                                <h5>Nuevo ${this.recordName.toLowerCase()}</h5>
                             </div>
                             <div class="card-body">
                                 <form id="register-form">
@@ -95,7 +95,7 @@ const RegisterView = {
                                         <div class="form-check mb-3">
                                             <input class="form-check-input" type="checkbox" id="yesterday-check">
                                             <label class="form-check-label" for="yesterday-check">
-                                                Registrar como de ayer
+                                                ${this.recordName.toLowerCase().charAt(0).toUpperCase() + this.recordName.toLowerCase().slice(1)} como de ayer
                                             </label>
                                         </div>
                                         <button type="submit" class="btn btn-primary">Guardar</button>

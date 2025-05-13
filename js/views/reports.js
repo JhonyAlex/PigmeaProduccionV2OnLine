@@ -999,6 +999,20 @@ const ReportsView = {
                 }
             });
         });
+
+        // Disparar evento personalizado para actualizar el índice
+        document.dispatchEvent(new CustomEvent('records-loaded', { detail: { count: records.length } }));
+        
+        // Si no hay registros, mostrar mensaje
+        if (records.length === 0) {
+            noFilteredRecordsDiv.style.display = 'block';
+            recordsTable.style.display = 'none';
+            
+            // Ocultar paginación y selector de registros por página
+            if (paginationControls) paginationControls.style.visibility = 'hidden';
+            if (itemsPerPageSelector) itemsPerPageSelector.style.visibility = 'hidden';
+            return;
+        }
     },
     getFieldValue(record, fieldId, fields) {
         // Si no hay fieldId, o no hay datos, o el campo específico no existe en los datos, devolver vacío

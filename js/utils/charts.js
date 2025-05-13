@@ -169,13 +169,17 @@ const ChartUtils = {
         // Determinar el título de la primera columna
         const entityHeaderTitle = reportData.horizontalField ? reportData.horizontalField : 'Entidad';
         
+        // Obtener el nombre personalizado para "Registro"
+        const config = StorageService.getConfig();
+        const recordName = config.recordName || 'Registro';
+        
         return `
             <table class="table table-sm table-striped">
                 <thead>
                     <tr>
                         <th>${entityHeaderTitle}</th>
                         <th class="text-end">${reportData.aggregation === 'sum' ? 'Total' : 'Promedio'}</th>
-                        <th class="text-end">Registros</th>
+                        <th class="text-end">${recordName}s</th>
                     </tr>
                 </thead>
                 <tbody>
