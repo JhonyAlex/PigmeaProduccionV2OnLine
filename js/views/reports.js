@@ -63,22 +63,28 @@ const ReportsView = {
             return; // No hay campos para generar reporte
         }
 
-        // Esperar a que el DOM esté completamente cargado (por si acaso)
+        // Esperar a que el DOM esté completamente cargado
         setTimeout(() => {
+            const reportField = document.getElementById('report-field');
+            if (!reportField) {
+                console.warn("Elemento 'report-field' no encontrado en el DOM");
+                return;
+            }
+
             // Obtener campos marcados para reportes comparativos
             const compareField = FieldModel.getAll().find(field => field.isCompareField);
 
             if (compareField) {
                 // Si hay un campo marcado para comparar, usarlo
-                document.getElementById('report-field').value = compareField.id;
+                reportField.value = compareField.id;
             } else {
                 // Si no hay campo marcado, usar el primer campo numérico disponible
-                document.getElementById('report-field').value = sharedNumericFields[0].id;
+                reportField.value = sharedNumericFields[0].id;
             }
 
             // Generar el reporte usando los valores predeterminados o los que están en el formulario
             this.generateReport();
-        }, 100);
+        }, 200); // Dar más tiempo para que el DOM esté listo
     },
 
     /**
@@ -152,6 +158,93 @@ const ReportsView = {
                                     <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- Atajos de fecha -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Atajos de fecha</h5>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="btn-group mb-3" role="group" aria-label="Atajos de fecha">
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="yesterday">Ayer</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisWeek">Esta semana</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastWeek">Semana pasada</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisMonth">Mes actual</button>
+                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastMonth">Mes pasado</button>
+                            </div>
+
+                            <h6 class="mt-3 mb-2">Última semana</h6>
+                            <div class="btn-group flex-wrap" role="group" aria-label="Días última semana">
+                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastMonday">Lunes</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastTuesday">Martes</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastWednesday">Miércoles</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastThursday">Jueves</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastFriday">Viernes</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSaturday">Sábado</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSunday">Domingo</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reportes Comparativos -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Reportes Comparativos</h5>
+                        </div>
+                        <div class="card-body">
+                            ${sharedNumericFields.length === 0 ? `
+                                <div class="alert alert-info">
+                                    No hay campos numéricos compartidos entre ${entityName.toLowerCase()}s para generar reportes comparativos.
+                                    <hr>
+                                    <p class="mb-0">Para generar reportes comparativos, debe crear campos numéricos y asignarlos a múltiples ${entityName.toLowerCase()}s.</p>
+                                </div>
+                            ` : `
+                                <form id="report-form" class="row g-3 mb-4">
+                                    <div class="col-md-4">
+                                        <label for="report-horizontal-field" class="form-label">Eje Horizontal</label>
+                                        <select class="form-select" id="report-horizontal-field">
+                                            <option value="">${entityName} Principal</option>
+                                            ${sharedFields.map(field =>
+                                                `<option value="${field.id}" ${(horizontalAxisField && horizontalAxisField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="report-field" class="form-label">Campo a Comparar</label>
+                                        <select class="form-select" id="report-field" required>
+                                            <option value="">Seleccione un campo</option>
+                                            ${sharedNumericFields.map(field =>
+                                                `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="report-aggregation" class="form-label">Tipo de Agregación</label>
+                                        <select class="form-select" id="report-aggregation">
+                                            <option value="sum">Suma</option>
+                                            <option value="average">Promedio</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary">Generar Reporte</button>
+                                    </div>
+                                </form>
+
+                                <div id="report-container" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <div class="chart-container">
+                                                <canvas id="report-chart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div id="report-summary"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `}
                         </div>
                     </div>
 
@@ -981,9 +1074,8 @@ const ReportsView = {
                 // --- CORRECCIÓN: El bloque duplicado que estaba aquí fue eliminado ---
             });
         }
-    }, // Fin de toggleEditMode
+    },
 
- // --- CORRECCIÓN: Mover esta función fuera de toggleEditMode ---
     /**
      * Genera el HTML para un input de edición.
      */
@@ -1006,8 +1098,7 @@ const ReportsView = {
             default:
                 return `<input type="text" class="form-control form-control-sm edit-field" data-field-id="${fieldId}" value="${currentValue}">`;
         }
-    }, // Fin de generateInputHTMLFallback
-    // --- FIN CORRECCIÓN ---
+    },
 
     /**
      * Restaura el modal al modo de visualización.
