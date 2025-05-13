@@ -1999,7 +1999,32 @@ const KPIsView = {
      * Actualiza la vista cuando hay cambios en los datos
      */
     update() {
-        // Recargar datos de KPIs
-        this.loadData();
+        // Recargar la configuración
+        const config = StorageService.getConfig();
+        if (config) {
+            this.kpiStyle = config.kpiStyle || 'modern';
+            this.kpiDecimalPlaces = config.kpiDecimalPlaces || 2;
+            this.kpiDefaultAggregation = config.kpiDefaultAggregation || 'sum';
+            this.kpiMetrics = config.kpiMetrics || {
+                showCount: false,
+                showDailyAvg: false,
+                showEntitiesCount: false,
+                showGrowthRate: false,
+                showPredictions: false,
+                showPercentChange: false
+            };
+            this.selectedFields = config.kpiFields || [];
+        }
+        
+        // Actualizar KPIs con los nuevos datos
+        if (Router.currentRoute === 'kpis') {
+            try {
+                this.generateKPIs();
+                this.updateCharts();
+                this.updateTrendChart();
+            } catch (error) {
+                console.error("Error al actualizar KPIs:", error);
+            }
+        }
     }
 };
