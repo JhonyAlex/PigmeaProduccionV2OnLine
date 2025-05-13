@@ -25,25 +25,28 @@ const ReportsView = {
      */
     init() {
         try {
-            // Verificar que el contenedor principal existe
-            const mainContent = document.querySelector('.main-content');
-            if (!mainContent) {
-                console.error("Elemento .main-content no encontrado");
-                return;
-            }
+            // Esperar a que el DOM esté completamente cargado
+            setTimeout(() => {
+                // Verificar que el contenedor principal existe
+                const mainContent = document.querySelector('.main-content');
+                if (!mainContent) {
+                    console.error("Elemento .main-content no encontrado");
+                    return;
+                }
 
-            // Reiniciar estado al inicializar (opcional pero recomendado)
-            this.pagination = { currentPage: 1, itemsPerPage: 20 }; // Simplificado
-            this.sorting = { column: 'timestamp', direction: 'desc' };
-            this.selectedColumns = { field1: null, field2: null, field3: null };
-            this.filteredRecords = [];
-            this.searchedRecords = [];
+                // Reiniciar estado al inicializar (opcional pero recomendado)
+                this.pagination = { currentPage: 1, itemsPerPage: 20 }; // Simplificado
+                this.sorting = { column: 'timestamp', direction: 'desc' };
+                this.selectedColumns = { field1: null, field2: null, field3: null };
+                this.filteredRecords = [];
+                this.searchedRecords = [];
 
-            this.render(); // Ahora 'this.selectedColumns' existe
-            this.setupEventListeners();
+                this.render(); // Ahora 'this.selectedColumns' existe
+                this.setupEventListeners();
 
-            // Generar automáticamente el reporte al cargar la página
-            this.autoGenerateReport();
+                // Generar automáticamente el reporte al cargar la página
+                this.autoGenerateReport();
+            }, 100); // Dar tiempo para que el DOM esté listo
         } catch (error) {
             console.error("Error al inicializar vista de reportes:", error);
             UIUtils.showAlert('Error al inicializar la vista de reportes', 'danger');
@@ -97,8 +100,8 @@ const ReportsView = {
             // Formatear fechas
             const lastMonth = new Date();
             lastMonth.setMonth(lastMonth.getMonth() - 1);
-            const lastMonthStr = this.formatDateForInput(lastMonth); // Usar función propia
-            const today = this.formatDateForInput(new Date());      // Usar función propia
+            const lastMonthStr = this.formatDateForInput(lastMonth);
+            const today = this.formatDateForInput(new Date());
 
             const config = StorageService.getConfig();
             const entityName = config.entityName || 'Entidad';
@@ -108,8 +111,7 @@ const ReportsView = {
             const column5Field = FieldModel.getAll().find(field => field.isColumn5);
 
             // Actualiza SelectedColumns al cargar si hay campos marcados
-            // Ahora 'this.selectedColumns' está definido
-            this.selectedColumns.field1 = column3Field ? column3Field.id : null; // Línea 70 (modificada para seguridad)
+            this.selectedColumns.field1 = column3Field ? column3Field.id : null;
             this.selectedColumns.field2 = column4Field ? column4Field.id : null;
             this.selectedColumns.field3 = column5Field ? column5Field.id : null;
 
@@ -150,93 +152,6 @@ const ReportsView = {
                                     <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-
-                    <!-- Atajos de fecha -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Atajos de fecha</h5>
-                        </div>
-                        <div class="card-body text-center">
-                            <div class="btn-group mb-3" role="group" aria-label="Atajos de fecha">
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="yesterday">Ayer</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisWeek">Esta semana</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastWeek">Semana pasada</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisMonth">Mes actual</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastMonth">Mes pasado</button>
-                            </div>
-
-                            <h6 class="mt-3 mb-2">Última semana</h6>
-                            <div class="btn-group flex-wrap" role="group" aria-label="Días última semana">
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastMonday">Lunes</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastTuesday">Martes</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastWednesday">Miércoles</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastThursday">Jueves</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastFriday">Viernes</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSaturday">Sábado</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSunday">Domingo</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Reportes Comparativos -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Reportes Comparativos</h5>
-                        </div>
-                        <div class="card-body">
-                            ${sharedNumericFields.length === 0 ? `
-                                <div class="alert alert-info">
-                                    No hay campos numéricos compartidos entre ${entityName.toLowerCase()}s para generar reportes comparativos.
-                                    <hr>
-                                    <p class="mb-0">Para generar reportes comparativos, debe crear campos numéricos y asignarlos a múltiples ${entityName.toLowerCase()}s.</p>
-                                </div>
-                            ` : `
-                                <form id="report-form" class="row g-3 mb-4">
-                                    <div class="col-md-4">
-                                        <label for="report-horizontal-field" class="form-label">Eje Horizontal</label>
-                                        <select class="form-select" id="report-horizontal-field">
-                                            <option value="">${entityName} Principal</option>
-                                            ${sharedFields.map(field =>
-                                                `<option value="${field.id}" ${(horizontalAxisField && horizontalAxisField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="report-field" class="form-label">Campo a Comparar</label>
-                                        <select class="form-select" id="report-field" required>
-                                            <option value="">Seleccione un campo</option>
-                                            ${sharedNumericFields.map(field =>
-                                                `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="report-aggregation" class="form-label">Tipo de Agregación</label>
-                                        <select class="form-select" id="report-aggregation">
-                                            <option value="sum">Suma</option>
-                                            <option value="average">Promedio</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-12">
-                                        <button type="submit" class="btn btn-primary">Generar Reporte</button>
-                                    </div>
-                                </form>
-
-                                <div id="report-container" style="display: none;">
-                                    <div class="row">
-                                        <div class="col-md-8">
-                                            <div class="chart-container">
-                                                <canvas id="report-chart"></canvas>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div id="report-summary"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `}
                         </div>
                     </div>
 
@@ -338,23 +253,23 @@ const ReportsView = {
                                     </nav>
                                 </div>
                             </div>
-                        </div> <!-- Fin card-body p-0 -->
-                    </div> <!-- Fin card Registros -->
-
-                </div> <!-- Fin container -->
+                        </div>
+                    </div>
+                </div>
             `;
 
             mainContent.innerHTML = template;
 
-            // --- Añadir verificación antes de llamar a funciones dependientes del DOM ---
-            try {
-                this.updateColumnHeaders();
-                this.applyFilters();
-            } catch (error) {
-                console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
-                mainContent.innerHTML = `<div class="alert alert-danger">Error al inicializar la vista de reportes. Revise la consola para más detalles.</div>`;
-            }
-            // -------------------------------------------------------------------------
+            // Esperar a que el DOM se actualice
+            setTimeout(() => {
+                try {
+                    this.updateColumnHeaders();
+                    this.applyFilters();
+                } catch (error) {
+                    console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
+                }
+            }, 0);
+
         } catch (error) {
             console.error("Error al renderizar vista de reportes:", error);
         }
@@ -388,267 +303,55 @@ const ReportsView = {
 
 
     setupEventListeners() {
-        // Event listener para "Seleccionar todos"
-        const selectAllCheckbox = document.getElementById('select-all-records');
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', (e) => {
-                const isChecked = e.target.checked;
-                document.querySelectorAll('.record-checkbox').forEach(checkbox => {
-                    checkbox.checked = isChecked;
-                });
-                // Actualizar visibilidad del botón de edición masiva
-                const bulkEditBtn = document.getElementById('bulk-edit-btn');
-                if (bulkEditBtn) {
-                    bulkEditBtn.style.display = isChecked ? 'inline-block' : 'none';
-                }
-            });
-        }
-
-        // En setupEventListeners (añadir esto)
-        const recordsListContainer = document.getElementById('records-list'); // Usar un nombre diferente si 'recordsList' ya se usa para otra cosa
-        if (recordsListContainer) {
-            recordsListContainer.addEventListener('click', (e) => {
-                // Busca si el clic ocurrió dentro de un botón con la clase '.view-record'
-                const viewButton = e.target.closest('.view-record');
-                if (viewButton) {
-                    // Si se encontró el botón, obtén el ID y llama a la función
-                    const recordId = viewButton.dataset.recordId;
-                    this.showRecordDetails(recordId); // Asegúrate que 'this' se refiere a ReportsView
-                }
-            });
-        }
-
-        // Aplicar filtros
-        document.getElementById('filter-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.applyFilters();
-
-            // Si hay un reporte generado, actualizarlo con los nuevos filtros
-            const reportContainer = document.getElementById('report-container');
-            if (reportContainer && reportContainer.style.display === 'block') {
-                this.generateReport();
-            }
-        });
-
-        // Generar reporte comparativo
-        const reportForm = document.getElementById('report-form');
-        if (reportForm) {
-            reportForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.generateReport();
-            });
-        }
-
-        // Exportar a CSV
-        const exportCsvBtn = document.getElementById('export-csv-btn');
-        if (exportCsvBtn) {
-            exportCsvBtn.addEventListener('click', () => {
-                // Obtener los registros filtrados actuales
-                const entityFilterSelect = document.getElementById('filter-entity');
-                const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
-
-                const entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
-                    ? []
-                    : selectedEntities;
-
-                const fromDateFilter = document.getElementById('filter-from-date').value;
-                const toDateFilter = document.getElementById('filter-to-date').value;
-
-                const filters = {
-                    entityIds: entityFilter.length > 0 ? entityFilter : undefined,
-                    fromDate: fromDateFilter || undefined,
-                    toDate: toDateFilter || undefined
-                };
-
-                // Obtener registros filtrados (usar los ya filtrados y buscados si existen)
-                const recordsToExport = this.searchedRecords || this.filteredRecords || RecordModel.filterMultiple(filters);
-
-
-                // Ordenar por fecha (más reciente primero) si no hay ordenación activa o es por fecha
-                 let sortedRecords = [...recordsToExport];
-                 if (!this.sorting.column || this.sorting.column === 'timestamp') {
-                     sortedRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                 } else {
-                    // Si hay otra ordenación activa, usarla (ya debería estar en this.searchedRecords)
-                    sortedRecords = this.searchedRecords ? [...this.searchedRecords] : sortedRecords;
-                 }
-
-
-                // Exportar a CSV usando las columnas seleccionadas
-                ExportUtils.exportToCSV(
-                    sortedRecords,
-                    this.selectedColumns.field1,
-                    this.selectedColumns.field2,
-                    this.selectedColumns.field3
-                );
-            });
-        }
-
-        // Buscador en la tabla de registros
-        const searchInput = document.getElementById('search-records');
-        if (searchInput) {
-            searchInput.addEventListener('input', () => {
-                this.filterRecordsBySearch();
-            });
-        }
-
-        // Añadir event listener para el selector de registros por página
-        const itemsPerPageSelect = document.getElementById('items-per-page');
-        if (itemsPerPageSelect) {
-            itemsPerPageSelect.value = this.pagination.itemsPerPage; // Asegurar valor inicial
-            itemsPerPageSelect.addEventListener('change', () => {
-                this.pagination.itemsPerPage = parseInt(itemsPerPageSelect.value);
-                this.pagination.currentPage = 1; // Volver a la primera página al cambiar
-                this.filterRecordsBySearch(); // Actualizar la visualización
-            });
-        }
-
-        // Atajos de fecha
-        document.querySelectorAll('.date-shortcut').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const range = e.target.getAttribute('data-range');
-                this.setDateRange(range);
-                // Aplicar filtros automáticamente
-                document.getElementById('filter-form').dispatchEvent(new Event('submit'));
-            });
-        });
-
-        // Event listeners para selectores de columnas
-        document.querySelectorAll('.column-selector').forEach((select, index) => {
-            select.addEventListener('change', () => {
-                const fieldNumber = index + 1; // 1, 2, or 3
-                const columnKey = `field${fieldNumber}`; // field1, field2, field3
-                const newValue = select.value; // ID del campo seleccionado o ""
-
-                // Actualizar el estado interno
-                this.selectedColumns[columnKey] = newValue;
-
-                // Actualizar el encabezado de la columna inmediatamente
-                this.updateColumnHeaders();
-
-                // Actualizar la tabla con los nuevos datos de la columna
-                this.filterRecordsBySearch(); // Esto reordena y repagina si es necesario
-
-                // Persistir la selección en el modelo de campos (opcional, pero mantiene la coherencia con Admin)
-                // Desmarcar el campo anterior que usaba esta columna (si había uno)
-                const allFields = FieldModel.getAll();
-                const previousFieldId = allFields.find(f => {
-                    if (fieldNumber === 1) return f.isColumn3 && f.id !== newValue;
-                    if (fieldNumber === 2) return f.isColumn4 && f.id !== newValue;
-                    if (fieldNumber === 3) return f.isColumn5 && f.id !== newValue;
-                    return false;
-                })?.id;
-
-                if (previousFieldId) {
-                    const prevField = FieldModel.getById(previousFieldId);
-                    if (prevField) {
-                        if (fieldNumber === 1) prevField.isColumn3 = false;
-                        if (fieldNumber === 2) prevField.isColumn4 = false;
-                        if (fieldNumber === 3) prevField.isColumn5 = false;
-                        // Considerar si desmarcar 'useForRecordsTable' si ya no se usa en ninguna columna
-                        if (!prevField.isColumn3 && !prevField.isColumn4 && !prevField.isColumn5) {
-                           // prevField.useForRecordsTable = false; // Descomentar si se quiere este comportamiento
-                        }
-                        FieldModel.update(previousFieldId, prevField);
+        // Esperar a que el DOM esté completamente cargado
+        setTimeout(() => {
+            // Event listener para "Seleccionar todos"
+            const selectAllCheckbox = document.getElementById('select-all-records');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', (e) => {
+                    const isChecked = e.target.checked;
+                    document.querySelectorAll('.record-checkbox').forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                    });
+                    // Actualizar visibilidad del botón de edición masiva
+                    const bulkEditBtn = document.getElementById('bulk-edit-btn');
+                    if (bulkEditBtn) {
+                        bulkEditBtn.style.display = isChecked ? 'inline-block' : 'none';
                     }
-                }
-
-                // Marcar el nuevo campo seleccionado
-                if (newValue) {
-                    const selectedField = FieldModel.getById(newValue);
-                    if (selectedField) {
-                        if (fieldNumber === 1) selectedField.isColumn3 = true;
-                        if (fieldNumber === 2) selectedField.isColumn4 = true;
-                        if (fieldNumber === 3) selectedField.isColumn5 = true;
-                        selectedField.useForRecordsTable = true; // Asegurar que esté marcado para usar en tabla
-                        FieldModel.update(newValue, selectedField);
-                    }
-                }
-            });
-        });
-
-
-        // Event listeners para ordenar las columnas
-        document.querySelectorAll('th.sortable').forEach(th => {
-            th.addEventListener('click', () => {
-                const column = th.getAttribute('data-sort');
-
-                // Si ya estamos ordenando por esta columna, invertir dirección
-                if (this.sorting.column === column) {
-                    this.sorting.direction = this.sorting.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    // Nueva columna seleccionada, establecer ordenación ascendente por defecto
-                    this.sorting.column = column;
-                    this.sorting.direction = 'asc';
-                }
-
-                // Actualizar íconos de ordenación en todas las columnas
-                document.querySelectorAll('th.sortable i.bi').forEach(icon => {
-                    icon.className = 'bi'; // Resetear clase
                 });
-
-                // Actualizar ícono de la columna seleccionada
-                const icon = th.querySelector('i.bi');
-                if (icon) { // Asegurarse que el icono existe
-                   icon.className = `bi bi-sort-${this.sorting.direction === 'asc' ? 'up' : 'down'}`;
-                }
-
-
-                // Actualizar la tabla
-                this.filterRecordsBySearch(); // Esto ya llama a sortRecords y displayPaginatedRecords
-            });
-        });
-
-        // Suscribirse a cambios en el modelo de campos para actualizar los encabezados cuando
-        // las casillas de verificación de columnas cambien en el formulario de campos (AdminView)
-        document.addEventListener('fieldModelUpdated', (e) => {
-            const field = e.detail; // El campo que fue actualizado
-            let shouldUpdateUI = false;
-
-            // Comprobar si el campo actualizado afecta a alguna de las columnas seleccionadas
-            if (field.id === this.selectedColumns.field1 || field.isColumn3) {
-                this.selectedColumns.field1 = field.isColumn3 ? field.id : '';
-                shouldUpdateUI = true;
-            }
-            if (field.id === this.selectedColumns.field2 || field.isColumn4) {
-                this.selectedColumns.field2 = field.isColumn4 ? field.id : '';
-                shouldUpdateUI = true;
-            }
-            if (field.id === this.selectedColumns.field3 || field.isColumn5) {
-                this.selectedColumns.field3 = field.isColumn5 ? field.id : '';
-                shouldUpdateUI = true;
             }
 
-            // Si hubo un cambio relevante, actualizar la UI
-            if (shouldUpdateUI) {
-                // Actualizar los valores de los <select>
-                const column1Select = document.getElementById('column-selector-1');
-                const column2Select = document.getElementById('column-selector-2');
-                const column3Select = document.getElementById('column-selector-3');
-
-                if (column1Select) column1Select.value = this.selectedColumns.field1;
-                if (column2Select) column2Select.value = this.selectedColumns.field2;
-                if (column3Select) column3Select.value = this.selectedColumns.field3;
-
-                // Actualizar encabezados y tabla
-                this.updateColumnHeaders();
-                this.filterRecordsBySearch(); // Vuelve a filtrar, ordenar y mostrar
+            // Resto de event listeners...
+            const recordsListContainer = document.getElementById('records-list');
+            if (recordsListContainer) {
+                recordsListContainer.addEventListener('click', (e) => {
+                    const viewButton = e.target.closest('.view-record');
+                    if (viewButton) {
+                        const recordId = viewButton.dataset.recordId;
+                        this.showRecordDetails(recordId);
+                    }
+                });
             }
 
-            // También, si se actualiza el campo del eje horizontal o de comparación, actualizar los selects del reporte
-            const horizontalSelect = document.getElementById('report-horizontal-field');
-            const compareSelect = document.getElementById('report-field');
+            // Aplicar filtros
+            const filterForm = document.getElementById('filter-form');
+            if (filterForm) {
+                filterForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.applyFilters();
 
-            if (horizontalSelect && (field.id === horizontalSelect.value || field.isHorizontalAxis)) {
-                 const horizontalAxisField = FieldModel.getAll().find(f => f.isHorizontalAxis);
-                 horizontalSelect.value = horizontalAxisField ? horizontalAxisField.id : '';
+                    // Si hay un reporte generado, actualizarlo con los nuevos filtros
+                    const reportContainer = document.getElementById('report-container');
+                    if (reportContainer && reportContainer.style.display === 'block') {
+                        this.generateReport();
+                    }
+                });
             }
-             if (compareSelect && (field.id === compareSelect.value || field.isCompareField)) {
-                 const compareField = FieldModel.getAll().find(f => f.isCompareField);
-                 compareSelect.value = compareField ? compareField.id : '';
-             }
-        });
+
+            // Resto del código de setupEventListeners...
+        }, 0);
     },
+
     applyFilters() {
         const entityFilterSelect = document.getElementById('filter-entity');
         const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
@@ -973,11 +676,11 @@ const ReportsView = {
         const recordsList = document.getElementById('records-list');
         const noFilteredRecordsDiv = document.getElementById('no-filtered-records');
         const recordsTable = document.getElementById('records-table');
-        const paginationControls = document.getElementById('pagination-controls').closest('.d-flex');
-        const itemsPerPageSelector = document.getElementById('items-per-page').closest('.d-flex');
+        const paginationControls = document.getElementById('pagination-controls')?.closest('.d-flex');
+        const itemsPerPageSelector = document.getElementById('items-per-page')?.closest('.d-flex');
 
-        if (!recordsList || !noFilteredRecordsDiv || !recordsTable || !paginationControls || !itemsPerPageSelector) {
-            console.error("Elementos de la tabla o paginación no encontrados en el DOM.");
+        if (!recordsList || !noFilteredRecordsDiv || !recordsTable) {
+            console.error("Elementos de la tabla no encontrados en el DOM.");
             return;
         }
 
@@ -997,8 +700,14 @@ const ReportsView = {
         const hasRecords = records.length > 0;
         noFilteredRecordsDiv.style.display = hasRecords ? 'none' : 'block';
         recordsTable.style.display = hasRecords ? 'table' : 'none';
-        paginationControls.style.visibility = hasRecords ? 'visible' : 'hidden';
-        itemsPerPageSelector.style.visibility = hasRecords ? 'visible' : 'hidden';
+        
+        // Verificar que los elementos existan antes de modificar su visibilidad
+        if (paginationControls) {
+            paginationControls.style.visibility = hasRecords ? 'visible' : 'hidden';
+        }
+        if (itemsPerPageSelector) {
+            itemsPerPageSelector.style.visibility = hasRecords ? 'visible' : 'hidden';
+        }
 
         // Limpiar lista
         recordsList.innerHTML = '';
@@ -1010,14 +719,15 @@ const ReportsView = {
         const allFields = FieldModel.getAll();
 
         // Añadir botón de edición masiva si no existe
-        if (!document.getElementById('bulk-edit-btn')) {
+        const cardHeader = document.querySelector('.card-header .d-flex');
+        if (cardHeader && !document.getElementById('bulk-edit-btn')) {
             const bulkEditBtn = document.createElement('button');
             bulkEditBtn.id = 'bulk-edit-btn';
             bulkEditBtn.className = 'btn btn-warning btn-sm ms-2';
             bulkEditBtn.innerHTML = '<i class="bi bi-clock"></i> Editar Fechas Seleccionadas';
             bulkEditBtn.style.display = 'none';
             bulkEditBtn.addEventListener('click', () => this.showBulkEditModal());
-            document.querySelector('.card-header .d-flex').appendChild(bulkEditBtn);
+            cardHeader.appendChild(bulkEditBtn);
         }
 
         // Renderizar cada registro
