@@ -190,8 +190,77 @@ const ReportsView = {
      */
     setupCalendar() {
         console.log("Configurando calendario local");
-        // Crear un calendario simple desde cero
-        this.renderLocalCalendar();
+        try {
+            const calendarEl = document.getElementById('date-calendar');
+            if (!calendarEl) {
+                console.error("Elemento 'date-calendar' no encontrado");
+                return;
+            }
+            
+            // Limpiar contenido existente
+            calendarEl.innerHTML = '<div class="text-center p-3"><i class="bi bi-hourglass-split me-2"></i>Cargando calendario...</div>';
+            
+            // Verificar si ya existe un calendario y limpiarlo
+            if (this.currentCalendarContainer) {
+                this.removeCalendarEventListeners(this.currentCalendarContainer);
+            }
+            
+            // Inicializar el calendario con la fecha actual
+            this.currentCalendarDate = new Date();
+            
+            // Usar setTimeout para asegurar que el DOM esté listo
+            setTimeout(() => {
+                // Diagnosticar el DOM antes de intentar renderizar
+                this.diagnoseCalendarDOM(calendarEl);
+                
+                // Renderizar el calendario
+                this.renderLocalCalendar();
+            }, 50);
+        } catch (error) {
+            console.error("Error al configurar el calendario:", error);
+            // Intentar mostrar un mensaje de error en el elemento del calendario
+            const calendarEl = document.getElementById('date-calendar');
+            if (calendarEl) {
+                calendarEl.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error al cargar el calendario: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    },
+
+    /**
+     * Diagnostica el estado del DOM relacionado con el calendario
+     */
+    diagnoseCalendarDOM(container) {
+        console.log("=== DIAGNÓSTICO DEL CALENDARIO ===");
+        console.log("Contenedor del calendario:", container);
+        console.log("ID del contenedor:", container.id);
+        console.log("Visible:", container.offsetWidth > 0 && container.offsetHeight > 0);
+        console.log("Dimensiones:", container.offsetWidth, "x", container.offsetHeight);
+        console.log("Padres:", this.getParentChain(container));
+        console.log("================================");
+    },
+    
+    /**
+     * Obtiene la cadena de elementos padre para diagnóstico
+     */
+    getParentChain(element) {
+        let chain = [];
+        let current = element;
+        
+        while (current && current !== document.body) {
+            let id = current.id ? `#${current.id}` : '';
+            let classes = current.className ? `.${current.className.replace(/\s+/g, '.')}` : '';
+            let tag = current.tagName.toLowerCase();
+            
+            chain.push(`${tag}${id}${classes}`);
+            current = current.parentElement;
+        }
+        
+        return chain.join(' > ');
     },
 
     /**
@@ -200,20 +269,105 @@ const ReportsView = {
     renderLocalCalendar() {
         console.log("Renderizando calendario local");
         const calendarEl = document.getElementById('date-calendar');
-        if (!calendarEl) return;
+        if (!calendarEl) {
+            console.error("Elemento 'date-calendar' no encontrado");
+            return;
+        }
 
-        const today = new Date();
-        this.currentCalendarDate = today;
-        this.renderCalendarMonth(calendarEl, this.currentCalendarDate);
+        try {
+            const today = new Date();
+            if (!this.currentCalendarDate) {
+                this.currentCalendarDate = today;
+            }
+            
+            console.log("Usando fecha para el calendario:", this.currentCalendarDate);
+            this.renderCalendarMonth(calendarEl, this.currentCalendarDate);
+            
+            // Verificar después del renderizado
+            setTimeout(() => {
+                this.verifyCalendarButtons(calendarEl);
+            }, 100);
+        } catch (error) {
+            console.error("Error al renderizar calendario local:", error);
+            calendarEl.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error al renderizar el calendario: ${error.message}
+                </div>
+            `;
+        }
+    },
+    
+    /**
+     * Verifica que los botones del calendario se hayan creado correctamente
+     */
+    verifyCalendarButtons(container) {
+        const prevBtn = container.querySelector('.prev-month');
+        const nextBtn = container.querySelector('.next-month');
+        const todayBtn = container.querySelector('.today-btn');
+        
+        console.log("=== VERIFICACIÓN DE BOTONES DEL CALENDARIO ===");
+        console.log("Botón prev-month:", prevBtn ? "Encontrado" : "NO ENCONTRADO");
+        console.log("Botón next-month:", nextBtn ? "Encontrado" : "NO ENCONTRADO");
+        console.log("Botón today-btn:", todayBtn ? "Encontrado" : "NO ENCONTRADO");
+        
+        if (prevBtn) {
+            console.log("Eventos en prev-month:", this.getEventListeners(prevBtn));
+        }
+        if (nextBtn) {
+            console.log("Eventos en next-month:", this.getEventListeners(nextBtn));
+        }
+        if (todayBtn) {
+            console.log("Eventos en today-btn:", this.getEventListeners(todayBtn));
+        }
+        console.log("==========================================");
+        
+        // Si faltan botones, intentar reparar
+        if (!prevBtn || !nextBtn || !todayBtn) {
+            console.warn("Faltan botones de navegación, intentando reparar...");
+            this.renderCalendarMonth(container, this.currentCalendarDate);
+        }
+    },
+    
+    /**
+     * Intenta obtener información sobre los event listeners (limitado en navegadores)
+     */
+    getEventListeners(element) {
+        // Esta es una aproximación simple ya que no podemos acceder directamente a los listeners
+        if (!element) return "Elemento no existe";
+        
+        const clickable = element.getAttribute('onclick') || 
+                        element.getAttribute('data-bs-toggle') || 
+                        element.classList.contains('btn');
+        
+        const visible = element.offsetWidth > 0 && element.offsetHeight > 0;
+        const enabled = !element.disabled && !element.classList.contains('disabled');
+        
+        return {
+            esClickable: clickable,
+            visible: visible,
+            habilitado: enabled,
+            clases: element.className
+        };
     },
 
     /**
      * Renderiza el mes actual en el calendario
      */
     renderCalendarMonth(container, date) {
+        console.log("Renderizando calendario para", date);
+        
+        if (!date) {
+            date = this.currentCalendarDate || new Date();
+            console.warn("No se proporcionó fecha, usando", date);
+        }
+        
         const year = date.getFullYear();
         const month = date.getMonth();
         const today = new Date();
+        
+        // Guardar la fecha actual para referencia futura
+        this.currentCalendarDate = new Date(date);
         
         // Primer día del mes
         const firstDay = new Date(year, month, 1);
@@ -325,12 +479,14 @@ const ReportsView = {
         `;
         
         // Insertar calendario en el elemento
+        console.log("Actualizando HTML del calendario");
         container.innerHTML = calendarHTML;
         
-        // Guardar referencia al contenedor
-        this.calendarContainer = container;
+        // Importante: Limpiar listeners antiguos antes de agregar nuevos
+        this.removeCalendarEventListeners(container);
         
-        // Añadir event listeners
+        // Añadir event listeners al nuevo contenido
+        console.log("Agregando event listeners al nuevo contenido del calendario");
         this.addCalendarEventListeners(container);
     },
 
@@ -369,6 +525,10 @@ const ReportsView = {
      */
     addCalendarEventListeners(container) {
         console.log("Agregando event listeners al calendario");
+        
+        // Primero, limpiemos cualquier listener existente para evitar duplicación
+        this.removeCalendarEventListeners(container);
+        
         // Eventos para los días
         const days = container.querySelectorAll('.day');
         let isDragging = false;
@@ -377,7 +537,7 @@ const ReportsView = {
         
         days.forEach(day => {
             // Manejo de clic simple
-            day.addEventListener('click', (e) => {
+            day.addEventListener('click', this.handleDayClick = (e) => {
                 const dateStr = day.getAttribute('data-date');
                 if (!dateStr) return;
                 
@@ -405,7 +565,7 @@ const ReportsView = {
             });
             
             // Eventos para selección por arrastre
-            day.addEventListener('mousedown', (e) => {
+            day.addEventListener('mousedown', this.handleDayMouseDown = (e) => {
                 // Iniciar arrastre
                 isDragging = true;
                 dragStartDate = new Date(day.getAttribute('data-date'));
@@ -415,7 +575,7 @@ const ReportsView = {
                 e.preventDefault();
             });
             
-            day.addEventListener('mouseover', (e) => {
+            day.addEventListener('mouseover', this.handleDayMouseOver = (e) => {
                 if (isDragging && dragStartDate) {
                     const currentDate = new Date(day.getAttribute('data-date'));
                     lastHoveredDate = currentDate;
@@ -426,8 +586,8 @@ const ReportsView = {
             });
         });
         
-        // Manejo del fin del arrastre
-        document.addEventListener('mouseup', (e) => {
+        // Manejo del fin del arrastre - almacenamos referencia para poder eliminarla después
+        this.mouseUpHandler = (e) => {
             if (isDragging && dragStartDate && lastHoveredDate) {
                 // Ordenar fechas
                 let startDate, endDate;
@@ -462,7 +622,9 @@ const ReportsView = {
             isDragging = false;
             dragStartDate = null;
             lastHoveredDate = null;
-        });
+        };
+        
+        document.addEventListener('mouseup', this.mouseUpHandler);
         
         // Navegar entre meses
         const prevMonthBtn = container.querySelector('.prev-month');
@@ -476,7 +638,7 @@ const ReportsView = {
         
         if (prevMonthBtn) {
             console.log("Agregando event listener a botón prev-month");
-            prevMonthBtn.addEventListener('click', () => {
+            this.prevMonthHandler = () => {
                 console.log("Click en botón prev-month");
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
@@ -485,14 +647,15 @@ const ReportsView = {
                 date.setMonth(date.getMonth() - 1);
                 this.currentCalendarDate = date;
                 this.renderCalendarMonth(container, date);
-            });
+            };
+            prevMonthBtn.addEventListener('click', this.prevMonthHandler);
         } else {
             console.warn("Botón prev-month no encontrado");
         }
         
         if (nextMonthBtn) {
             console.log("Agregando event listener a botón next-month");
-            nextMonthBtn.addEventListener('click', () => {
+            this.nextMonthHandler = () => {
                 console.log("Click en botón next-month");
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
@@ -501,18 +664,20 @@ const ReportsView = {
                 date.setMonth(date.getMonth() + 1);
                 this.currentCalendarDate = date;
                 this.renderCalendarMonth(container, date);
-            });
+            };
+            nextMonthBtn.addEventListener('click', this.nextMonthHandler);
         } else {
             console.warn("Botón next-month no encontrado");
         }
         
         if (todayBtn) {
             console.log("Agregando event listener a botón today-btn");
-            todayBtn.addEventListener('click', () => {
+            this.todayBtnHandler = () => {
                 console.log("Click en botón today-btn");
                 this.currentCalendarDate = new Date();
                 this.renderCalendarMonth(container, this.currentCalendarDate);
-            });
+            };
+            todayBtn.addEventListener('click', this.todayBtnHandler);
         } else {
             console.warn("Botón today-btn no encontrado");
         }
@@ -522,13 +687,13 @@ const ReportsView = {
         const weekViewBtn = container.querySelector('#week-view-btn');
         
         if (monthViewBtn && weekViewBtn) {
-            monthViewBtn.addEventListener('click', () => {
+            this.monthViewHandler = () => {
                 monthViewBtn.classList.add('active');
                 weekViewBtn.classList.remove('active');
                 this.renderCalendarMonth(container, this.currentCalendarDate);
-            });
+            };
             
-            weekViewBtn.addEventListener('click', () => {
+            this.weekViewHandler = () => {
                 weekViewBtn.classList.add('active');
                 monthViewBtn.classList.remove('active');
                 // Aquí podríamos implementar una vista semanal si fuera necesario
@@ -563,7 +728,54 @@ const ReportsView = {
                 
                 // Volver a añadir listeners
                 this.addCalendarEventListeners(container);
-            });
+            };
+            
+            monthViewBtn.addEventListener('click', this.monthViewHandler);
+            weekViewBtn.addEventListener('click', this.weekViewHandler);
+        }
+        
+        // Guardar referencia al contenedor para limpiar listeners después
+        this.currentCalendarContainer = container;
+    },
+
+    /**
+     * Elimina los event listeners actuales del calendario para evitar duplicaciones
+     */
+    removeCalendarEventListeners(container) {
+        // Limpiar el listener global de mouseup
+        if (this.mouseUpHandler) {
+            document.removeEventListener('mouseup', this.mouseUpHandler);
+            this.mouseUpHandler = null;
+        }
+        
+        // Si tenemos un contenedor anterior, limpiar sus listeners
+        if (this.currentCalendarContainer) {
+            // Botones de navegación
+            const prevMonthBtn = this.currentCalendarContainer.querySelector('.prev-month');
+            if (prevMonthBtn && this.prevMonthHandler) {
+                prevMonthBtn.removeEventListener('click', this.prevMonthHandler);
+            }
+            
+            const nextMonthBtn = this.currentCalendarContainer.querySelector('.next-month');
+            if (nextMonthBtn && this.nextMonthHandler) {
+                nextMonthBtn.removeEventListener('click', this.nextMonthHandler);
+            }
+            
+            const todayBtn = this.currentCalendarContainer.querySelector('.today-btn');
+            if (todayBtn && this.todayBtnHandler) {
+                todayBtn.removeEventListener('click', this.todayBtnHandler);
+            }
+            
+            // Botones de vista
+            const monthViewBtn = this.currentCalendarContainer.querySelector('#month-view-btn');
+            if (monthViewBtn && this.monthViewHandler) {
+                monthViewBtn.removeEventListener('click', this.monthViewHandler);
+            }
+            
+            const weekViewBtn = this.currentCalendarContainer.querySelector('#week-view-btn');
+            if (weekViewBtn && this.weekViewHandler) {
+                weekViewBtn.removeEventListener('click', this.weekViewHandler);
+            }
         }
     },
 
@@ -581,21 +793,30 @@ const ReportsView = {
             rangeEnd = startDate;
         }
         
+        // Convertir a timestamps para comparación
+        const startTime = rangeStart.getTime();
+        const endTime = rangeEnd.getTime();
+        
         // Actualizar visualización
         days.forEach(day => {
-            const dayDate = new Date(day.getAttribute('data-date'));
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            const dayDate = new Date(dateStr);
+            const dayTime = dayDate.getTime();
+            
+            // Eliminar todas las clases relacionadas con rangos
             day.classList.remove('in-range', 'range-start', 'range-end');
             
-            const time = dayDate.getTime();
-            const startTime = rangeStart.getTime();
-            const endTime = rangeEnd.getTime();
-            
-            if (time >= startTime && time <= endTime) {
+            // Añadir clases apropiadas
+            if (dayTime >= startTime && dayTime <= endTime) {
                 day.classList.add('in-range');
-                if (time === startTime) {
+                
+                if (dayTime === startTime) {
                     day.classList.add('range-start');
                 }
-                if (time === endTime) {
+                
+                if (dayTime === endTime) {
                     day.classList.add('range-end');
                 }
             }
