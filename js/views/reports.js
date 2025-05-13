@@ -571,8 +571,140 @@ const ReportsView = {
     addCalendarEventListeners(container) {
         console.log("Agregando event listeners al calendario");
         
-        // Primero, limpiemos cualquier listener existente para evitar duplicación
+        // ¡IMPORTANTE! Eliminar listeners existentes para evitar duplicación
         this.removeCalendarEventListeners(container);
+        
+        // Usaremos delegación de eventos en vez de asignarlos directamente a cada botón
+        // Esto funciona incluso si los elementos son reemplazados
+        container.addEventListener('click', this.handleCalendarClick = (e) => {
+            // Encontrar el elemento más cercano que coincida con uno de nuestros selectores
+            const prevMonthBtn = e.target.closest('.prev-month');
+            const nextMonthBtn = e.target.closest('.next-month');
+            const todayBtn = e.target.closest('.today-btn');
+            const monthViewBtn = e.target.closest('#month-view-btn');
+            const weekViewBtn = e.target.closest('#week-view-btn');
+            
+            // Navegar al mes anterior
+            if (prevMonthBtn) {
+                console.log("Click en botón prev-month");
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (!this.currentCalendarDate) {
+                    this.currentCalendarDate = new Date();
+                }
+                
+                const date = new Date(this.currentCalendarDate);
+                date.setMonth(date.getMonth() - 1);
+                this.currentCalendarDate = date;
+                
+                // Renderizar con un pequeño retraso para asegurar que el evento actual termine
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, date);
+                }, 10);
+                
+                return false;
+            }
+            
+            // Navegar al mes siguiente
+            if (nextMonthBtn) {
+                console.log("Click en botón next-month");
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (!this.currentCalendarDate) {
+                    this.currentCalendarDate = new Date();
+                }
+                
+                const date = new Date(this.currentCalendarDate);
+                date.setMonth(date.getMonth() + 1);
+                this.currentCalendarDate = date;
+                
+                // Renderizar con un pequeño retraso para asegurar que el evento actual termine
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, date);
+                }, 10);
+                
+                return false;
+            }
+            
+            // Ir a hoy
+            if (todayBtn) {
+                console.log("Click en botón today-btn");
+                e.preventDefault();
+                e.stopPropagation();
+                
+                this.currentCalendarDate = new Date();
+                
+                // Renderizar con un pequeño retraso para asegurar que el evento actual termine
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, this.currentCalendarDate);
+                }, 10);
+                
+                return false;
+            }
+            
+            // Cambiar a vista mensual
+            if (monthViewBtn) {
+                e.preventDefault();
+                
+                // Actualizar clases para reflejar la selección
+                const weekViewBtnElement = container.querySelector('#week-view-btn');
+                if (weekViewBtnElement) weekViewBtnElement.classList.remove('active');
+                monthViewBtn.classList.add('active');
+                
+                // Renderizar con un pequeño retraso
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, this.currentCalendarDate);
+                }, 10);
+                
+                return false;
+            }
+            
+            // Cambiar a vista semanal
+            if (weekViewBtn) {
+                e.preventDefault();
+                
+                // Actualizar clases para reflejar la selección
+                const monthViewBtnElement = container.querySelector('#month-view-btn');
+                if (monthViewBtnElement) monthViewBtnElement.classList.remove('active');
+                weekViewBtn.classList.add('active');
+                
+                // Aquí podríamos implementar una vista semanal si fuera necesario
+                // Por ahora, mostramos un mensaje
+                container.innerHTML = `
+                    <div class="simple-calendar">
+                        <div class="calendar-header">
+                            <div class="navigation-buttons">
+                                <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
+                                    Hoy
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary prev-week" title="Semana anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary next-week" title="Semana siguiente">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                            <h5 class="month-title mb-0">Vista Semanal</h5>
+                            <div class="view-selectors">
+                                <button class="btn btn-sm btn-outline-secondary" id="month-view-btn">Mes</button>
+                                <button class="btn btn-sm btn-outline-secondary active" id="week-view-btn">Semana</button>
+                            </div>
+                        </div>
+                        <div class="p-3 text-center">
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle"></i> Vista semanal en desarrollo. Por favor, utilice la vista mensual.
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Volver a añadir listeners
+                this.addCalendarEventListeners(container);
+                return false;
+            }
+        });
         
         // Eventos para los días
         const days = container.querySelectorAll('.day');
@@ -580,55 +712,64 @@ const ReportsView = {
         let dragStartDate = null;
         let lastHoveredDate = null;
         
-        days.forEach(day => {
-            // Manejo de clic simple
-            day.addEventListener('click', this.handleDayClick = (e) => {
-                const dateStr = day.getAttribute('data-date');
-                if (!dateStr) return;
-                
-                // Si no estamos en modo arrastrar, tratar como clic simple
-                if (!isDragging) {
-                    // Marcar día seleccionado
-                    days.forEach(d => d.classList.remove('selected'));
-                    day.classList.add('selected');
-                    
-                    // Actualizar inputs de fecha
-                    const fromDateInput = document.getElementById('filter-from-date');
-                    const toDateInput = document.getElementById('filter-to-date');
-                    
-                    if (fromDateInput && toDateInput) {
-                        fromDateInput.value = dateStr;
-                        toDateInput.value = dateStr;
-                        
-                        // Aplicar filtros automáticamente
-                        const filterForm = document.getElementById('filter-form');
-                        if (filterForm) {
-                            filterForm.dispatchEvent(new Event('submit'));
-                        }
-                    }
-                }
-            });
+        // Delegación de eventos para los días también
+        container.addEventListener('click', this.handleDayClick = (e) => {
+            const day = e.target.closest('.day');
+            if (!day) return; // No es un clic en un día
             
-            // Eventos para selección por arrastre
-            day.addEventListener('mousedown', this.handleDayMouseDown = (e) => {
-                // Iniciar arrastre
-                isDragging = true;
-                dragStartDate = new Date(day.getAttribute('data-date'));
-                lastHoveredDate = dragStartDate;
-                
-                // Evitar selección de texto durante el arrastre
-                e.preventDefault();
-            });
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr || isDragging) return;
             
-            day.addEventListener('mouseover', this.handleDayMouseOver = (e) => {
-                if (isDragging && dragStartDate) {
-                    const currentDate = new Date(day.getAttribute('data-date'));
-                    lastHoveredDate = currentDate;
-                    
-                    // Actualizar visualización de rango
-                    this.updateRangeSelection(days, dragStartDate, currentDate);
+            // Marcar día seleccionado
+            container.querySelectorAll('.day').forEach(d => d.classList.remove('selected'));
+            day.classList.add('selected');
+            
+            // Actualizar inputs de fecha
+            const fromDateInput = document.getElementById('filter-from-date');
+            const toDateInput = document.getElementById('filter-to-date');
+            
+            if (fromDateInput && toDateInput) {
+                fromDateInput.value = dateStr;
+                toDateInput.value = dateStr;
+                
+                // Aplicar filtros automáticamente
+                const filterForm = document.getElementById('filter-form');
+                if (filterForm) {
+                    filterForm.dispatchEvent(new Event('submit'));
                 }
-            });
+            }
+        });
+        
+        container.addEventListener('mousedown', this.handleDayMouseDown = (e) => {
+            const day = e.target.closest('.day');
+            if (!day) return;
+            
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            // Iniciar arrastre
+            isDragging = true;
+            dragStartDate = new Date(dateStr);
+            lastHoveredDate = dragStartDate;
+            
+            // Evitar selección de texto durante el arrastre
+            e.preventDefault();
+        });
+        
+        container.addEventListener('mouseover', this.handleDayMouseOver = (e) => {
+            if (!isDragging || !dragStartDate) return;
+            
+            const day = e.target.closest('.day');
+            if (!day) return;
+            
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            const currentDate = new Date(dateStr);
+            lastHoveredDate = currentDate;
+            
+            // Actualizar visualización de rango
+            this.updateRangeSelection(container.querySelectorAll('.day'), dragStartDate, currentDate);
         });
         
         // Manejo del fin del arrastre - almacenamos referencia para poder eliminarla después
@@ -671,142 +812,6 @@ const ReportsView = {
         
         document.addEventListener('mouseup', this.mouseUpHandler);
         
-        // Navegar entre meses
-        const prevMonthBtn = container.querySelector('.prev-month');
-        const nextMonthBtn = container.querySelector('.next-month');
-        const todayBtn = container.querySelector('.today-btn');
-        
-        // Asegurarse de que currentCalendarDate esté inicializado
-        if (!this.currentCalendarDate) {
-            this.currentCalendarDate = new Date();
-        }
-        
-        // Usar onclick directamente para asegurar que solo se ejecuta una vez por clic
-        if (prevMonthBtn) {
-            console.log("Agregando event listener a botón prev-month");
-            prevMonthBtn.onclick = (e) => {
-                console.log("Click en botón prev-month");
-                e.preventDefault();
-                e.stopPropagation();
-                if (!this.currentCalendarDate) {
-                    this.currentCalendarDate = new Date();
-                }
-                
-                const date = new Date(this.currentCalendarDate);
-                date.setMonth(date.getMonth() - 1);
-                this.currentCalendarDate = date;
-                
-                // Usar timeout para darle tiempo a que se complete este evento
-                setTimeout(() => {
-                    this.renderCalendarMonth(container, date);
-                }, 10);
-                
-                return false;
-            };
-        } else {
-            console.warn("Botón prev-month no encontrado");
-        }
-        
-        if (nextMonthBtn) {
-            console.log("Agregando event listener a botón next-month");
-            nextMonthBtn.onclick = (e) => {
-                console.log("Click en botón next-month");
-                e.preventDefault();
-                e.stopPropagation();
-                if (!this.currentCalendarDate) {
-                    this.currentCalendarDate = new Date();
-                }
-                
-                const date = new Date(this.currentCalendarDate);
-                date.setMonth(date.getMonth() + 1);
-                this.currentCalendarDate = date;
-                
-                // Usar timeout para darle tiempo a que se complete este evento
-                setTimeout(() => {
-                    this.renderCalendarMonth(container, date);
-                }, 10);
-                
-                return false;
-            };
-        } else {
-            console.warn("Botón next-month no encontrado");
-        }
-        
-        if (todayBtn) {
-            console.log("Agregando event listener a botón today-btn");
-            todayBtn.onclick = (e) => {
-                console.log("Click en botón today-btn");
-                e.preventDefault();
-                e.stopPropagation();
-                this.currentCalendarDate = new Date();
-                
-                // Usar timeout para darle tiempo a que se complete este evento
-                setTimeout(() => {
-                    this.renderCalendarMonth(container, this.currentCalendarDate);
-                }, 10);
-                
-                return false;
-            };
-        } else {
-            console.warn("Botón today-btn no encontrado");
-        }
-        
-        // Cambio de vista (mes/semana)
-        const monthViewBtn = container.querySelector('#month-view-btn');
-        const weekViewBtn = container.querySelector('#week-view-btn');
-        
-        if (monthViewBtn && weekViewBtn) {
-            monthViewBtn.onclick = (e) => {
-                e.preventDefault();
-                monthViewBtn.classList.add('active');
-                weekViewBtn.classList.remove('active');
-                setTimeout(() => {
-                    this.renderCalendarMonth(container, this.currentCalendarDate);
-                }, 10);
-                return false;
-            };
-            
-            weekViewBtn.onclick = (e) => {
-                e.preventDefault();
-                weekViewBtn.classList.add('active');
-                monthViewBtn.classList.remove('active');
-                
-                // Aquí podríamos implementar una vista semanal si fuera necesario
-                // Por ahora, mostramos un mensaje
-                container.innerHTML = `
-                    <div class="simple-calendar">
-                        <div class="calendar-header">
-                            <div class="navigation-buttons">
-                                <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
-                                    Hoy
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary prev-week" title="Semana anterior">
-                                    <i class="bi bi-chevron-left"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary next-week" title="Semana siguiente">
-                                    <i class="bi bi-chevron-right"></i>
-                                </button>
-                            </div>
-                            <h5 class="month-title mb-0">Vista Semanal</h5>
-                            <div class="view-selectors">
-                                <button class="btn btn-sm btn-outline-secondary" id="month-view-btn">Mes</button>
-                                <button class="btn btn-sm btn-outline-secondary active" id="week-view-btn">Semana</button>
-                            </div>
-                        </div>
-                        <div class="p-3 text-center">
-                            <div class="alert alert-info mb-0">
-                                <i class="bi bi-info-circle"></i> Vista semanal en desarrollo. Por favor, utilice la vista mensual.
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Volver a añadir listeners
-                this.addCalendarEventListeners(container);
-                return false;
-            };
-        }
-        
         // Guardar referencia al contenedor para limpiar listeners después
         this.currentCalendarContainer = container;
     },
@@ -815,40 +820,18 @@ const ReportsView = {
      * Elimina los event listeners actuales del calendario para evitar duplicaciones
      */
     removeCalendarEventListeners(container) {
-        // Limpiar el listener global de mouseup
+        // Limpiar listener global de mouseup
         if (this.mouseUpHandler) {
             document.removeEventListener('mouseup', this.mouseUpHandler);
             this.mouseUpHandler = null;
         }
         
-        // Si tenemos un contenedor anterior, limpiar sus listeners
-        if (this.currentCalendarContainer) {
-            // Botones de navegación
-            const prevMonthBtn = this.currentCalendarContainer.querySelector('.prev-month');
-            if (prevMonthBtn && this.prevMonthHandler) {
-                prevMonthBtn.removeEventListener('click', this.prevMonthHandler);
-            }
-            
-            const nextMonthBtn = this.currentCalendarContainer.querySelector('.next-month');
-            if (nextMonthBtn && this.nextMonthHandler) {
-                nextMonthBtn.removeEventListener('click', this.nextMonthHandler);
-            }
-            
-            const todayBtn = this.currentCalendarContainer.querySelector('.today-btn');
-            if (todayBtn && this.todayBtnHandler) {
-                todayBtn.removeEventListener('click', this.todayBtnHandler);
-            }
-            
-            // Botones de vista
-            const monthViewBtn = this.currentCalendarContainer.querySelector('#month-view-btn');
-            if (monthViewBtn && this.monthViewHandler) {
-                monthViewBtn.removeEventListener('click', this.monthViewHandler);
-            }
-            
-            const weekViewBtn = this.currentCalendarContainer.querySelector('#week-view-btn');
-            if (weekViewBtn && this.weekViewHandler) {
-                weekViewBtn.removeEventListener('click', this.weekViewHandler);
-            }
+        // Limpiar listeners de delegación
+        if (container) {
+            if (this.handleCalendarClick) container.removeEventListener('click', this.handleCalendarClick);
+            if (this.handleDayClick) container.removeEventListener('click', this.handleDayClick);
+            if (this.handleDayMouseDown) container.removeEventListener('mousedown', this.handleDayMouseDown);
+            if (this.handleDayMouseOver) container.removeEventListener('mouseover', this.handleDayMouseOver);
         }
     },
 
@@ -2936,10 +2919,6 @@ const ReportsView = {
                                         <div class="card h-100 border-light">
                                             <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
                                                 <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Calendario</h6>
-                                                <div class="btn-group btn-group-sm">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="calendar-month-view">Mes</button>
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="calendar-week-view">Semana</button>
-                                                </div>
                                             </div>
                                             <div class="card-body p-2">
                                                 <div id="date-calendar" style="min-height: 340px;"></div>
