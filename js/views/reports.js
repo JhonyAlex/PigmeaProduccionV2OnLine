@@ -1908,15 +1908,17 @@ const ReportsView = {
     },
     generateReport() {
         try {
-            const fieldId = document.getElementById('report-field')?.value;
+            // Obtener los campos seleccionados (ahora puede ser múltiple)
+            const reportFieldSelect = document.getElementById('report-field');
+            const selectedFields = reportFieldSelect ? Array.from(reportFieldSelect.selectedOptions).map(option => option.value) : [];
             const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
             const aggregation = document.getElementById('report-aggregation')?.value;
             const reportForm = document.getElementById('report-form'); // Para mostrar alertas cerca
     
-            if (!fieldId) {
+            if (selectedFields.length === 0) {
                 // Verificar que reportForm existe antes de mostrar la alerta
                 if (reportForm) {
-                    UIUtils.showAlert('Seleccione un campo para generar el reporte', 'warning', reportForm);
+                    UIUtils.showAlert('Seleccione al menos un campo para generar el reporte', 'warning', reportForm);
                 } else {
                     console.warn('No se pudo mostrar alerta: El formulario de reporte no existe');
                 }
@@ -1947,48 +1949,75 @@ const ReportsView = {
                 toDate: toDateFilter || undefined
             };
     
-            // Generar datos del reporte
-            const reportData = RecordModel.generateReportMultiple(fieldId, aggregation, filters, horizontalFieldId);
-    
-            if (reportData.error) {
-                // Verificar que reportForm existe antes de mostrar la alerta
-                if (reportForm) {
-                    UIUtils.showAlert(reportData.error, 'danger', reportForm);
-                } else {
-                    console.error("Error en los datos del reporte:", reportData.error);
-                }
-                
-                // Ocultar contenedor del reporte si hubo error
-                const reportContainer = document.getElementById('report-container');
-                if (reportContainer) reportContainer.style.display = 'none';
-                return;
-            }
-    
             // Mostrar contenedor del reporte
             const reportContainer = document.getElementById('report-container');
             if (!reportContainer) {
                 console.error("No se encontró el contenedor del reporte (#report-container)");
                 return; // Salir si no existe el contenedor
             }
-            reportContainer.style.display = 'block';
-    
-            // Crear gráfico (asegurándose de que ChartUtils y el canvas existen)
-            const chartCanvas = document.getElementById('report-chart');
-            if (ChartUtils && chartCanvas) {
-                ChartUtils.createBarChart('report-chart', reportData);
-            } else {
-                console.error("ChartUtils o el canvas 'report-chart' no están disponibles.");
-            }
-    
-            // Crear tabla resumen
-            const reportSummaryDiv = document.getElementById('report-summary');
-            if (reportSummaryDiv && ChartUtils) {
-                reportSummaryDiv.innerHTML = `
-                    <h6 class="mb-3">Resumen del Reporte</h6>
-                    ${ChartUtils.createSummaryTable(reportData)}
+            
+            // Limpiar el contenedor de reportes para los nuevos gráficos
+            reportContainer.innerHTML = '';
+            
+            // Variable para almacenar todos los datos de los reportes
+            const allReportsData = [];
+            
+            // Generar un reporte para cada campo seleccionado
+            for (const fieldId of selectedFields) {
+                // Generar datos del reporte para este campo
+                const reportData = RecordModel.generateReportMultiple(fieldId, aggregation, filters, horizontalFieldId);
+                
+                if (reportData.error) {
+                    console.error(`Error al generar reporte para campo ${fieldId}:`, reportData.error);
+                    continue; // Continuar con el siguiente campo
+                }
+                
+                // Guardar los datos para el resumen final
+                allReportsData.push(reportData);
+                
+                // Crear un div para este reporte específico
+                const reportDiv = document.createElement('div');
+                reportDiv.className = 'report-item mb-4';
+                reportDiv.innerHTML = `
+                    <h5 class="mb-3">${reportData.field || 'Reporte'}</h5>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="chart-container">
+                                <canvas id="report-chart-${fieldId}"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div id="report-summary-${fieldId}"></div>
+                        </div>
+                    </div>
                 `;
+                
+                // Añadir al contenedor principal
+                reportContainer.appendChild(reportDiv);
+                
+                // Crear gráfico para este campo
+                if (ChartUtils) {
+                    ChartUtils.createBarChart(`report-chart-${fieldId}`, reportData);
+                    
+                    // Crear tabla resumen para este campo
+                    const summaryDiv = document.getElementById(`report-summary-${fieldId}`);
+                    if (summaryDiv) {
+                        summaryDiv.innerHTML = `
+                            <h6 class="mb-2">Resumen</h6>
+                            ${ChartUtils.createSummaryTable(reportData)}
+                        `;
+                    }
+                }
+            }
+            
+            // Mostrar el contenedor principal si hay al menos un reporte generado
+            if (allReportsData.length > 0) {
+                reportContainer.style.display = 'block';
             } else {
-                console.error("El div 'report-summary' o ChartUtils no están disponibles.");
+                reportContainer.style.display = 'none';
+                if (reportForm) {
+                    UIUtils.showAlert('No se pudo generar ningún reporte con los campos seleccionados', 'warning', reportForm);
+                }
             }
         } catch (error) {
             console.error("Error al generar el reporte:", error);
@@ -2106,6 +2135,7 @@ const ReportsView = {
             // Verificar si hay un reporte ya generado
             const reportContainer = document.getElementById('report-container');
             if (reportContainer && reportContainer.style.display === 'block') {
+                // Regenerar todos los reportes con los campos ya seleccionados
                 this.generateReport();
             } else {
                 console.log("No hay reporte generado para actualizar");
@@ -2978,13 +3008,14 @@ const ReportsView = {
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label for="report-field" class="form-label">Campo a Comparar</label>
-                                        <select class="form-select" id="report-field" required>
-                                            <option value="">Seleccione un campo</option>
+                                        <label for="report-field" class="form-label">Campos a Comparar</label>
+                                        <select class="form-select" id="report-field" required multiple size="4">
+                                            <option value="">Seleccione uno o más campos</option>
                                             ${sharedNumericFields.map(field =>
                                                 `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
                                             ).join('')}
                                         </select>
+                                        <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples campos</div>
                                     </div>
                                     <div class="col-md-4">
                                         <label for="report-aggregation" class="form-label">Tipo de Agregación</label>
@@ -3157,24 +3188,31 @@ const ReportsView = {
 
             // Esperar a que el DOM esté completamente cargado
             setTimeout(() => {
-                const reportField = document.getElementById('report-field');
-                if (!reportField) {
+                const reportFieldSelect = document.getElementById('report-field');
+                if (!reportFieldSelect) {
                     console.warn("Elemento 'report-field' no encontrado en el DOM");
                     return;
                 }
 
+                // Limpiar selecciones actuales
+                Array.from(reportFieldSelect.options).forEach(option => {
+                    option.selected = false;
+                });
+                
                 // Obtener campos marcados para reportes comparativos
                 const compareField = FieldModel.getAll().find(field => field.isCompareField);
 
                 if (compareField) {
-                    // Si hay un campo marcado para comparar, usarlo
-                    reportField.value = compareField.id;
-                } else {
-                    // Si no hay campo marcado, usar el primer campo numérico disponible
-                    reportField.value = sharedNumericFields[0].id;
+                    // Si hay un campo marcado para comparar, seleccionarlo
+                    const option = Array.from(reportFieldSelect.options).find(opt => opt.value === compareField.id);
+                    if (option) option.selected = true;
+                } else if (sharedNumericFields.length > 0) {
+                    // Si no hay campo marcado, seleccionar el primer campo numérico disponible
+                    const option = Array.from(reportFieldSelect.options).find(opt => opt.value === sharedNumericFields[0].id);
+                    if (option) option.selected = true;
                 }
 
-                // Generar el reporte usando los valores predeterminados o los que están en el formulario
+                // Generar el reporte usando los valores seleccionados
                 this.generateReport();
             }, 200); // Dar más tiempo para que el DOM esté listo
         } catch (error) {
