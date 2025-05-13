@@ -172,11 +172,11 @@ const ReportsView = {
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                             <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Atajos de fecha</h5>
-                            <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#fechasCollapse" aria-expanded="true" aria-controls="fechasCollapse">
+                            <button class="btn btn-sm btn-outline-light collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fechasCollapse" aria-expanded="false" aria-controls="fechasCollapse">
                                 <i class="bi bi-chevron-down"></i>
                             </button>
                         </div>
-                        <div class="collapse show" id="fechasCollapse">
+                        <div class="collapse" id="fechasCollapse">
                             <div class="card-body">
                                 <div class="row g-2">
                                     <!-- Periodos comunes -->
@@ -960,11 +960,11 @@ const ReportsView = {
         this.pagination.currentPage = pageNumber;
         this.displayPaginatedRecords();
 
-        // Desplazar al inicio de la tabla (opcional, pero útil)
-        const tableElement = document.getElementById('records-table');
-        if (tableElement) {
-            tableElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        // Desactivar el desplazamiento automático al cambiar de página
+        // const tableElement = document.getElementById('records-table');
+        // if (tableElement) {
+        //     tableElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // }
     },
     displayFilteredRecords(records) {
         const recordsList = document.getElementById('records-list');
@@ -1534,8 +1534,8 @@ const ReportsView = {
              console.error("El div 'report-summary' o ChartUtils no están disponibles.");
         }
 
-        // Desplazar a la vista del reporte (opcional)
-        reportContainer.scrollIntoView({ behavior: 'smooth' });
+        // Eliminar el desplazamiento automático a la vista del reporte
+        // reportContainer.scrollIntoView({ behavior: 'smooth' });
     },
     setDateRange(range) {
         // ... (código de setDateRange sin cambios, ya estaba correcto) ...
@@ -1914,31 +1914,7 @@ const ReportsView = {
                     setTimeout(() => calendarEl.classList.remove('bg-light'), 300);
                 }
             },
-            dateClick: (info) => {
-                // Al hacer clic en un solo día
-                const clickedDate = new Date(info.date);
-                
-                // Actualizar inputs de fecha con el mismo día en ambos
-                const fromDateInput = document.getElementById('filter-from-date');
-                const toDateInput = document.getElementById('filter-to-date');
-                
-                if (fromDateInput && toDateInput) {
-                    const formattedDate = this.formatDateForInput(clickedDate);
-                    fromDateInput.value = formattedDate;
-                    toDateInput.value = formattedDate;
-                    
-                    // Aplicar filtros automáticamente
-                    const filterForm = document.getElementById('filter-form');
-                    if (filterForm) {
-                        filterForm.dispatchEvent(new Event('submit'));
-                    }
-                    
-                    // Proporcionar feedback visual del día seleccionado
-                    const cells = document.querySelectorAll('.fc-daygrid-day');
-                    cells.forEach(cell => cell.classList.remove('clicked-day'));
-                    info.dayEl.classList.add('clicked-day');
-                }
-            }
+            dateClick: (info) => this.dateClick(info) // Usar función separada para mejor organización
         };
 
         // Crear instancia del calendario
@@ -2153,5 +2129,31 @@ const ReportsView = {
                 });
             });
         }, 100); // Dar tiempo para que el DOM esté completamente cargado
+    },
+
+    dateClick(info) {
+        // Al hacer clic en un solo día
+        const clickedDate = new Date(info.date);
+        
+        // Actualizar inputs de fecha con el mismo día en ambos
+        const fromDateInput = document.getElementById('filter-from-date');
+        const toDateInput = document.getElementById('filter-to-date');
+        
+        if (fromDateInput && toDateInput) {
+            const formattedDate = this.formatDateForInput(clickedDate);
+            fromDateInput.value = formattedDate;
+            toDateInput.value = formattedDate;
+            
+            // Aplicar filtros automáticamente
+            const filterForm = document.getElementById('filter-form');
+            if (filterForm) {
+                filterForm.dispatchEvent(new Event('submit'));
+            }
+            
+            // Proporcionar feedback visual del día seleccionado
+            const cells = document.querySelectorAll('.fc-daygrid-day');
+            cells.forEach(cell => cell.classList.remove('clicked-day'));
+            info.dayEl.classList.add('clicked-day');
+        }
     },
 }; // Fin del objeto ReportsView
