@@ -1785,8 +1785,8 @@ const ReportsView = {
             document.head.appendChild(link);
         };
 
-        // Cargar CSS de FullCalendar
-        loadStylesheet('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css');
+        // Cargar CSS de FullCalendar (actualizado a la última versión 6.1.17)
+        loadStylesheet('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.css');
         
         // Añadir estilos personalizados para mejorar la apariencia
         const customStyles = document.createElement('style');
@@ -1808,6 +1808,8 @@ const ReportsView = {
             .fc .fc-daygrid-day-number {
                 font-size: 0.9em;
                 padding: 3px 6px;
+                opacity: 1 !important; /* Asegurar que los números sean visibles */
+                color: #333; /* Color más oscuro para mejor visibilidad */
             }
             .fc .fc-toolbar-title {
                 font-size: 1.2rem;
@@ -1838,6 +1840,22 @@ const ReportsView = {
                 border-radius: 4px;
                 cursor: pointer;
             }
+            /* Asegurar que el contenido del día sea visible */
+            .fc-daygrid-day-top {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 2px;
+            }
+            .fc-daygrid-day-number {
+                display: inline-block !important;
+                float: none !important;
+                font-weight: 500;
+            }
+            /* Estilo para día seleccionado */
+            .clicked-day {
+                box-shadow: inset 0 0 0 2px #3788d8;
+                background-color: rgba(66, 135, 245, 0.1);
+            }
             @media (max-width: 768px) {
                 .fc .fc-toolbar {
                     flex-direction: column;
@@ -1850,11 +1868,11 @@ const ReportsView = {
         `;
         document.head.appendChild(customStyles);
 
-        // Cargar JavaScript de FullCalendar
-        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js', callback);
+        // Cargar JavaScript de FullCalendar (actualizado a la última versión 6.1.17)
+        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.js', callback);
         
         // Cargar locales para español
-        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js', () => {
+        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/locales/es.js', () => {
             console.log('Locale español cargado');
         });
     },
@@ -1885,8 +1903,16 @@ const ReportsView = {
             height: 'auto',
             aspectRatio: 1.35, // Mejor proporción para visualización
             fixedWeekCount: false, // Muestra solo las semanas del mes actual
-            showNonCurrentDates: false, // Oculta días que no son del mes actual
+            showNonCurrentDates: true, // Mostrar días que no son del mes actual pero en gris
             dayMaxEvents: 0, // Muestra "más" en lugar de todos los eventos
+            
+            // Mejoras visuales para v6
+            dayHeaderFormat: { weekday: 'short' }, // Formato corto para los días de la semana
+            titleFormat: { year: 'numeric', month: 'long' }, // Formato para el título del mes
+            
+            // Asegurar que los números de día sean visibles
+            dayCellClassNames: 'calendar-day-cell',
+            
             select: (info) => {
                 // Convertir fechas a formato ISO (considerando zona horaria)
                 const startDate = new Date(info.start);
@@ -1914,31 +1940,71 @@ const ReportsView = {
                     setTimeout(() => calendarEl.classList.remove('bg-light'), 300);
                 }
             },
-            dateClick: (info) => this.dateClick(info) // Usar función separada para mejor organización
+            dateClick: (info) => this.dateClick(info), // Usar función separada para mejor organización
+            
+            // Renderizado explícito para números de día
+            dayCellDidMount: (info) => {
+                // Asegurarse de que el número del día sea visible
+                const dateNum = info.el.querySelector('.fc-daygrid-day-top');
+                if (dateNum && !dateNum.textContent.trim()) {
+                    const dayNumber = document.createElement('a');
+                    dayNumber.classList.add('fc-daygrid-day-number');
+                    dayNumber.textContent = info.date.getDate();
+                    dateNum.appendChild(dayNumber);
+                }
+            }
         };
 
-        // Crear instancia del calendario
-        this.calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
-        this.calendar.render();
-
-        // Configurar botones de vista
-        const monthViewBtn = document.getElementById('calendar-month-view');
-        const weekViewBtn = document.getElementById('calendar-week-view');
-        
-        if (monthViewBtn && weekViewBtn) {
-            monthViewBtn.classList.add('active');
+        // Crear instancia del calendario con verificación de versión
+        try {
+            // Verificar si estamos usando la versión correcta
+            if (typeof FullCalendar.version === 'string') {
+                console.log(`FullCalendar versión: ${FullCalendar.version}`);
+            }
             
-            monthViewBtn.addEventListener('click', () => {
-                this.calendar.changeView('dayGridMonth');
+            this.calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
+            this.calendar.render();
+            
+            // Verificación adicional después de renderizar
+            const dayCells = calendarEl.querySelectorAll('.fc-daygrid-day-number');
+            if (dayCells.length === 0 || !dayCells[0].textContent.trim()) {
+                console.warn('Advertencia: Los números de día pueden no estar visibles después del renderizado inicial');
+                // Forzar actualización después de un breve retraso
+                setTimeout(() => {
+                    this.calendar.updateSize();
+                }, 100);
+            }
+            
+            // Configurar botones de vista
+            const monthViewBtn = document.getElementById('calendar-month-view');
+            const weekViewBtn = document.getElementById('calendar-week-view');
+            
+            if (monthViewBtn && weekViewBtn) {
                 monthViewBtn.classList.add('active');
-                weekViewBtn.classList.remove('active');
-            });
-            
-            weekViewBtn.addEventListener('click', () => {
-                this.calendar.changeView('dayGridWeek');
-                weekViewBtn.classList.add('active');
-                monthViewBtn.classList.remove('active');
-            });
+                
+                monthViewBtn.addEventListener('click', () => {
+                    this.calendar.changeView('dayGridMonth');
+                    monthViewBtn.classList.add('active');
+                    weekViewBtn.classList.remove('active');
+                });
+                
+                weekViewBtn.addEventListener('click', () => {
+                    this.calendar.changeView('dayGridWeek');
+                    weekViewBtn.classList.add('active');
+                    monthViewBtn.classList.remove('active');
+                });
+            }
+        } catch (error) {
+            console.error('Error al inicializar FullCalendar:', error);
+            // Mostrar mensaje de error en el contenedor
+            if (calendarEl) {
+                calendarEl.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Error al cargar el calendario</strong>
+                        <p>Por favor, revise la consola para más detalles.</p>
+                    </div>
+                `;
+            }
         }
     },
 
