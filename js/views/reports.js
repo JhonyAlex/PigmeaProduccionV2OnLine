@@ -468,8 +468,16 @@ const ReportsView = {
         const nextMonthBtn = container.querySelector('.next-month');
         const todayBtn = container.querySelector('.today-btn');
         
+        // Asegurarse de que currentCalendarDate esté inicializado
+        if (!this.currentCalendarDate) {
+            this.currentCalendarDate = new Date();
+        }
+        
         if (prevMonthBtn) {
             prevMonthBtn.addEventListener('click', () => {
+                if (!this.currentCalendarDate) {
+                    this.currentCalendarDate = new Date();
+                }
                 const date = new Date(this.currentCalendarDate);
                 date.setMonth(date.getMonth() - 1);
                 this.currentCalendarDate = date;
@@ -479,6 +487,9 @@ const ReportsView = {
         
         if (nextMonthBtn) {
             nextMonthBtn.addEventListener('click', () => {
+                if (!this.currentCalendarDate) {
+                    this.currentCalendarDate = new Date();
+                }
                 const date = new Date(this.currentCalendarDate);
                 date.setMonth(date.getMonth() + 1);
                 this.currentCalendarDate = date;
@@ -2327,24 +2338,39 @@ const ReportsView = {
         const nextMonthBtn = container.querySelector('.next-month');
         const todayBtn = container.querySelector('.today-btn');
         
+        // Asegurarse de que currentCalendarDate esté inicializado
+        if (!this.currentCalendarDate) {
+            this.currentCalendarDate = new Date();
+        }
+        
         if (prevMonthBtn) {
             prevMonthBtn.addEventListener('click', () => {
-                this.calendarCurrentDate.setMonth(this.calendarCurrentDate.getMonth() - 1);
-                this.renderCalendarMonth(container);
+                if (!this.currentCalendarDate) {
+                    this.currentCalendarDate = new Date();
+                }
+                const date = new Date(this.currentCalendarDate);
+                date.setMonth(date.getMonth() - 1);
+                this.currentCalendarDate = date;
+                this.renderCalendarMonth(container, date);
             });
         }
         
         if (nextMonthBtn) {
             nextMonthBtn.addEventListener('click', () => {
-                this.calendarCurrentDate.setMonth(this.calendarCurrentDate.getMonth() + 1);
-                this.renderCalendarMonth(container);
+                if (!this.currentCalendarDate) {
+                    this.currentCalendarDate = new Date();
+                }
+                const date = new Date(this.currentCalendarDate);
+                date.setMonth(date.getMonth() + 1);
+                this.currentCalendarDate = date;
+                this.renderCalendarMonth(container, date);
             });
         }
         
         if (todayBtn) {
             todayBtn.addEventListener('click', () => {
-                this.calendarCurrentDate = new Date();
-                this.renderCalendarMonth(container);
+                this.currentCalendarDate = new Date();
+                this.renderCalendarMonth(container, this.currentCalendarDate);
             });
         }
         
@@ -2799,5 +2825,44 @@ const ReportsView = {
      */
     updateColumnHeaders() {
         // ... (código para actualizar encabezados de columna) ...
+    },
+
+    /**
+     * Genera automáticamente un informe al cargar la página si hay datos disponibles
+     */
+    autoGenerateReport() {
+        try {
+            // Verificar si hay campos disponibles para generar un reporte
+            const sharedNumericFields = FieldModel.getSharedNumericFields();
+            if (sharedNumericFields.length === 0) {
+                console.log("No hay campos numéricos para generar reporte automático");
+                return; // No hay campos para generar reporte
+            }
+
+            // Esperar a que el DOM esté completamente cargado
+            setTimeout(() => {
+                const reportField = document.getElementById('report-field');
+                if (!reportField) {
+                    console.warn("Elemento 'report-field' no encontrado en el DOM");
+                    return;
+                }
+
+                // Obtener campos marcados para reportes comparativos
+                const compareField = FieldModel.getAll().find(field => field.isCompareField);
+
+                if (compareField) {
+                    // Si hay un campo marcado para comparar, usarlo
+                    reportField.value = compareField.id;
+                } else {
+                    // Si no hay campo marcado, usar el primer campo numérico disponible
+                    reportField.value = sharedNumericFields[0].id;
+                }
+
+                // Generar el reporte usando los valores predeterminados o los que están en el formulario
+                this.generateReport();
+            }, 200); // Dar más tiempo para que el DOM esté listo
+        } catch (error) {
+            console.error("Error en autoGenerateReport:", error);
+        }
     },
 }; // Fin del objeto ReportsView
