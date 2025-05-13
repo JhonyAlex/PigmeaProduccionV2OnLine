@@ -1464,78 +1464,106 @@ const ReportsView = {
         console.warn("removeModalBackdrop: Se recomienda dejar que Bootstrap maneje los backdrops.");
     },
     generateReport() {
-        const fieldId = document.getElementById('report-field')?.value;
-        const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
-        const aggregation = document.getElementById('report-aggregation')?.value;
-        const reportForm = document.getElementById('report-form'); // Para mostrar alertas cerca
-
-        if (!fieldId) {
-            UIUtils.showAlert('Seleccione un campo para generar el reporte', 'warning', reportForm);
-            return;
+        try {
+            const fieldId = document.getElementById('report-field')?.value;
+            const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
+            const aggregation = document.getElementById('report-aggregation')?.value;
+            const reportForm = document.getElementById('report-form'); // Para mostrar alertas cerca
+    
+            if (!fieldId) {
+                // Verificar que reportForm existe antes de mostrar la alerta
+                if (reportForm) {
+                    UIUtils.showAlert('Seleccione un campo para generar el reporte', 'warning', reportForm);
+                } else {
+                    console.warn('No se pudo mostrar alerta: El formulario de reporte no existe');
+                }
+                return;
+            }
+    
+            // Obtener filtros actuales
+            const entityFilterSelect = document.getElementById('filter-entity');
+            
+            // Verificar si el selector de entidad existe antes de acceder a sus propiedades
+            let entityFilter = [];
+            if (entityFilterSelect) {
+                const selectedEntities = Array.from(entityFilterSelect.selectedOptions || [])
+                    .map(option => option.value);
+    
+                // Si se selecciona "Todas las entidades" o no se selecciona ninguna, no aplicamos filtro de entidad
+                entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
+                    ? []
+                    : selectedEntities;
+            }
+    
+            const fromDateFilter = document.getElementById('filter-from-date')?.value;
+            const toDateFilter = document.getElementById('filter-to-date')?.value;
+    
+            const filters = {
+                entityIds: entityFilter.length > 0 ? entityFilter : undefined,
+                fromDate: fromDateFilter || undefined,
+                toDate: toDateFilter || undefined
+            };
+    
+            // Generar datos del reporte
+            const reportData = RecordModel.generateReportMultiple(fieldId, aggregation, filters, horizontalFieldId);
+    
+            if (reportData.error) {
+                // Verificar que reportForm existe antes de mostrar la alerta
+                if (reportForm) {
+                    UIUtils.showAlert(reportData.error, 'danger', reportForm);
+                } else {
+                    console.error("Error en los datos del reporte:", reportData.error);
+                }
+                
+                // Ocultar contenedor del reporte si hubo error
+                const reportContainer = document.getElementById('report-container');
+                if (reportContainer) reportContainer.style.display = 'none';
+                return;
+            }
+    
+            // Mostrar contenedor del reporte
+            const reportContainer = document.getElementById('report-container');
+            if (!reportContainer) {
+                console.error("No se encontró el contenedor del reporte (#report-container)");
+                return; // Salir si no existe el contenedor
+            }
+            reportContainer.style.display = 'block';
+    
+            // Crear gráfico (asegurándose de que ChartUtils y el canvas existen)
+            const chartCanvas = document.getElementById('report-chart');
+            if (ChartUtils && chartCanvas) {
+                ChartUtils.createBarChart('report-chart', reportData);
+            } else {
+                console.error("ChartUtils o el canvas 'report-chart' no están disponibles.");
+            }
+    
+            // Crear tabla resumen
+            const reportSummaryDiv = document.getElementById('report-summary');
+            if (reportSummaryDiv && ChartUtils) {
+                reportSummaryDiv.innerHTML = `
+                    <h6 class="mb-3">Resumen del Reporte</h6>
+                    ${ChartUtils.createSummaryTable(reportData)}
+                `;
+            } else {
+                console.error("El div 'report-summary' o ChartUtils no están disponibles.");
+            }
+        } catch (error) {
+            console.error("Error al generar el reporte:", error);
+            // Intentar mostrar un mensaje de error en un contenedor que debe existir
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger mt-3';
+                errorDiv.textContent = 'Error al generar el reporte. Por favor, intente de nuevo.';
+                
+                // Buscar un lugar adecuado para mostrar el error
+                const targetContainer = mainContent.querySelector('#report-form') || mainContent;
+                targetContainer.prepend(errorDiv);
+                
+                // Eliminar después de unos segundos
+                setTimeout(() => errorDiv.remove(), 5000);
+            }
         }
-
-        // Obtener filtros actuales
-        const entityFilterSelect = document.getElementById('filter-entity');
-        
-        // Verificar si el selector de entidad existe antes de acceder a sus propiedades
-        let entityFilter = [];
-        if (entityFilterSelect) {
-            const selectedEntities = Array.from(entityFilterSelect.selectedOptions || [])
-                .map(option => option.value);
-
-            // Si se selecciona "Todas las entidades" o no se selecciona ninguna, no aplicamos filtro de entidad
-            entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
-                ? []
-                : selectedEntities;
-        }
-
-        const fromDateFilter = document.getElementById('filter-from-date')?.value;
-        const toDateFilter = document.getElementById('filter-to-date')?.value;
-
-        const filters = {
-            entityIds: entityFilter.length > 0 ? entityFilter : undefined,
-            fromDate: fromDateFilter || undefined,
-            toDate: toDateFilter || undefined
-        };
-
-        // Generar datos del reporte
-        const reportData = RecordModel.generateReportMultiple(fieldId, aggregation, filters, horizontalFieldId);
-
-        if (reportData.error) {
-            UIUtils.showAlert(reportData.error, 'danger', reportForm);
-             // Ocultar contenedor del reporte si hubo error
-             const reportContainer = document.getElementById('report-container');
-             if (reportContainer) reportContainer.style.display = 'none';
-            return;
-        }
-
-        // Mostrar contenedor del reporte
-        const reportContainer = document.getElementById('report-container');
-        if (!reportContainer) return; // Salir si no existe el contenedor
-        reportContainer.style.display = 'block';
-
-        // Crear gráfico (asegurándose de que ChartUtils y el canvas existen)
-        const chartCanvas = document.getElementById('report-chart');
-        if (ChartUtils && chartCanvas) {
-             ChartUtils.createBarChart('report-chart', reportData);
-        } else {
-            console.error("ChartUtils o el canvas 'report-chart' no están disponibles.");
-        }
-
-
-        // Crear tabla resumen
-        const reportSummaryDiv = document.getElementById('report-summary');
-        if (reportSummaryDiv && ChartUtils) {
-            reportSummaryDiv.innerHTML = `
-                <h6 class="mb-3">Resumen del Reporte</h6>
-                ${ChartUtils.createSummaryTable(reportData)}
-            `;
-        } else {
-             console.error("El div 'report-summary' o ChartUtils no están disponibles.");
-        }
-
-        // Eliminar el desplazamiento automático a la vista del reporte
-        // reportContainer.scrollIntoView({ behavior: 'smooth' });
     },
     setDateRange(range) {
         // ... (código de setDateRange sin cambios, ya estaba correcto) ...
@@ -1624,10 +1652,24 @@ const ReportsView = {
      */
     update() {
         try {
-            // Recargar la tabla de registros sin perder los filtros actuales
-            this.generateReport();
+            // Verificar si estamos en la vista de reportes antes de actualizar
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent || !mainContent.querySelector('#report-form')) {
+                // No estamos en la vista de reportes, no hacer nada
+                console.log("No se actualiza la vista de reportes porque no está activa");
+                return;
+            }
+
+            // Verificar si hay un reporte ya generado
+            const reportContainer = document.getElementById('report-container');
+            if (reportContainer && reportContainer.style.display === 'block') {
+                this.generateReport();
+            } else {
+                console.log("No hay reporte generado para actualizar");
+            }
         } catch (error) {
             console.error("Error al actualizar la vista de reportes:", error);
+            // No usar UIUtils.showAlert aquí, ya que podría fallar si el contenedor no existe
         }
     },
 
