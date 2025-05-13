@@ -1813,22 +1813,85 @@ const ReportsView = {
      * @param {Function} callback Función a ejecutar cuando las dependencias estén cargadas
      */
     loadCalendarDependencies(callback) {
-        const loadScript = (url, onLoad) => {
+        const loadScript = (url, onLoad, onError) => {
             const script = document.createElement('script');
             script.src = url;
             script.onload = onLoad;
+            script.onerror = onError;
             document.head.appendChild(script);
+            console.log(`Cargando script: ${url}`);
         };
 
-        const loadStylesheet = (url) => {
+        const loadStylesheet = (url, onLoad, onError) => {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = url;
+            link.onload = onLoad;
+            link.onerror = onError;
             document.head.appendChild(link);
+            console.log(`Cargando stylesheet: ${url}`);
         };
 
+        // Mostrar cargando en el contenedor
+        const calendarEl = document.getElementById('date-calendar');
+        if (calendarEl) {
+            calendarEl.innerHTML = `
+                <div class="d-flex justify-content-center align-items-center h-100">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando calendario...</span>
+                    </div>
+                    <span class="ms-2">Cargando calendario...</span>
+                </div>
+            `;
+        }
+
+        // Contador y detector de fallos
+        let loadedCount = 0;
+        let errorCount = 0;
+        const totalToLoad = 3; // CSS, main JS, y locale JS
+        
+        const checkAllLoaded = () => {
+            loadedCount++;
+            console.log(`Recursos cargados: ${loadedCount}/${totalToLoad}`);
+            if (loadedCount + errorCount >= totalToLoad) {
+                if (errorCount > 0) {
+                    console.warn(`Completado con ${errorCount} errores. Intentando cargar de CDN alternativo o mostrando fallback`);
+                    // Si fallaron las cargas, intentar con un CDN alternativo o mostrar un calendario alternativo
+                    this.loadAlternativeCalendar();
+                } else {
+                    console.log('Todos los recursos de FullCalendar cargados correctamente');
+                    callback();
+                }
+            }
+        };
+        
+        const handleError = (resource) => {
+            errorCount++;
+            console.error(`Error al cargar ${resource}`);
+            checkAllLoaded();
+        };
+
+        // Intentar con unpkg como CDN primario
         // Cargar CSS de FullCalendar (actualizado a la última versión 6.1.17)
-        loadStylesheet('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.css');
+        loadStylesheet(
+            'https://unpkg.com/fullcalendar@6.1.17/main.min.css',
+            checkAllLoaded,
+            () => handleError('CSS principal')
+        );
+        
+        // Cargar JavaScript de FullCalendar 
+        loadScript(
+            'https://unpkg.com/fullcalendar@6.1.17/main.min.js',
+            checkAllLoaded,
+            () => handleError('JavaScript principal')
+        );
+        
+        // Cargar locales para español
+        loadScript(
+            'https://unpkg.com/fullcalendar@6.1.17/locales/es.js',
+            checkAllLoaded,
+            () => handleError('Locale español')
+        );
         
         // Añadir estilos personalizados para mejorar la apariencia
         const customStyles = document.createElement('style');
@@ -1898,6 +1961,54 @@ const ReportsView = {
                 box-shadow: inset 0 0 0 2px #3788d8;
                 background-color: rgba(66, 135, 245, 0.1);
             }
+            /* Estilos para calendario alternativo */
+            .simple-calendar {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .simple-calendar .calendar-header {
+                background-color: #f8f9fa;
+                padding: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #ddd;
+            }
+            .simple-calendar .calendar-days {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                text-align: center;
+            }
+            .simple-calendar .calendar-days .day-name {
+                background-color: #f5f5f5;
+                padding: 8px 0;
+                font-weight: 500;
+                font-size: 0.9em;
+                border-bottom: 1px solid #eee;
+            }
+            .simple-calendar .calendar-days .day {
+                padding: 10px 5px;
+                min-height: 40px;
+                border: 1px solid #f0f0f0;
+                cursor: pointer;
+            }
+            .simple-calendar .calendar-days .day:hover {
+                background-color: #f5f9ff;
+            }
+            .simple-calendar .calendar-days .day.today {
+                background-color: #ecf4fe;
+                font-weight: bold;
+                color: #3788d8;
+            }
+            .simple-calendar .calendar-days .day.selected {
+                background-color: #e4efff;
+                box-shadow: inset 0 0 0 2px #3788d8;
+            }
+            .simple-calendar .calendar-days .day.other-month {
+                color: #aaa;
+                background-color: #f8f8f8;
+            }
             @media (max-width: 768px) {
                 .fc .fc-toolbar {
                     flex-direction: column;
@@ -1909,334 +2020,427 @@ const ReportsView = {
             }
         `;
         document.head.appendChild(customStyles);
-
-        // Cargar JavaScript de FullCalendar (actualizado a la última versión 6.1.17)
-        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.js', callback);
-        
-        // Cargar locales para español
-        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/locales/es.js', () => {
-            console.log('Locale español cargado');
-        });
     },
 
-    /**
-     * Inicializa la instancia del calendario una vez que las dependencias están cargadas
-     */
-    initCalendarInstance() {
+    // Método alternativo si falla la carga de FullCalendar
+    loadAlternativeCalendar() {
+        console.log("Intentando cargar calendario alternativo simple");
         const calendarEl = document.getElementById('date-calendar');
         if (!calendarEl) return;
 
-        // Configuración del calendario
-        const calendarConfig = {
-            initialView: 'dayGridMonth',
-            headerToolbar: {
-                left: 'title',
-                center: '',
-                right: 'prev,next today'
-            },
-            buttonText: {
-                today: 'Hoy'
-            },
-            selectable: true,
-            selectMirror: true,
-            unselectAuto: false,
-            locale: 'es',
-            firstDay: 1, // Lunes como primer día de la semana
-            height: 'auto',
-            aspectRatio: 1.35, // Mejor proporción para visualización
-            fixedWeekCount: false, // Muestra solo las semanas del mes actual
-            showNonCurrentDates: true, // Mostrar días que no son del mes actual pero en gris
-            dayMaxEvents: 0, // Muestra "más" en lugar de todos los eventos
+        try {
+            // Intentar cargar desde un CDN alternativo
+            const scripts = document.querySelectorAll('script[src*="fullcalendar"]');
+            if (scripts.length > 0) {
+                // Eliminar scripts anteriores que pudieron fallar
+                scripts.forEach(s => s.remove());
+            }
             
-            // Mejoras visuales para v6
-            dayHeaderFormat: { weekday: 'short' }, // Formato corto para los días de la semana
-            titleFormat: { year: 'numeric', month: 'long' }, // Formato para el título del mes
+            // Intentar un último CDN alternativo
+            const alternativeScript = document.createElement('script');
+            alternativeScript.src = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/main.min.js';
+            alternativeScript.onload = () => {
+                console.log("Carga alternativa exitosa, inicializando calendario");
+                setTimeout(() => this.initCalendarInstance(), 500);
+            };
+            alternativeScript.onerror = () => {
+                console.error("No se pudo cargar FullCalendar desde ningún CDN");
+                this.renderSimpleCalendar();
+            };
+            document.head.appendChild(alternativeScript);
             
-            // Asegurar que los números de día sean visibles
-            dayCellClassNames: 'calendar-day-cell',
-            
-            select: (info) => {
-                // Convertir fechas a formato ISO (considerando zona horaria)
-                const startDate = new Date(info.start);
-                let endDate = new Date(info.end);
+        } catch (error) {
+            console.error("Error en intento alternativo, mostrando calendario simple:", error);
+            this.renderSimpleCalendar();
+        }
+    },
+
+    // Renderiza un calendario simple HTML/CSS si todo lo demás falla
+    renderSimpleCalendar() {
+        console.log("Renderizando calendario simple fallback");
+        const calendarEl = document.getElementById('date-calendar');
+        if (!calendarEl) return;
+
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        
+        // Primer día del mes
+        const firstDay = new Date(currentYear, currentMonth, 1);
+        // Último día del mes
+        const lastDay = new Date(currentYear, currentMonth + 1, 0);
+        
+        // Obtener día de la semana del primer día (0 = Domingo, 1 = Lunes, etc.)
+        let firstDayOfWeek = firstDay.getDay();
+        // Ajustar para que la semana empiece en lunes (0 = Lunes, 6 = Domingo)
+        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+        
+        // Nombres de los meses
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        // Nombres de los días
+        const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        
+        // Crear estructura HTML del calendario
+        let calendarHTML = `
+            <div class="simple-calendar">
+                <div class="calendar-header">
+                    <button class="btn btn-sm btn-outline-secondary prev-month">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <h5 class="mb-0">${monthNames[currentMonth]} ${currentYear}</h5>
+                    <button class="btn btn-sm btn-outline-secondary next-month">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="calendar-days">
+        `;
+        
+        // Añadir nombres de los días
+        dayNames.forEach(day => {
+            calendarHTML += `<div class="day-name">${day}</div>`;
+        });
+        
+        // Añadir días del mes anterior para completar la primera semana
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            const prevMonthDay = new Date(currentYear, currentMonth, -firstDayOfWeek + i + 1);
+            calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(prevMonthDay)}">${prevMonthDay.getDate()}</div>`;
+        }
+        
+        // Añadir días del mes actual
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const date = new Date(currentYear, currentMonth, day);
+            const isToday = date.toDateString() === today.toDateString();
+            calendarHTML += `<div class="day${isToday ? ' today' : ''}" data-date="${this.formatDateForInput(date)}">${day}</div>`;
+        }
+        
+        // Añadir días del mes siguiente para completar la última semana
+        const totalDaysShown = firstDayOfWeek + lastDay.getDate();
+        const remainingCells = 7 - (totalDaysShown % 7);
+        if (remainingCells < 7) {
+            for (let i = 1; i <= remainingCells; i++) {
+                const nextMonthDay = new Date(currentYear, currentMonth + 1, i);
+                calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(nextMonthDay)}">${i}</div>`;
+            }
+        }
+        
+        // Cerrar estructura HTML
+        calendarHTML += `
+                </div>
+            </div>
+        `;
+        
+        // Insertar calendario en el elemento
+        calendarEl.innerHTML = calendarHTML;
+        
+        // Añadir eventos
+        const days = calendarEl.querySelectorAll('.day');
+        days.forEach(day => {
+            day.addEventListener('click', () => {
+                const dateStr = day.getAttribute('data-date');
+                if (!dateStr) return;
                 
-                // La fecha de fin en FullCalendar es exclusiva, restar un día
-                endDate.setDate(endDate.getDate() - 1);
+                // Marcar día seleccionado
+                days.forEach(d => d.classList.remove('selected'));
+                day.classList.add('selected');
                 
-                // Actualizar los inputs del formulario de filtro
+                // Actualizar inputs de fecha
                 const fromDateInput = document.getElementById('filter-from-date');
                 const toDateInput = document.getElementById('filter-to-date');
                 
                 if (fromDateInput && toDateInput) {
-                    fromDateInput.value = this.formatDateForInput(startDate);
-                    toDateInput.value = this.formatDateForInput(endDate);
+                    fromDateInput.value = dateStr;
+                    toDateInput.value = dateStr;
                     
                     // Aplicar filtros automáticamente
                     const filterForm = document.getElementById('filter-form');
                     if (filterForm) {
                         filterForm.dispatchEvent(new Event('submit'));
                     }
+                }
+            });
+        });
+        
+        // Añadir navegación entre meses
+        const prevMonthBtn = calendarEl.querySelector('.prev-month');
+        const nextMonthBtn = calendarEl.querySelector('.next-month');
+        
+        if (prevMonthBtn) {
+            prevMonthBtn.addEventListener('click', () => {
+                const newDate = new Date(currentYear, currentMonth - 1, 1);
+                this.renderSimpleCalendarForDate(newDate);
+            });
+        }
+        
+        if (nextMonthBtn) {
+            nextMonthBtn.addEventListener('click', () => {
+                const newDate = new Date(currentYear, currentMonth + 1, 1);
+                this.renderSimpleCalendarForDate(newDate);
+            });
+        }
+    },
+    
+    // Renderiza el calendario simple para un mes específico
+    renderSimpleCalendarForDate(date) {
+        const calendarEl = document.getElementById('date-calendar');
+        if (!calendarEl) return;
+        
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        
+        // Reutilizar la misma lógica de renderSimpleCalendar pero con la fecha proporcionada
+        const today = new Date();
+        
+        // Primer día del mes
+        const firstDay = new Date(year, month, 1);
+        // Último día del mes
+        const lastDay = new Date(year, month + 1, 0);
+        
+        // Obtener día de la semana del primer día (0 = Domingo, 1 = Lunes, etc.)
+        let firstDayOfWeek = firstDay.getDay();
+        // Ajustar para que la semana empiece en lunes (0 = Lunes, 6 = Domingo)
+        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+        
+        // Nombres de los meses
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        // Nombres de los días
+        const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        
+        // Crear estructura HTML del calendario
+        let calendarHTML = `
+            <div class="simple-calendar">
+                <div class="calendar-header">
+                    <button class="btn btn-sm btn-outline-secondary prev-month">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <h5 class="mb-0">${monthNames[month]} ${year}</h5>
+                    <button class="btn btn-sm btn-outline-secondary next-month">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="calendar-days">
+        `;
+        
+        // Añadir nombres de los días
+        dayNames.forEach(day => {
+            calendarHTML += `<div class="day-name">${day}</div>`;
+        });
+        
+        // Añadir días del mes anterior para completar la primera semana
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            const prevMonthDay = new Date(year, month, -firstDayOfWeek + i + 1);
+            calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(prevMonthDay)}">${prevMonthDay.getDate()}</div>`;
+        }
+        
+        // Añadir días del mes actual
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const currentDate = new Date(year, month, day);
+            const isToday = currentDate.toDateString() === today.toDateString();
+            calendarHTML += `<div class="day${isToday ? ' today' : ''}" data-date="${this.formatDateForInput(currentDate)}">${day}</div>`;
+        }
+        
+        // Añadir días del mes siguiente para completar la última semana
+        const totalDaysShown = firstDayOfWeek + lastDay.getDate();
+        const remainingCells = 7 - (totalDaysShown % 7);
+        if (remainingCells < 7) {
+            for (let i = 1; i <= remainingCells; i++) {
+                const nextMonthDay = new Date(year, month + 1, i);
+                calendarHTML += `<div class="day other-month" data-date="${this.formatDateForInput(nextMonthDay)}">${i}</div>`;
+            }
+        }
+        
+        // Cerrar estructura HTML
+        calendarHTML += `
+                </div>
+            </div>
+        `;
+        
+        // Insertar calendario en el elemento
+        calendarEl.innerHTML = calendarHTML;
+        
+        // Añadir eventos (reutilizar la misma lógica)
+        const days = calendarEl.querySelectorAll('.day');
+        days.forEach(day => {
+            day.addEventListener('click', () => {
+                const dateStr = day.getAttribute('data-date');
+                if (!dateStr) return;
+                
+                // Marcar día seleccionado
+                days.forEach(d => d.classList.remove('selected'));
+                day.classList.add('selected');
+                
+                // Actualizar inputs de fecha
+                const fromDateInput = document.getElementById('filter-from-date');
+                const toDateInput = document.getElementById('filter-to-date');
+                
+                if (fromDateInput && toDateInput) {
+                    fromDateInput.value = dateStr;
+                    toDateInput.value = dateStr;
                     
-                    // Proporcionar feedback visual
-                    calendarEl.classList.add('bg-light');
-                    setTimeout(() => calendarEl.classList.remove('bg-light'), 300);
+                    // Aplicar filtros automáticamente
+                    const filterForm = document.getElementById('filter-form');
+                    if (filterForm) {
+                        filterForm.dispatchEvent(new Event('submit'));
+                    }
                 }
-            },
-            dateClick: (info) => this.dateClick(info), // Usar función separada para mejor organización
-            
-            // Renderizado explícito para números de día
-            dayCellDidMount: (info) => {
-                // Asegurarse de que el número del día sea visible
-                const dateNum = info.el.querySelector('.fc-daygrid-day-top');
-                if (dateNum && !dateNum.textContent.trim()) {
-                    const dayNumber = document.createElement('a');
-                    dayNumber.classList.add('fc-daygrid-day-number');
-                    dayNumber.textContent = info.date.getDate();
-                    dateNum.appendChild(dayNumber);
-                }
-            }
-        };
-
-        // Crear instancia del calendario con verificación de versión
-        try {
-            // Verificar si estamos usando la versión correcta
-            if (typeof FullCalendar.version === 'string') {
-                console.log(`FullCalendar versión: ${FullCalendar.version}`);
-            }
-            
-            this.calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
-            this.calendar.render();
-            
-            // Verificación adicional después de renderizar
-            const dayCells = calendarEl.querySelectorAll('.fc-daygrid-day-number');
-            if (dayCells.length === 0 || !dayCells[0].textContent.trim()) {
-                console.warn('Advertencia: Los números de día pueden no estar visibles después del renderizado inicial');
-                // Forzar actualización después de un breve retraso
-                setTimeout(() => {
-                    this.calendar.updateSize();
-                }, 100);
-            }
-            
-            // Configurar botones de vista
-            const monthViewBtn = document.getElementById('calendar-month-view');
-            const weekViewBtn = document.getElementById('calendar-week-view');
-            
-            if (monthViewBtn && weekViewBtn) {
-                monthViewBtn.classList.add('active');
-                
-                monthViewBtn.addEventListener('click', () => {
-                    this.calendar.changeView('dayGridMonth');
-                    monthViewBtn.classList.add('active');
-                    weekViewBtn.classList.remove('active');
-                });
-                
-                weekViewBtn.addEventListener('click', () => {
-                    this.calendar.changeView('dayGridWeek');
-                    weekViewBtn.classList.add('active');
-                    monthViewBtn.classList.remove('active');
-                });
-            }
-        } catch (error) {
-            console.error('Error al inicializar FullCalendar:', error);
-            // Mostrar mensaje de error en el contenedor
-            if (calendarEl) {
-                calendarEl.innerHTML = `
-                    <div class="alert alert-danger">
-                        <strong>Error al cargar el calendario</strong>
-                        <p>Por favor, revise la consola para más detalles.</p>
-                    </div>
-                `;
-            }
+            });
+        });
+        
+        // Añadir navegación entre meses
+        const prevMonthBtn = calendarEl.querySelector('.prev-month');
+        const nextMonthBtn = calendarEl.querySelector('.next-month');
+        
+        if (prevMonthBtn) {
+            prevMonthBtn.addEventListener('click', () => {
+                const newDate = new Date(year, month - 1, 1);
+                this.renderSimpleCalendarForDate(newDate);
+            });
+        }
+        
+        if (nextMonthBtn) {
+            nextMonthBtn.addEventListener('click', () => {
+                const newDate = new Date(year, month + 1, 1);
+                this.renderSimpleCalendarForDate(newDate);
+            });
         }
     },
 
-    // Actualizar setupEventListeners para inicializar el calendario
-    setupEventListeners() {
-        // Esperar a que el DOM esté completamente cargado
+    initCalendarInstance() {
+        const calendarEl = document.getElementById('date-calendar');
+        if (!calendarEl) {
+            console.error("No se encontró el elemento del calendario");
+            return;
+        }
+        
+        // Mostrar mensaje de carga
+        calendarEl.innerHTML = `
+            <div class="d-flex justify-content-center align-items-center h-100">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Inicializando calendario...</span>
+                </div>
+                <span class="ms-2">Inicializando calendario...</span>
+            </div>
+        `;
+
+        // Esperar un momento para asegurar que todo está cargado
         setTimeout(() => {
-            // Inicializar el calendario
-            this.initCalendar();
-            
-            // Event listener para "Seleccionar todos"
-            const selectAllCheckbox = document.getElementById('select-all-records');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.addEventListener('change', (e) => {
-                    const isChecked = e.target.checked;
-                    document.querySelectorAll('.record-checkbox').forEach(checkbox => {
-                        checkbox.checked = isChecked;
-                    });
-                    // Actualizar visibilidad del botón de edición masiva
-                    const bulkEditBtn = document.getElementById('bulk-edit-btn');
-                    if (bulkEditBtn) {
-                        bulkEditBtn.style.display = isChecked ? 'inline-block' : 'none';
-                    }
-                });
-            }
-
-            // Escuchar clics en registros
-            const recordsListContainer = document.getElementById('records-list');
-            if (recordsListContainer) {
-                recordsListContainer.addEventListener('click', (e) => {
-                    // Busca si el clic ocurrió dentro de un botón con la clase '.view-record'
-                    const viewButton = e.target.closest('.view-record');
-                    if (viewButton) {
-                        // Si se encontró el botón, obtén el ID y llama a la función
-                        const recordId = viewButton.dataset.recordId;
-                        this.showRecordDetails(recordId);
-                    }
-                });
-            }
-
-            // Aplicar filtros
-            const filterForm = document.getElementById('filter-form');
-            if (filterForm) {
-                filterForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.applyFilters();
-
-                    // Si hay un reporte generado, actualizarlo con los nuevos filtros
-                    const reportContainer = document.getElementById('report-container');
-                    if (reportContainer && reportContainer.style.display === 'block') {
-                        this.generateReport();
-                    }
-                });
-            }
-
-            // Generar reporte comparativo
-            const reportForm = document.getElementById('report-form');
-            if (reportForm) {
-                reportForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.generateReport();
-                });
-            }
-
-            // Exportar a CSV
-            const exportCsvBtn = document.getElementById('export-csv-btn');
-            if (exportCsvBtn) {
-                exportCsvBtn.addEventListener('click', () => {
-                    // Código existente para exportar a CSV
-                    const entityFilterSelect = document.getElementById('filter-entity');
-                    const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
-
-                    const entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
-                        ? []
-                        : selectedEntities;
-
-                    const fromDateFilter = document.getElementById('filter-from-date').value;
-                    const toDateFilter = document.getElementById('filter-to-date').value;
-
-                    const filters = {
-                        entityIds: entityFilter.length > 0 ? entityFilter : undefined,
-                        fromDate: fromDateFilter || undefined,
-                        toDate: toDateFilter || undefined
-                    };
-
-                    const recordsToExport = this.searchedRecords || this.filteredRecords || RecordModel.filterMultiple(filters);
-                    let sortedRecords = [...recordsToExport];
+            try {
+                // Verificar si FullCalendar está disponible
+                if (typeof FullCalendar === 'undefined') {
+                    console.error("FullCalendar no está disponible después de cargar los scripts");
+                    this.renderSimpleCalendar();
+                    return;
+                }
+                
+                // Verificar versión
+                console.log(`FullCalendar versión: ${FullCalendar.version || 'desconocida'}`);
+                
+                // Configuración del calendario
+                const calendarConfig = {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'title',
+                        center: '',
+                        right: 'prev,next today'
+                    },
+                    buttonText: {
+                        today: 'Hoy'
+                    },
+                    selectable: true,
+                    selectMirror: true,
+                    unselectAuto: false,
+                    locale: 'es',
+                    firstDay: 1, // Lunes como primer día de la semana
+                    height: 'auto',
+                    aspectRatio: 1.35, // Mejor proporción para visualización
+                    fixedWeekCount: false, // Muestra solo las semanas del mes actual
+                    showNonCurrentDates: true, // Mostrar días que no son del mes actual pero en gris
+                    dayMaxEvents: 0, // Muestra "más" en lugar de todos los eventos
                     
-                    if (!this.sorting.column || this.sorting.column === 'timestamp') {
-                        sortedRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    // Mejoras visuales para v6
+                    dayHeaderFormat: { weekday: 'short' }, // Formato corto para los días de la semana
+                    titleFormat: { year: 'numeric', month: 'long' }, // Formato para el título del mes
+                    
+                    // Asegurar que los números de día sean visibles
+                    dayCellClassNames: 'calendar-day-cell',
+                    
+                    select: (info) => {
+                        // Convertir fechas a formato ISO (considerando zona horaria)
+                        const startDate = new Date(info.start);
+                        let endDate = new Date(info.end);
+                        
+                        // La fecha de fin en FullCalendar es exclusiva, restar un día
+                        endDate.setDate(endDate.getDate() - 1);
+                        
+                        // Actualizar los inputs del formulario de filtro
+                        const fromDateInput = document.getElementById('filter-from-date');
+                        const toDateInput = document.getElementById('filter-to-date');
+                        
+                        if (fromDateInput && toDateInput) {
+                            fromDateInput.value = this.formatDateForInput(startDate);
+                            toDateInput.value = this.formatDateForInput(endDate);
+                            
+                            // Aplicar filtros automáticamente
+                            const filterForm = document.getElementById('filter-form');
+                            if (filterForm) {
+                                filterForm.dispatchEvent(new Event('submit'));
+                            }
+                            
+                            // Proporcionar feedback visual
+                            calendarEl.classList.add('bg-light');
+                            setTimeout(() => calendarEl.classList.remove('bg-light'), 300);
+                        }
+                    },
+                    dateClick: (info) => this.dateClick(info), // Usar función separada para mejor organización
+                };
+                
+                // Crear instancia del calendario
+                this.calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
+                // Limpiar el contenedor antes de renderizar
+                calendarEl.innerHTML = '';
+                // Renderizar el calendario
+                this.calendar.render();
+                
+                // Verificar si el calendario fue renderizado correctamente
+                setTimeout(() => {
+                    // Buscar elementos clave
+                    const headerVisible = calendarEl.querySelector('.fc-toolbar');
+                    const daysVisible = calendarEl.querySelectorAll('.fc-daygrid-day-number');
+                    
+                    if (!headerVisible || daysVisible.length === 0) {
+                        console.warn("FullCalendar no se renderizó correctamente - usando alternativa");
+                        this.renderSimpleCalendar();
                     } else {
-                        sortedRecords = this.searchedRecords ? [...this.searchedRecords] : sortedRecords;
+                        console.log("FullCalendar se renderizó correctamente");
                     }
-
-                    ExportUtils.exportToCSV(
-                        sortedRecords,
-                        this.selectedColumns.field1,
-                        this.selectedColumns.field2,
-                        this.selectedColumns.field3
-                    );
-                });
-            }
-
-            // Buscador en la tabla de registros
-            const searchInput = document.getElementById('search-records');
-            if (searchInput) {
-                searchInput.addEventListener('input', () => {
-                    this.filterRecordsBySearch();
-                });
-            }
-
-            // Añadir event listener para el selector de registros por página
-            const itemsPerPageSelect = document.getElementById('items-per-page');
-            if (itemsPerPageSelect) {
-                itemsPerPageSelect.value = this.pagination.itemsPerPage; // Asegurar valor inicial
-                itemsPerPageSelect.addEventListener('change', () => {
-                    this.pagination.itemsPerPage = parseInt(itemsPerPageSelect.value);
-                    this.pagination.currentPage = 1; // Volver a la primera página al cambiar
-                    this.filterRecordsBySearch(); // Actualizar la visualización
-                });
-            }
-
-            // Atajos de fecha
-            document.querySelectorAll('.date-shortcut').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const range = e.target.getAttribute('data-range');
-                    this.setDateRange(range);
-                    // Aplicar filtros automáticamente
-                    document.getElementById('filter-form').dispatchEvent(new Event('submit'));
-                });
-            });
-
-            // Filtros de grupo de entidades
-            document.querySelectorAll('.entity-group-filter').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const group = e.target.getAttribute('data-group');
-                    this.filterByEntityGroup(group);
-                    // Aplicar filtros automáticamente
-                    document.getElementById('filter-form').dispatchEvent(new Event('submit'));
-                });
-            });
-
-            // Event listeners para selectores de columnas
-            document.querySelectorAll('.column-selector').forEach((select, index) => {
-                select.addEventListener('change', () => {
-                    const fieldNumber = index + 1; // 1, 2, or 3
-                    const columnKey = `field${fieldNumber}`; // field1, field2, field3
-                    const newValue = select.value; // ID del campo seleccionado o ""
-
-                    // Actualizar el estado interno
-                    this.selectedColumns[columnKey] = newValue;
-
-                    // Actualizar el encabezado de la columna inmediatamente
-                    this.updateColumnHeaders();
-
-                    // Actualizar la tabla con los nuevos datos de la columna
-                    this.filterRecordsBySearch(); // Esto reordena y repagina si es necesario
-                });
-            });
-
-            // Event listeners para ordenar las columnas
-            document.querySelectorAll('th.sortable').forEach(th => {
-                th.addEventListener('click', () => {
-                    const column = th.getAttribute('data-sort');
-
-                    // Si ya estamos ordenando por esta columna, invertir dirección
-                    if (this.sorting.column === column) {
-                        this.sorting.direction = this.sorting.direction === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        // Nueva columna seleccionada, establecer ordenación ascendente por defecto
-                        this.sorting.column = column;
-                        this.sorting.direction = 'asc';
-                    }
-
-                    // Actualizar íconos de ordenación en todas las columnas
-                    document.querySelectorAll('th.sortable i.bi').forEach(icon => {
-                        icon.className = 'bi'; // Resetear clase
+                }, 300);
+                
+                // Configurar botones de vista
+                const monthViewBtn = document.getElementById('calendar-month-view');
+                const weekViewBtn = document.getElementById('calendar-week-view');
+                
+                if (monthViewBtn && weekViewBtn) {
+                    monthViewBtn.classList.add('active');
+                    
+                    monthViewBtn.addEventListener('click', () => {
+                        this.calendar.changeView('dayGridMonth');
+                        monthViewBtn.classList.add('active');
+                        weekViewBtn.classList.remove('active');
                     });
-
-                    // Actualizar ícono de la columna seleccionada
-                    const icon = th.querySelector('i.bi');
-                    if (icon) { // Asegurarse que el icono existe
-                       icon.className = `bi bi-sort-${this.sorting.direction === 'asc' ? 'up' : 'down'}`;
-                    }
-
-                    // Actualizar la tabla
-                    this.filterRecordsBySearch(); // Esto ya llama a sortRecords y displayPaginatedRecords
-                });
-            });
-        }, 100); // Dar tiempo para que el DOM esté completamente cargado
+                    
+                    weekViewBtn.addEventListener('click', () => {
+                        this.calendar.changeView('dayGridWeek');
+                        weekViewBtn.classList.add('active');
+                        monthViewBtn.classList.remove('active');
+                    });
+                }
+            } catch (error) {
+                console.error("Error al inicializar FullCalendar:", error);
+                // Si hay error, mostrar un calendario simple
+                this.renderSimpleCalendar();
+            }
+        }, 500); // Esperar medio segundo para asegurar que todo está cargado
     },
 
     dateClick(info) {
