@@ -418,17 +418,23 @@ const KPIsView = {
      */
     setupEventListeners() {
         // Listener para el formulario de filtros
-        document.getElementById('kpi-filter-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.applyFilters();
-            this.generateKPIs();
-            this.updateCharts();
-        });
+        const kpiFilterForm = document.getElementById('kpi-filter-form');
+        if (kpiFilterForm) {
+            kpiFilterForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.applyFilters();
+                this.generateKPIs();
+                this.updateCharts();
+            });
+        }
         
         // Listener para guardado de configuración de KPIs
-        document.getElementById('save-kpi-config-btn').addEventListener('click', () => {
-            this.saveKPIConfiguration();
-        });
+        const saveConfigBtn = document.getElementById('save-kpi-config-btn');
+        if (saveConfigBtn) {
+            saveConfigBtn.addEventListener('click', () => {
+                this.saveKPIConfiguration();
+            });
+        }
         
         // Listener para seleccionar todos los campos KPI
         const selectAllBtn = document.getElementById('select-all-kpi-fields');
@@ -444,23 +450,32 @@ const KPIsView = {
         }
         
         // Listeners para los checkboxes de campos
-        document.querySelectorAll('.kpi-field-check').forEach(checkbox => {
-            checkbox.addEventListener('change', () => {
-                this.updateSelectedFields();
-                this.generateKPIs();
-                this.updateFieldSelects();
+        const kpiFieldChecks = document.querySelectorAll('.kpi-field-check');
+        if (kpiFieldChecks && kpiFieldChecks.length > 0) {
+            kpiFieldChecks.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    this.updateSelectedFields();
+                    this.generateKPIs();
+                    this.updateFieldSelects();
+                });
             });
-        });
+        }
         
         // Listener para atajos de fecha
-        document.querySelectorAll('.date-shortcut').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const range = e.target.getAttribute('data-range');
-                this.setDateRange(range);
-                // Aplicar filtros automáticamente
-                document.getElementById('kpi-filter-form').dispatchEvent(new Event('submit'));
+        const dateShortcuts = document.querySelectorAll('.date-shortcut');
+        if (dateShortcuts && dateShortcuts.length > 0) {
+            dateShortcuts.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const range = e.target.getAttribute('data-range');
+                    this.setDateRange(range);
+                    // Aplicar filtros automáticamente
+                    const filterForm = document.getElementById('kpi-filter-form');
+                    if (filterForm) {
+                        filterForm.dispatchEvent(new Event('submit'));
+                    }
+                });
             });
-        });
+        }
         
         // Listeners para los cambios de gráfico
         const chartField = document.getElementById('chart-field');
@@ -504,7 +519,7 @@ const KPIsView = {
         }
         
         // Listeners para fechas de comparación personalizadas
-        if (comparisonFromDate && comparisonToDate) {
+        if (comparisonFromDate && comparisonToDate && comparisonMode) {
             [comparisonFromDate, comparisonToDate].forEach(input => {
                 input.addEventListener('change', () => {
                     if (comparisonMode.value === 'custom') {
@@ -531,7 +546,7 @@ const KPIsView = {
             });
         }
         
-        if (kpiStyleOptions.length > 0) {
+        if (kpiStyleOptions && kpiStyleOptions.length > 0) {
             kpiStyleOptions.forEach(option => {
                 option.addEventListener('change', () => {
                     this.generateKPIs();
@@ -656,15 +671,24 @@ const KPIsView = {
      */
     applyFilters() {
         const entityFilterSelect = document.getElementById('kpi-filter-entity');
-        const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
         
-        // Si se selecciona "Todas las entidades" o no se selecciona ninguna, no aplicamos filtro de entidad
-        const entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
-            ? []
-            : selectedEntities;
+        // Verificar si el selector de entidad existe antes de acceder a sus propiedades
+        let entityFilter = [];
+        if (entityFilterSelect) {
+            const selectedEntities = Array.from(entityFilterSelect.selectedOptions || [])
+                .map(option => option.value);
             
-        const fromDateFilter = document.getElementById('kpi-filter-from-date').value;
-        const toDateFilter = document.getElementById('kpi-filter-to-date').value;
+            // Si se selecciona "Todas las entidades" o no se selecciona ninguna, no aplicamos filtro de entidad
+            entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
+                ? []
+                : selectedEntities;
+        }
+            
+        const fromDateInput = document.getElementById('kpi-filter-from-date');
+        const toDateInput = document.getElementById('kpi-filter-to-date');
+        
+        const fromDateFilter = fromDateInput ? fromDateInput.value : '';
+        const toDateFilter = toDateInput ? toDateInput.value : '';
         
         const filters = {
             entityIds: entityFilter.length > 0 ? entityFilter : undefined,

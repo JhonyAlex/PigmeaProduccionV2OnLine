@@ -124,5 +124,17 @@ const FieldModel = {
             field.type === 'number' && 
             field.useForComparativeReports
         );
+    },
+    
+    /**
+     * Obtiene todos los campos numéricos
+     * @returns {Array} Lista de todos los campos de tipo numérico
+     */
+    getNumericFields() {
+        const fields = this.getAll() || [];
+        return fields.filter(field => 
+            field && 
+            field.type === 'number'
+        );
     }
 };

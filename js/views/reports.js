@@ -1395,9 +1395,9 @@ const ReportsView = {
         console.warn("removeModalBackdrop: Se recomienda dejar que Bootstrap maneje los backdrops.");
     },
     generateReport() {
-        const fieldId = document.getElementById('report-field').value;
-        const horizontalFieldId = document.getElementById('report-horizontal-field').value;
-        const aggregation = document.getElementById('report-aggregation').value;
+        const fieldId = document.getElementById('report-field')?.value;
+        const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
+        const aggregation = document.getElementById('report-aggregation')?.value;
         const reportForm = document.getElementById('report-form'); // Para mostrar alertas cerca
 
         if (!fieldId) {
@@ -1407,15 +1407,21 @@ const ReportsView = {
 
         // Obtener filtros actuales
         const entityFilterSelect = document.getElementById('filter-entity');
-        const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
+        
+        // Verificar si el selector de entidad existe antes de acceder a sus propiedades
+        let entityFilter = [];
+        if (entityFilterSelect) {
+            const selectedEntities = Array.from(entityFilterSelect.selectedOptions || [])
+                .map(option => option.value);
 
-        // Si se selecciona "Todas las entidades" o no se selecciona ninguna, no aplicamos filtro de entidad
-        const entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
-            ? []
-            : selectedEntities;
+            // Si se selecciona "Todas las entidades" o no se selecciona ninguna, no aplicamos filtro de entidad
+            entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
+                ? []
+                : selectedEntities;
+        }
 
-        const fromDateFilter = document.getElementById('filter-from-date').value;
-        const toDateFilter = document.getElementById('filter-to-date').value;
+        const fromDateFilter = document.getElementById('filter-from-date')?.value;
+        const toDateFilter = document.getElementById('filter-to-date')?.value;
 
         const filters = {
             entityIds: entityFilter.length > 0 ? entityFilter : undefined,
