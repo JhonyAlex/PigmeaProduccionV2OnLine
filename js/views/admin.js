@@ -540,6 +540,8 @@ const AdminView = {
         const modalTitle = document.getElementById('entityModalTitle');
         const entityIdInput = document.getElementById('entity-id');
         const entityNameInput = document.getElementById('entity-name');
+        const entityGroupInput = document.getElementById('entity-group');
+        const groupsDatalist = document.getElementById('existing-groups');
         
         // Obtener nombre personalizado
         const config = StorageService.getConfig();
@@ -547,6 +549,15 @@ const AdminView = {
         
         // Limpiar formulario
         document.getElementById('entityForm').reset();
+        
+        // Cargar grupos existentes
+        groupsDatalist.innerHTML = '';
+        const groups = EntityModel.getAllGroups();
+        groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group;
+            groupsDatalist.appendChild(option);
+        });
         
         if (entityId) {
             // Modo edición
@@ -556,10 +567,12 @@ const AdminView = {
             modalTitle.textContent = `Editar ${entityName} Principal`;
             entityIdInput.value = entity.id;
             entityNameInput.value = entity.name;
+            entityGroupInput.value = entity.group || '';
         } else {
             // Modo creación
             modalTitle.textContent = `Nueva ${entityName} Principal`;
             entityIdInput.value = '';
+            entityGroupInput.value = '';
         }
         
         modal.show();
@@ -605,6 +618,7 @@ const AdminView = {
         
         const entityId = document.getElementById('entity-id').value;
         const entityName = document.getElementById('entity-name').value;
+        const entityGroup = document.getElementById('entity-group').value.trim();
         
         // Obtener el nombre personalizado para entidad
         const config = StorageService.getConfig();
@@ -613,11 +627,13 @@ const AdminView = {
         let result;
         if (entityId) {
             // Actualizar entidad existente
-            result = EntityModel.update(entityId, { name: entityName }); 
-
+            result = EntityModel.update(entityId, { 
+                name: entityName,
+                group: entityGroup
+            }); 
         } else {
             // Crear nueva entidad
-            result = EntityModel.create(entityName);
+            result = EntityModel.create(entityName, entityGroup);
         }
         
         if (result) {

@@ -164,6 +164,21 @@ const KPIsView = {
                                         <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisYear">Año actual</button>
                                         <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastYear">Año pasado</button>
                                     </div>
+                                    
+                                    ${(() => {
+                                        // Obtener todos los grupos de entidades
+                                        const groups = EntityModel.getAllGroups();
+                                        if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
+                                        
+                                        return `
+                                            <h6 class="mt-3 mb-2">Filtrar por grupos</h6>
+                                            <div class="btn-group d-flex flex-wrap" role="group">
+                                                ${groups.map(group => 
+                                                    `<button type="button" class="btn btn-sm btn-outline-info entity-group-filter" data-group="${group}">${group}</button>`
+                                                ).join('')}
+                                            </div>
+                                        `;
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -511,11 +526,10 @@ const KPIsView = {
                 button.addEventListener('click', (e) => {
                     const range = e.target.getAttribute('data-range');
                     this.setDateRange(range);
-                    // Aplicar filtros automáticamente
-                    const filterForm = document.getElementById('kpi-filter-form');
-                    if (filterForm) {
-                        filterForm.dispatchEvent(new Event('submit'));
-                    }
+                    // Aplicar filtros y regenerar KPIs
+                    this.applyFilters();
+                    this.generateKPIs();
+                    this.updateCharts();
                 });
             });
         }
@@ -615,6 +629,21 @@ const KPIsView = {
                 });
             }
         });
+        
+        // Listener para filtros de grupo de entidades
+        const entityGroupFilters = document.querySelectorAll('.entity-group-filter');
+        if (entityGroupFilters && entityGroupFilters.length > 0) {
+            entityGroupFilters.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const group = e.target.getAttribute('data-group');
+                    this.filterByEntityGroup(group);
+                    // Aplicar filtros y regenerar KPIs
+                    this.applyFilters();
+                    this.generateKPIs();
+                    this.updateCharts();
+                });
+            });
+        }
     },
     
     /**
@@ -2026,5 +2055,32 @@ const KPIsView = {
                 console.error("Error al actualizar KPIs:", error);
             }
         }
+    },
+    
+    /**
+     * Filtra las entidades por grupo
+     * @param {string} groupName Nombre del grupo a filtrar
+     */
+    filterByEntityGroup(groupName) {
+        if (!groupName) return;
+        
+        // Obtener el selector de entidades
+        const entityFilterSelect = document.getElementById('kpi-filter-entity');
+        if (!entityFilterSelect) return;
+        
+        // Obtener las entidades del grupo especificado
+        const entitiesInGroup = EntityModel.getByGroup(groupName);
+        if (entitiesInGroup.length === 0) return;
+        
+        // Deseleccionar todas las opciones primero
+        Array.from(entityFilterSelect.options).forEach(option => {
+            option.selected = false;
+        });
+        
+        // Seleccionar solo las entidades del grupo
+        entitiesInGroup.forEach(entity => {
+            const option = Array.from(entityFilterSelect.options).find(opt => opt.value === entity.id);
+            if (option) option.selected = true;
+        });
     }
 };

@@ -192,6 +192,21 @@ const ReportsView = {
                                 <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSaturday">Sábado</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSunday">Domingo</button>
                             </div>
+                            
+                            ${(() => {
+                                // Obtener todos los grupos de entidades
+                                const groups = EntityModel.getAllGroups();
+                                if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
+                                
+                                return `
+                                    <h6 class="mt-4 mb-2">Filtrar por grupos de ${entityName.toLowerCase()}s</h6>
+                                    <div class="btn-group flex-wrap" role="group" aria-label="Grupos de entidades">
+                                        ${groups.map(group => 
+                                            `<button type="button" class="btn btn-sm btn-outline-info entity-group-filter" data-group="${group}">${group}</button>`
+                                        ).join('')}
+                                    </div>
+                                `;
+                            })()}
                         </div>
                     </div>
 
@@ -522,6 +537,16 @@ const ReportsView = {
                 button.addEventListener('click', (e) => {
                     const range = e.target.getAttribute('data-range');
                     this.setDateRange(range);
+                    // Aplicar filtros automáticamente
+                    document.getElementById('filter-form').dispatchEvent(new Event('submit'));
+                });
+            });
+
+            // Filtros de grupo de entidades
+            document.querySelectorAll('.entity-group-filter').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const group = e.target.getAttribute('data-group');
+                    this.filterByEntityGroup(group);
                     // Aplicar filtros automáticamente
                     document.getElementById('filter-form').dispatchEvent(new Event('submit'));
                 });
@@ -1652,5 +1677,32 @@ const ReportsView = {
         
         // Actualizar vista
         this.applyFilters();
+    },
+
+    /**
+     * Filtra las entidades por grupo
+     * @param {string} groupName Nombre del grupo a filtrar
+     */
+    filterByEntityGroup(groupName) {
+        if (!groupName) return;
+        
+        // Obtener el selector de entidades
+        const entityFilterSelect = document.getElementById('filter-entity');
+        if (!entityFilterSelect) return;
+        
+        // Obtener las entidades del grupo especificado
+        const entitiesInGroup = EntityModel.getByGroup(groupName);
+        if (entitiesInGroup.length === 0) return;
+        
+        // Deseleccionar todas las opciones primero
+        Array.from(entityFilterSelect.options).forEach(option => {
+            option.selected = false;
+        });
+        
+        // Seleccionar solo las entidades del grupo
+        entitiesInGroup.forEach(entity => {
+            const option = Array.from(entityFilterSelect.options).find(opt => opt.value === entity.id);
+            if (option) option.selected = true;
+        });
     },
 }; // Fin del objeto ReportsView

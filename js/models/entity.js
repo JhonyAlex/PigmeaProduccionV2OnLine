@@ -24,9 +24,10 @@ const EntityModel = {
     /**
      * Crea una nueva entidad
      * @param {string} name Nombre de la entidad
+     * @param {string} group Nombre del grupo de la entidad (opcional)
      * @returns {Object} Entidad creada
      */
-    create(name) {
+    create(name, group = '') {
         const data = StorageService.getData();
         
         // Asegurarse de que data.entities existe
@@ -37,6 +38,7 @@ const EntityModel = {
         const newEntity = {
             id: 'entity_' + Date.now(),
             name: name,
+            group: group,
             fields: [] // IDs de campos asignados
         };
         
@@ -49,7 +51,7 @@ const EntityModel = {
     /**
      * Actualiza una entidad existente
      * @param {string} id ID de la entidad
-     * @param {Object} updateData Objeto con las propiedades a actualizar (ej. { name: 'nuevoNombre', fields: [...] })
+     * @param {Object} updateData Objeto con las propiedades a actualizar (ej. { name: 'nuevoNombre', fields: [...], group: 'nuevoGrupo' })
      * @returns {Object|null} Entidad actualizada o null
      */
     update(id, updateData) {
@@ -71,6 +73,10 @@ const EntityModel = {
         if (updateData.hasOwnProperty('fields')) {
             // Asegurarse de que fields sea un array
             entityToUpdate.fields = Array.isArray(updateData.fields) ? [...updateData.fields] : []; 
+        }
+        if (updateData.hasOwnProperty('group')) {
+            // Asegurarse de que group sea un string
+            entityToUpdate.group = String(updateData.group);
         }
         // Se podrían añadir más propiedades aquí si fuera necesario en el futuro
         
@@ -117,5 +123,26 @@ const EntityModel = {
         StorageService.saveData(data);
         
         return data.entities[entityIndex];
+    },
+    
+    /**
+     * Obtiene todos los grupos de entidades únicos
+     * @returns {Array} Lista de nombres de grupos únicos
+     */
+    getAllGroups() {
+        const entities = this.getAll();
+        // Obtener todos los grupos únicos que no estén vacíos
+        const uniqueGroups = [...new Set(entities.map(entity => entity.group).filter(group => group))];
+        return uniqueGroups.sort();
+    },
+    
+    /**
+     * Obtiene entidades filtradas por grupo
+     * @param {string} groupName Nombre del grupo
+     * @returns {Array} Lista de entidades del grupo especificado
+     */
+    getByGroup(groupName) {
+        const entities = this.getAll();
+        return entities.filter(entity => entity.group === groupName);
     }
 };

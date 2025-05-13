@@ -66,6 +66,16 @@
                             <label for="entity-name" class="form-label">Nombre</label>
                             <input type="text" class="form-control" id="entity-name" required>
                         </div>
+                        <div class="mb-3">
+                            <label for="entity-group" class="form-label">Grupo (opcional)</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="entity-group" list="existing-groups" placeholder="Seleccione o ingrese un grupo">
+                                <datalist id="existing-groups">
+                                    <!-- Las opciones se generarán dinámicamente -->
+                                </datalist>
+                            </div>
+                            <small class="text-muted">Agrupar entidades facilita el filtrado y la organización</small>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
