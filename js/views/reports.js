@@ -218,7 +218,7 @@ const ReportsView = {
                                                 </div>
                                             </div>
                                             <div class="card-body p-2">
-                                                <div id="date-calendar" style="height: 300px;"></div>
+                                                <div id="date-calendar" style="min-height: 340px;"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -1787,9 +1787,76 @@ const ReportsView = {
 
         // Cargar CSS de FullCalendar
         loadStylesheet('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css');
+        
+        // Añadir estilos personalizados para mejorar la apariencia
+        const customStyles = document.createElement('style');
+        customStyles.textContent = `
+            .fc-theme-standard .fc-scrollgrid {
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+            }
+            .fc .fc-daygrid-day-frame {
+                padding: 4px 2px 2px 2px;
+            }
+            .fc .fc-daygrid-day.fc-day-today {
+                background-color: rgba(66, 135, 245, 0.15);
+            }
+            .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+                font-weight: bold;
+                color: #1967d2;
+            }
+            .fc .fc-daygrid-day-number {
+                font-size: 0.9em;
+                padding: 3px 6px;
+            }
+            .fc .fc-toolbar-title {
+                font-size: 1.2rem;
+                font-weight: 500;
+            }
+            .fc .fc-button-primary {
+                background-color: #3788d8;
+                border-color: #3788d8;
+            }
+            .fc .fc-button-primary:not(:disabled):hover {
+                background-color: #2c6db2;
+                border-color: #2c6db2;
+            }
+            .fc .fc-button-primary:not(:disabled):active,
+            .fc .fc-button-primary:not(:disabled).fc-button-active {
+                background-color: #1d5187;
+                border-color: #1d5187;
+            }
+            .fc .fc-col-header-cell {
+                padding: 6px 0;
+                background-color: #f8f9fa;
+                font-weight: 500;
+            }
+            .fc .fc-highlight {
+                background-color: rgba(66, 135, 245, 0.2);
+            }
+            .fc-event {
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            @media (max-width: 768px) {
+                .fc .fc-toolbar {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .fc .fc-toolbar-title {
+                    font-size: 1rem;
+                }
+            }
+        `;
+        document.head.appendChild(customStyles);
 
         // Cargar JavaScript de FullCalendar
         loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js', callback);
+        
+        // Cargar locales para español
+        loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js', () => {
+            console.log('Locale español cargado');
+        });
     },
 
     /**
@@ -1805,14 +1872,21 @@ const ReportsView = {
             headerToolbar: {
                 left: 'title',
                 center: '',
-                right: 'prev,next'
+                right: 'prev,next today'
+            },
+            buttonText: {
+                today: 'Hoy'
             },
             selectable: true,
             selectMirror: true,
             unselectAuto: false,
             locale: 'es',
             firstDay: 1, // Lunes como primer día de la semana
-            height: '100%',
+            height: 'auto',
+            aspectRatio: 1.35, // Mejor proporción para visualización
+            fixedWeekCount: false, // Muestra solo las semanas del mes actual
+            showNonCurrentDates: false, // Oculta días que no son del mes actual
+            dayMaxEvents: 0, // Muestra "más" en lugar de todos los eventos
             select: (info) => {
                 // Convertir fechas a formato ISO (considerando zona horaria)
                 const startDate = new Date(info.start);
@@ -1834,6 +1908,10 @@ const ReportsView = {
                     if (filterForm) {
                         filterForm.dispatchEvent(new Event('submit'));
                     }
+                    
+                    // Proporcionar feedback visual
+                    calendarEl.classList.add('bg-light');
+                    setTimeout(() => calendarEl.classList.remove('bg-light'), 300);
                 }
             },
             dateClick: (info) => {
@@ -1854,6 +1932,11 @@ const ReportsView = {
                     if (filterForm) {
                         filterForm.dispatchEvent(new Event('submit'));
                     }
+                    
+                    // Proporcionar feedback visual del día seleccionado
+                    const cells = document.querySelectorAll('.fc-daygrid-day');
+                    cells.forEach(cell => cell.classList.remove('clicked-day'));
+                    info.dayEl.classList.add('clicked-day');
                 }
             }
         };
