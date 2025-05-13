@@ -368,6 +368,7 @@ const ReportsView = {
      * Añade los event listeners al calendario
      */
     addCalendarEventListeners(container) {
+        console.log("Agregando event listeners al calendario");
         // Eventos para los días
         const days = container.querySelectorAll('.day');
         let isDragging = false;
@@ -474,7 +475,9 @@ const ReportsView = {
         }
         
         if (prevMonthBtn) {
+            console.log("Agregando event listener a botón prev-month");
             prevMonthBtn.addEventListener('click', () => {
+                console.log("Click en botón prev-month");
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
                 }
@@ -483,10 +486,14 @@ const ReportsView = {
                 this.currentCalendarDate = date;
                 this.renderCalendarMonth(container, date);
             });
+        } else {
+            console.warn("Botón prev-month no encontrado");
         }
         
         if (nextMonthBtn) {
+            console.log("Agregando event listener a botón next-month");
             nextMonthBtn.addEventListener('click', () => {
+                console.log("Click en botón next-month");
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
                 }
@@ -495,13 +502,19 @@ const ReportsView = {
                 this.currentCalendarDate = date;
                 this.renderCalendarMonth(container, date);
             });
+        } else {
+            console.warn("Botón next-month no encontrado");
         }
         
         if (todayBtn) {
+            console.log("Agregando event listener a botón today-btn");
             todayBtn.addEventListener('click', () => {
+                console.log("Click en botón today-btn");
                 this.currentCalendarDate = new Date();
                 this.renderCalendarMonth(container, this.currentCalendarDate);
             });
+        } else {
+            console.warn("Botón today-btn no encontrado");
         }
         
         // Cambio de vista (mes/semana)
@@ -512,7 +525,6 @@ const ReportsView = {
             monthViewBtn.addEventListener('click', () => {
                 monthViewBtn.classList.add('active');
                 weekViewBtn.classList.remove('active');
-                // Por ahora, simplemente recargamos el mes
                 this.renderCalendarMonth(container, this.currentCalendarDate);
             });
             
@@ -543,7 +555,7 @@ const ReportsView = {
                         </div>
                         <div class="p-3 text-center">
                             <div class="alert alert-info mb-0">
-                                Vista semanal en desarrollo. Por favor, utilice la vista mensual.
+                                <i class="bi bi-info-circle"></i> Vista semanal en desarrollo. Por favor, utilice la vista mensual.
                             </div>
                         </div>
                     </div>
@@ -2344,7 +2356,9 @@ const ReportsView = {
         }
         
         if (prevMonthBtn) {
+            console.log("Agregando event listener a botón prev-month");
             prevMonthBtn.addEventListener('click', () => {
+                console.log("Click en botón prev-month");
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
                 }
@@ -2353,10 +2367,14 @@ const ReportsView = {
                 this.currentCalendarDate = date;
                 this.renderCalendarMonth(container, date);
             });
+        } else {
+            console.warn("Botón prev-month no encontrado");
         }
         
         if (nextMonthBtn) {
+            console.log("Agregando event listener a botón next-month");
             nextMonthBtn.addEventListener('click', () => {
+                console.log("Click en botón next-month");
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
                 }
@@ -2365,13 +2383,19 @@ const ReportsView = {
                 this.currentCalendarDate = date;
                 this.renderCalendarMonth(container, date);
             });
+        } else {
+            console.warn("Botón next-month no encontrado");
         }
         
         if (todayBtn) {
+            console.log("Agregando event listener a botón today-btn");
             todayBtn.addEventListener('click', () => {
+                console.log("Click en botón today-btn");
                 this.currentCalendarDate = new Date();
                 this.renderCalendarMonth(container, this.currentCalendarDate);
             });
+        } else {
+            console.warn("Botón today-btn no encontrado");
         }
         
         // Cambio de vista (mes/semana)
@@ -2382,7 +2406,7 @@ const ReportsView = {
             monthViewBtn.addEventListener('click', () => {
                 monthViewBtn.classList.add('active');
                 weekViewBtn.classList.remove('active');
-                this.renderCalendarMonth(container);
+                this.renderCalendarMonth(container, this.currentCalendarDate);
             });
             
             weekViewBtn.addEventListener('click', () => {
