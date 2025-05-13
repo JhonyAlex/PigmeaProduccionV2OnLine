@@ -357,9 +357,30 @@ const ReportsView = {
     renderCalendarMonth(container, date) {
         console.log("Renderizando calendario para", date);
         
+        // Verificar si el contenedor está visible
+        const isVisible = container.offsetWidth > 0 && container.offsetHeight > 0;
+        if (!isVisible) {
+            console.warn("El contenedor del calendario no es visible. Buscando panel colapsable para abrir...");
+            // Intentar abrir el panel colapsable si está cerrado
+            const collapseParent = this.findCollapseParent(container);
+            if (collapseParent && !collapseParent.classList.contains('show')) {
+                console.log("Abriendo panel colapsable para mostrar el calendario");
+                const bsCollapse = new bootstrap.Collapse(collapseParent, { toggle: true });
+                // Programar renderizado después de que se muestre el panel
+                setTimeout(() => this.renderCalendarMonth(container, date), 350);
+                return;
+            }
+        }
+        
         if (!date) {
             date = this.currentCalendarDate || new Date();
             console.warn("No se proporcionó fecha, usando", date);
+        }
+        
+        // Asegurarse de que date sea un objeto Date válido
+        if (!(date instanceof Date) || isNaN(date.getTime())) {
+            console.warn("Fecha inválida proporcionada, usando fecha actual");
+            date = new Date();
         }
         
         const year = date.getFullYear();
@@ -368,6 +389,9 @@ const ReportsView = {
         
         // Guardar la fecha actual para referencia futura
         this.currentCalendarDate = new Date(date);
+        
+        // Resto del código para generar el HTML del calendario...
+        // ... (código anterior sin cambios)
         
         // Primer día del mes
         const firstDay = new Date(year, month, 1);
@@ -480,14 +504,35 @@ const ReportsView = {
         
         // Insertar calendario en el elemento
         console.log("Actualizando HTML del calendario");
-        container.innerHTML = calendarHTML;
         
-        // Importante: Limpiar listeners antiguos antes de agregar nuevos
+        // Importante: Limpiar listeners antiguos antes de actualizar el HTML
         this.removeCalendarEventListeners(container);
+        
+        // Actualizar el HTML
+        container.innerHTML = calendarHTML;
         
         // Añadir event listeners al nuevo contenido
         console.log("Agregando event listeners al nuevo contenido del calendario");
         this.addCalendarEventListeners(container);
+        
+        // Verificar después del renderizado que todo está correcto
+        setTimeout(() => {
+            this.verifyCalendarButtons(container);
+        }, 50);
+    },
+    
+    /**
+     * Encuentra el elemento colapsable padre más cercano
+     */
+    findCollapseParent(element) {
+        let current = element;
+        while (current && current !== document.body) {
+            if (current.classList.contains('collapse')) {
+                return current;
+            }
+            current = current.parentElement;
+        }
+        return null;
     },
 
     /**
@@ -636,48 +681,72 @@ const ReportsView = {
             this.currentCalendarDate = new Date();
         }
         
+        // Usar onclick directamente para asegurar que solo se ejecuta una vez por clic
         if (prevMonthBtn) {
             console.log("Agregando event listener a botón prev-month");
-            this.prevMonthHandler = () => {
+            prevMonthBtn.onclick = (e) => {
                 console.log("Click en botón prev-month");
+                e.preventDefault();
+                e.stopPropagation();
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
                 }
+                
                 const date = new Date(this.currentCalendarDate);
                 date.setMonth(date.getMonth() - 1);
                 this.currentCalendarDate = date;
-                this.renderCalendarMonth(container, date);
+                
+                // Usar timeout para darle tiempo a que se complete este evento
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, date);
+                }, 10);
+                
+                return false;
             };
-            prevMonthBtn.addEventListener('click', this.prevMonthHandler);
         } else {
             console.warn("Botón prev-month no encontrado");
         }
         
         if (nextMonthBtn) {
             console.log("Agregando event listener a botón next-month");
-            this.nextMonthHandler = () => {
+            nextMonthBtn.onclick = (e) => {
                 console.log("Click en botón next-month");
+                e.preventDefault();
+                e.stopPropagation();
                 if (!this.currentCalendarDate) {
                     this.currentCalendarDate = new Date();
                 }
+                
                 const date = new Date(this.currentCalendarDate);
                 date.setMonth(date.getMonth() + 1);
                 this.currentCalendarDate = date;
-                this.renderCalendarMonth(container, date);
+                
+                // Usar timeout para darle tiempo a que se complete este evento
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, date);
+                }, 10);
+                
+                return false;
             };
-            nextMonthBtn.addEventListener('click', this.nextMonthHandler);
         } else {
             console.warn("Botón next-month no encontrado");
         }
         
         if (todayBtn) {
             console.log("Agregando event listener a botón today-btn");
-            this.todayBtnHandler = () => {
+            todayBtn.onclick = (e) => {
                 console.log("Click en botón today-btn");
+                e.preventDefault();
+                e.stopPropagation();
                 this.currentCalendarDate = new Date();
-                this.renderCalendarMonth(container, this.currentCalendarDate);
+                
+                // Usar timeout para darle tiempo a que se complete este evento
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, this.currentCalendarDate);
+                }, 10);
+                
+                return false;
             };
-            todayBtn.addEventListener('click', this.todayBtnHandler);
         } else {
             console.warn("Botón today-btn no encontrado");
         }
@@ -687,15 +756,21 @@ const ReportsView = {
         const weekViewBtn = container.querySelector('#week-view-btn');
         
         if (monthViewBtn && weekViewBtn) {
-            this.monthViewHandler = () => {
+            monthViewBtn.onclick = (e) => {
+                e.preventDefault();
                 monthViewBtn.classList.add('active');
                 weekViewBtn.classList.remove('active');
-                this.renderCalendarMonth(container, this.currentCalendarDate);
+                setTimeout(() => {
+                    this.renderCalendarMonth(container, this.currentCalendarDate);
+                }, 10);
+                return false;
             };
             
-            this.weekViewHandler = () => {
+            weekViewBtn.onclick = (e) => {
+                e.preventDefault();
                 weekViewBtn.classList.add('active');
                 monthViewBtn.classList.remove('active');
+                
                 // Aquí podríamos implementar una vista semanal si fuera necesario
                 // Por ahora, mostramos un mensaje
                 container.innerHTML = `
@@ -728,10 +803,8 @@ const ReportsView = {
                 
                 // Volver a añadir listeners
                 this.addCalendarEventListeners(container);
+                return false;
             };
-            
-            monthViewBtn.addEventListener('click', this.monthViewHandler);
-            weekViewBtn.addEventListener('click', this.weekViewHandler);
         }
         
         // Guardar referencia al contenedor para limpiar listeners después
@@ -829,8 +902,27 @@ const ReportsView = {
     setupEventListeners() {
         // Esperar a que el DOM esté completamente cargado
         setTimeout(() => {
-            // Inicializar el calendario local
-            this.setupCalendar();
+            // Agregar evento al panel colapsable para inicializar el calendario cuando se abre
+            const fechasCollapse = document.getElementById('fechasCollapse');
+            if (fechasCollapse) {
+                // Limpiar listeners anteriores para evitar duplicación
+                const newFechasCollapse = fechasCollapse.cloneNode(true);
+                fechasCollapse.parentNode.replaceChild(newFechasCollapse, fechasCollapse);
+                
+                // Agregar listener para cuando se abre el panel
+                newFechasCollapse.addEventListener('shown.bs.collapse', () => {
+                    console.log("Panel de fechas abierto, inicializando calendario");
+                    // Re-inicializar el calendario al hacer visible el panel
+                    this.setupCalendar();
+                });
+            }
+            
+            // Inicializar el calendario local solo si el panel está visible
+            if (fechasCollapse && fechasCollapse.classList.contains('show')) {
+                this.setupCalendar();
+            } else {
+                console.log("Panel de fechas cerrado, el calendario se inicializará al abrirlo");
+            }
             
             // Event listener para "Seleccionar todos"
             const selectAllCheckbox = document.getElementById('select-all-records');
