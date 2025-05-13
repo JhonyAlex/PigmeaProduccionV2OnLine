@@ -2844,7 +2844,8 @@ const ReportsView = {
             }
 
             const entities = EntityModel.getAll();
-            const sharedNumericFields = FieldModel.getSharedNumericFields();
+            // Usar getNumericFields en lugar de getSharedNumericFields para mostrar todos los campos numéricos
+            const allNumericFields = FieldModel.getNumericFields();
             const sharedFields = FieldModel.getAll();
 
             // Formatear fechas
@@ -2990,7 +2991,7 @@ const ReportsView = {
                             <h5 class="mb-0">Reportes Comparativos</h5>
                         </div>
                         <div class="card-body">
-                            ${sharedNumericFields.length === 0 ? `
+                            ${allNumericFields.length === 0 ? `
                                 <div class="alert alert-info">
                                     No hay campos numéricos compartidos entre ${entityName.toLowerCase()}s para generar reportes comparativos.
                                     <hr>
@@ -3011,7 +3012,7 @@ const ReportsView = {
                                         <label for="report-field" class="form-label">Campos a Comparar</label>
                                         <select class="form-select" id="report-field" required multiple size="4">
                                             <option value="">Seleccione uno o más campos</option>
-                                            ${sharedNumericFields.map(field =>
+                                            ${allNumericFields.map(field =>
                                                 `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
                                             ).join('')}
                                         </select>
@@ -3180,8 +3181,8 @@ const ReportsView = {
     autoGenerateReport() {
         try {
             // Verificar si hay campos disponibles para generar un reporte
-            const sharedNumericFields = FieldModel.getSharedNumericFields();
-            if (sharedNumericFields.length === 0) {
+            const allNumericFields = FieldModel.getNumericFields();
+            if (allNumericFields.length === 0) {
                 console.log("No hay campos numéricos para generar reporte automático");
                 return; // No hay campos para generar reporte
             }
@@ -3206,9 +3207,9 @@ const ReportsView = {
                     // Si hay un campo marcado para comparar, seleccionarlo
                     const option = Array.from(reportFieldSelect.options).find(opt => opt.value === compareField.id);
                     if (option) option.selected = true;
-                } else if (sharedNumericFields.length > 0) {
+                } else if (allNumericFields.length > 0) {
                     // Si no hay campo marcado, seleccionar el primer campo numérico disponible
-                    const option = Array.from(reportFieldSelect.options).find(opt => opt.value === sharedNumericFields[0].id);
+                    const option = Array.from(reportFieldSelect.options).find(opt => opt.value === allNumericFields[0].id);
                     if (option) option.selected = true;
                 }
 
