@@ -2006,6 +2006,58 @@ const ReportsView = {
                             <h6 class="mb-2">Resumen</h6>
                             ${ChartUtils.createSummaryTable(reportData)}
                         `;
+                        
+                        // Si es un campo de tipo select, añadir el desglose por opciones
+                        if (reportData.fieldType === 'select') {
+                            const field = FieldModel.getById(fieldId);
+                            
+                            // Crear un objeto para almacenar el total de cada opción
+                            const optionTotals = {};
+                            
+                            // Recorrer todas las entidades para sumar los conteos por opción
+                            reportData.entities.forEach(entity => {
+                                if (entity.optionCounts) {
+                                    Object.entries(entity.optionCounts).forEach(([option, count]) => {
+                                        optionTotals[option] = (optionTotals[option] || 0) + count;
+                                    });
+                                }
+                            });
+                            
+                            // Crear tabla HTML con el desglose por opciones
+                            let optionsTableHTML = `
+                                <h6 class="mt-4 mb-2">Desglose por opciones</h6>
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Opción</th>
+                                            <th>Cantidad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            `;
+                            
+                            // Ordenar opciones por cantidad descendente
+                            const sortedOptions = Object.entries(optionTotals)
+                                .sort(([, countA], [, countB]) => countB - countA);
+                                
+                            // Añadir filas para cada opción
+                            sortedOptions.forEach(([option, count]) => {
+                                optionsTableHTML += `
+                                    <tr>
+                                        <td>${option}</td>
+                                        <td>${count}</td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            optionsTableHTML += `
+                                    </tbody>
+                                </table>
+                            `;
+                            
+                            // Añadir la tabla al resumen
+                            summaryDiv.innerHTML += optionsTableHTML;
+                        }
                     }
                 }
             }
@@ -2844,8 +2896,8 @@ const ReportsView = {
             }
 
             const entities = EntityModel.getAll();
-            // Usar getNumericFields en lugar de getSharedNumericFields para mostrar todos los campos numéricos
-            const allNumericFields = FieldModel.getNumericFields();
+            // Mostrar todos los campos, no solo los numéricos
+            const allFields = FieldModel.getAll();
             const sharedFields = FieldModel.getAll();
 
             // Formatear fechas
@@ -3012,8 +3064,8 @@ const ReportsView = {
                                         <label for="report-field" class="form-label">Campos a Comparar</label>
                                         <select class="form-select" id="report-field" required multiple size="4">
                                             <option value="">Seleccione uno o más campos</option>
-                                            ${allNumericFields.map(field =>
-                                                `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
+                                            ${allFields.map(field =>
+                                                `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}${field.type ? ` (${field.type})` : ''}</option>`
                                             ).join('')}
                                         </select>
                                         <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples campos</div>
@@ -3181,9 +3233,9 @@ const ReportsView = {
     autoGenerateReport() {
         try {
             // Verificar si hay campos disponibles para generar un reporte
-            const allNumericFields = FieldModel.getNumericFields();
-            if (allNumericFields.length === 0) {
-                console.log("No hay campos numéricos para generar reporte automático");
+            const allFields = FieldModel.getAll();
+            if (allFields.length === 0) {
+                console.log("No hay campos para generar reporte automático");
                 return; // No hay campos para generar reporte
             }
 
@@ -3207,10 +3259,19 @@ const ReportsView = {
                     // Si hay un campo marcado para comparar, seleccionarlo
                     const option = Array.from(reportFieldSelect.options).find(opt => opt.value === compareField.id);
                     if (option) option.selected = true;
-                } else if (allNumericFields.length > 0) {
-                    // Si no hay campo marcado, seleccionar el primer campo numérico disponible
-                    const option = Array.from(reportFieldSelect.options).find(opt => opt.value === allNumericFields[0].id);
-                    if (option) option.selected = true;
+                } else {
+                    // Si no hay campo marcado, seleccionar el primer campo disponible
+                    // Preferimos campos numéricos o select para los reportes
+                    const preferredField = allFields.find(field => field.type === 'number' || field.type === 'select');
+                    
+                    if (preferredField) {
+                        const option = Array.from(reportFieldSelect.options).find(opt => opt.value === preferredField.id);
+                        if (option) option.selected = true;
+                    } else if (reportFieldSelect.options.length > 1) {
+                        // Si no hay campos preferidos, seleccionar la primera opción que no sea vacía
+                        const firstOption = Array.from(reportFieldSelect.options).find(opt => opt.value !== '');
+                        if (firstOption) firstOption.selected = true;
+                    }
                 }
 
                 // Generar el reporte usando los valores seleccionados

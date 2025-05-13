@@ -119,11 +119,22 @@ const RecordModel = {
      * @returns {Object} Datos para el reporte
      */
     generateReportMultiple(fieldId, aggregation = 'sum', filters = {}, horizontalFieldId = '') {
-        // Obtenemos el campo para asegurarnos que es numérico
+        // Obtenemos el campo
         const field = FieldModel.getById(fieldId);
-        if (!field || field.type !== 'number') {
-            return { error: 'El campo debe ser numérico' };
+        if (!field) {
+            return { error: 'El campo seleccionado no existe' };
         }
+        
+        // Verificar si es un campo soportado (numérico o select)
+        const isNumeric = field.type === 'number';
+        const isSelect = field.type === 'select';
+        
+        if (!isNumeric && !isSelect) {
+            return { error: 'El campo debe ser numérico o de selección para generar reportes' };
+        }
+        
+        // Para campos select, usamos 'count' como agregación
+        const effectiveAggregation = isSelect ? 'count' : aggregation;
         
         // Obtenemos las entidades que usan este campo
         let entities = EntityModel.getAll().filter(entity => 
@@ -153,8 +164,9 @@ const RecordModel = {
             // Agrupar por el valor del campo horizontal
             const reportData = {
                 field: field.name,
+                fieldType: field.type,
                 horizontalField: horizontalField.name,
-                aggregation: aggregation,
+                aggregation: effectiveAggregation,
                 entities: []
             };
             
@@ -184,25 +196,43 @@ const RecordModel = {
                     return;
                 }
                 
-                // Convertir valores a números
-                const values = valueRecords.map(record => 
-                    parseFloat(record.data[fieldId]) || 0
-                );
-                
-                // Calcular valor según agregación
-                let aggregatedValue = 0;
-                if (aggregation === 'sum') {
-                    aggregatedValue = values.reduce((sum, val) => sum + val, 0);
-                } else if (aggregation === 'average') {
-                    aggregatedValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+                // Para campos select, agrupar por valores del campo
+                if (isSelect) {
+                    // Para campos de selección, contamos las ocurrencias de cada valor
+                    const optionCounts = {};
+                    valueRecords.forEach(record => {
+                        const optionValue = record.data[fieldId];
+                        optionCounts[optionValue] = (optionCounts[optionValue] || 0) + 1;
+                    });
+                    
+                    reportData.entities.push({
+                        id: value,
+                        name: value,
+                        value: valueRecords.length, // Número total de registros
+                        count: valueRecords.length,
+                        optionCounts // Añadir conteo por opción
+                    });
+                } else {
+                    // Para campos numéricos, calcular agregación como antes
+                    const values = valueRecords.map(record => 
+                        parseFloat(record.data[fieldId]) || 0
+                    );
+                    
+                    // Calcular valor según agregación
+                    let aggregatedValue = 0;
+                    if (effectiveAggregation === 'sum') {
+                        aggregatedValue = values.reduce((sum, val) => sum + val, 0);
+                    } else if (effectiveAggregation === 'average') {
+                        aggregatedValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+                    }
+                    
+                    reportData.entities.push({
+                        id: value,
+                        name: value,
+                        value: aggregatedValue,
+                        count: valueRecords.length
+                    });
                 }
-                
-                reportData.entities.push({
-                    id: value,
-                    name: value,
-                    value: aggregatedValue,
-                    count: valueRecords.length
-                });
             });
             
             return reportData;
@@ -211,7 +241,8 @@ const RecordModel = {
         // Si no hay campo horizontal, usamos las entidades como siempre
         const reportData = {
             field: field.name,
-            aggregation: aggregation,
+            fieldType: field.type,
+            aggregation: effectiveAggregation,
             entities: []
         };
         
@@ -233,25 +264,43 @@ const RecordModel = {
                 return;
             }
             
-            // Convertir valores a números
-            const values = entityRecords.map(record => 
-                parseFloat(record.data[fieldId]) || 0
-            );
-            
-            // Calcular valor según agregación
-            let value = 0;
-            if (aggregation === 'sum') {
-                value = values.reduce((sum, val) => sum + val, 0);
-            } else if (aggregation === 'average') {
-                value = values.reduce((sum, val) => sum + val, 0) / values.length;
+            if (isSelect) {
+                // Para campos de selección, contamos las ocurrencias de cada valor
+                const optionCounts = {};
+                entityRecords.forEach(record => {
+                    const optionValue = record.data[fieldId];
+                    optionCounts[optionValue] = (optionCounts[optionValue] || 0) + 1;
+                });
+                
+                reportData.entities.push({
+                    id: entity.id,
+                    name: entity.name,
+                    value: entityRecords.length, // Número total de registros
+                    count: entityRecords.length,
+                    optionCounts // Añadir conteo por opción
+                });
+            } else {
+                // Para campos numéricos, como estaba implementado antes
+                // Convertir valores a números
+                const values = entityRecords.map(record => 
+                    parseFloat(record.data[fieldId]) || 0
+                );
+                
+                // Calcular valor según agregación
+                let value = 0;
+                if (effectiveAggregation === 'sum') {
+                    value = values.reduce((sum, val) => sum + val, 0);
+                } else if (effectiveAggregation === 'average') {
+                    value = values.reduce((sum, val) => sum + val, 0) / values.length;
+                }
+                
+                reportData.entities.push({
+                    id: entity.id,
+                    name: entity.name,
+                    value: value,
+                    count: entityRecords.length
+                });
             }
-            
-            reportData.entities.push({
-                id: entity.id,
-                name: entity.name,
-                value: value,
-                count: entityRecords.length
-            });
         });
         
         return reportData;
