@@ -298,6 +298,11 @@ const ReportsView = {
                                 <table class="table table-hover mb-0" id="records-table">
                                     <thead class="table-light">
                                         <tr>
+                                            <th>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="select-all-records">
+                                                </div>
+                                            </th>
                                             <th class="sortable" data-sort="entity">${entityName} <i class="bi"></i></th>
                                             <th class="sortable" data-sort="timestamp">Fecha y Hora <i class="bi"></i></th>
                                             <th class="sortable column-1" data-sort="field1">Columna 3 <i class="bi"></i></th>
@@ -383,22 +388,35 @@ const ReportsView = {
 
 
     setupEventListeners() {
-
+        // Event listener para "Seleccionar todos"
+        const selectAllCheckbox = document.getElementById('select-all-records');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                document.querySelectorAll('.record-checkbox').forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+                // Actualizar visibilidad del botón de edición masiva
+                const bulkEditBtn = document.getElementById('bulk-edit-btn');
+                if (bulkEditBtn) {
+                    bulkEditBtn.style.display = isChecked ? 'inline-block' : 'none';
+                }
+            });
+        }
 
         // En setupEventListeners (añadir esto)
-const recordsListContainer = document.getElementById('records-list'); // Usar un nombre diferente si 'recordsList' ya se usa para otra cosa
-if (recordsListContainer) {
-    recordsListContainer.addEventListener('click', (e) => {
-        // Busca si el clic ocurrió dentro de un botón con la clase '.view-record'
-        const viewButton = e.target.closest('.view-record');
-        if (viewButton) {
-            // Si se encontró el botón, obtén el ID y llama a la función
-            const recordId = viewButton.dataset.recordId;
-            this.showRecordDetails(recordId); // Asegúrate que 'this' se refiere a ReportsView
+        const recordsListContainer = document.getElementById('records-list'); // Usar un nombre diferente si 'recordsList' ya se usa para otra cosa
+        if (recordsListContainer) {
+            recordsListContainer.addEventListener('click', (e) => {
+                // Busca si el clic ocurrió dentro de un botón con la clase '.view-record'
+                const viewButton = e.target.closest('.view-record');
+                if (viewButton) {
+                    // Si se encontró el botón, obtén el ID y llama a la función
+                    const recordId = viewButton.dataset.recordId;
+                    this.showRecordDetails(recordId); // Asegúrate que 'this' se refiere a ReportsView
+                }
+            });
         }
-    });
-}
-
 
         // Aplicar filtros
         document.getElementById('filter-form').addEventListener('submit', (e) => {
@@ -955,23 +973,32 @@ if (recordsListContainer) {
         const recordsList = document.getElementById('records-list');
         const noFilteredRecordsDiv = document.getElementById('no-filtered-records');
         const recordsTable = document.getElementById('records-table');
-        const paginationControls = document.getElementById('pagination-controls').closest('.d-flex'); // Contenedor de paginación
-        const itemsPerPageSelector = document.getElementById('items-per-page').closest('.d-flex'); // Contenedor de items por página
+        const paginationControls = document.getElementById('pagination-controls').closest('.d-flex');
+        const itemsPerPageSelector = document.getElementById('items-per-page').closest('.d-flex');
 
         if (!recordsList || !noFilteredRecordsDiv || !recordsTable || !paginationControls || !itemsPerPageSelector) {
             console.error("Elementos de la tabla o paginación no encontrados en el DOM.");
             return;
         }
 
+        // Resetear el checkbox "Seleccionar todos"
+        const selectAllCheckbox = document.getElementById('select-all-records');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+        }
+
+        // Ocultar el botón de edición masiva
+        const bulkEditBtn = document.getElementById('bulk-edit-btn');
+        if (bulkEditBtn) {
+            bulkEditBtn.style.display = 'none';
+        }
 
         // Mostrar/ocultar elementos según si hay registros
         const hasRecords = records.length > 0;
         noFilteredRecordsDiv.style.display = hasRecords ? 'none' : 'block';
         recordsTable.style.display = hasRecords ? 'table' : 'none';
-        // Ocultar paginación si no hay registros
         paginationControls.style.visibility = hasRecords ? 'visible' : 'hidden';
         itemsPerPageSelector.style.visibility = hasRecords ? 'visible' : 'hidden';
-
 
         // Limpiar lista
         recordsList.innerHTML = '';
@@ -982,11 +1009,21 @@ if (recordsListContainer) {
         // Obtener todos los campos una vez para optimizar
         const allFields = FieldModel.getAll();
 
+        // Añadir botón de edición masiva si no existe
+        if (!document.getElementById('bulk-edit-btn')) {
+            const bulkEditBtn = document.createElement('button');
+            bulkEditBtn.id = 'bulk-edit-btn';
+            bulkEditBtn.className = 'btn btn-warning btn-sm ms-2';
+            bulkEditBtn.innerHTML = '<i class="bi bi-clock"></i> Editar Fechas Seleccionadas';
+            bulkEditBtn.style.display = 'none';
+            bulkEditBtn.addEventListener('click', () => this.showBulkEditModal());
+            document.querySelector('.card-header .d-flex').appendChild(bulkEditBtn);
+        }
+
         // Renderizar cada registro
         records.forEach(record => {
             const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
 
-            // Obtener los valores de las columnas personalizadas usando la función auxiliar
             const fieldColumns = {
                 field1: this.getFieldValue(record, this.selectedColumns.field1, allFields),
                 field2: this.getFieldValue(record, this.selectedColumns.field2, allFields),
@@ -995,6 +1032,11 @@ if (recordsListContainer) {
 
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td>
+                    <div class="form-check">
+                        <input class="form-check-input record-checkbox" type="checkbox" value="${record.id}" id="record-${record.id}">
+                    </div>
+                </td>
                 <td>${entity.name}</td>
                 <td>${UIUtils.formatDate(record.timestamp)}</td>
                 <td>${fieldColumns.field1}</td>
@@ -1010,6 +1052,16 @@ if (recordsListContainer) {
             recordsList.appendChild(row);
         });
 
+        // Añadir event listeners para los checkboxes
+        document.querySelectorAll('.record-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const selectedCount = document.querySelectorAll('.record-checkbox:checked').length;
+                const bulkEditBtn = document.getElementById('bulk-edit-btn');
+                if (bulkEditBtn) {
+                    bulkEditBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
+                }
+            });
+        });
     },
     getFieldValue(record, fieldId, fields) {
         // Si no hay fieldId, o no hay datos, o el campo específico no existe en los datos, devolver vacío
@@ -1554,5 +1606,81 @@ if (recordsListContainer) {
         } catch (error) {
             console.error("Error al actualizar la vista de reportes:", error);
         }
-    }
+    },
+
+    /**
+     * Muestra el modal para editar fechas de registros seleccionados
+     */
+    showBulkEditModal() {
+        const selectedRecords = Array.from(document.querySelectorAll('.record-checkbox:checked'))
+            .map(checkbox => checkbox.value);
+
+        if (selectedRecords.length === 0) return;
+
+        // Crear el modal si no existe
+        let modalElement = document.getElementById('bulkEditModal');
+        if (!modalElement) {
+            modalElement = document.createElement('div');
+            modalElement.id = 'bulkEditModal';
+            modalElement.className = 'modal fade';
+            modalElement.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Editar Fechas de Registros Seleccionados</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="bulk-new-date" class="form-label">Nueva Fecha y Hora:</label>
+                                <input type="datetime-local" class="form-control" id="bulk-new-date">
+                            </div>
+                            <div class="alert alert-info">
+                                Se modificarán ${selectedRecords.length} registros.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="save-bulk-dates">Guardar Cambios</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalElement);
+        }
+
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+
+        // Configurar el botón de guardar
+        const saveButton = modalElement.querySelector('#save-bulk-dates');
+        saveButton.onclick = () => {
+            const newDate = document.getElementById('bulk-new-date').value;
+            if (!newDate) {
+                UIUtils.showAlert('Por favor, seleccione una fecha válida', 'warning', modalElement.querySelector('.modal-body'));
+                return;
+            }
+
+            const newTimestamp = new Date(newDate).toISOString();
+            let success = true;
+
+            // Actualizar cada registro seleccionado
+            selectedRecords.forEach(recordId => {
+                const record = RecordModel.getById(recordId);
+                if (record) {
+                    const updateSuccess = RecordModel.update(recordId, record.data, newTimestamp);
+                    if (!updateSuccess) success = false;
+                }
+            });
+
+            modal.hide();
+
+            if (success) {
+                UIUtils.showAlert('Fechas actualizadas correctamente', 'success', document.querySelector('.container.mt-4'));
+                this.applyFilters(); // Actualizar la vista
+            } else {
+                UIUtils.showAlert('Hubo errores al actualizar algunas fechas', 'warning', document.querySelector('.container.mt-4'));
+            }
+        };
+    },
 }; // Fin del objeto ReportsView
