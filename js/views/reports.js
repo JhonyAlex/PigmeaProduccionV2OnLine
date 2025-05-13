@@ -170,43 +170,88 @@ const ReportsView = {
 
                     <!-- Atajos de fecha -->
                     <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Atajos de fecha</h5>
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Atajos de fecha</h5>
+                            <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#fechasCollapse" aria-expanded="true" aria-controls="fechasCollapse">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
                         </div>
-                        <div class="card-body text-center">
-                            <div class="btn-group mb-3" role="group" aria-label="Atajos de fecha">
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="yesterday">Ayer</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisWeek">Esta semana</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastWeek">Semana pasada</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="thisMonth">Mes actual</button>
-                                <button type="button" class="btn btn-outline-primary date-shortcut" data-range="lastMonth">Mes pasado</button>
-                            </div>
-
-                            <h6 class="mt-3 mb-2">Última semana</h6>
-                            <div class="btn-group flex-wrap" role="group" aria-label="Días última semana">
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastMonday">Lunes</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastTuesday">Martes</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastWednesday">Miércoles</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastThursday">Jueves</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastFriday">Viernes</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSaturday">Sábado</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSunday">Domingo</button>
-                            </div>
-                            
-                            ${(() => {
-                                // Obtener todos los grupos de entidades
-                                const groups = EntityModel.getAllGroups();
-                                if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
-                                
-                                return `
-                                    <h6 class="mt-4 mb-2">Filtrar por grupos de ${entityName.toLowerCase()}s</h6>
-                                    <div class="btn-group flex-wrap" role="group" aria-label="Grupos de entidades">
-                                        ${groups.map(group => 
-                                            `<button type="button" class="btn btn-sm btn-outline-info entity-group-filter" data-group="${group}">${group}</button>`
-                                        ).join('')}
+                        <div class="collapse show" id="fechasCollapse">
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <!-- Periodos comunes -->
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-light">
+                                            <div class="card-header bg-light py-2">
+                                                <h6 class="mb-0"><i class="bi bi-calendar-range me-1"></i>Periodos comunes</h6>
+                                            </div>
+                                            <div class="card-body p-2">
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="yesterday">
+                                                        <i class="bi bi-calendar-day"></i> Ayer
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisWeek">
+                                                        <i class="bi bi-calendar-week"></i> Esta semana
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastWeek">
+                                                        <i class="bi bi-calendar-week-fill"></i> Semana pasada
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisMonth">
+                                                        <i class="bi bi-calendar-month"></i> Mes actual
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastMonth">
+                                                        <i class="bi bi-calendar-month-fill"></i> Mes pasado
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                `;
-                            })()}
+                                    
+                                    <!-- Días última semana -->
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-light">
+                                            <div class="card-header bg-light py-2">
+                                                <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Días última semana</h6>
+                                            </div>
+                                            <div class="card-body p-2">
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastMonday">Lun</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastTuesday">Mar</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastWednesday">Mié</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastThursday">Jue</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastFriday">Vie</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSaturday">Sáb</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-shortcut" data-range="lastSunday">Dom</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Grupos de entidades (condicional) -->
+                                    ${(() => {
+                                        // Obtener todos los grupos de entidades
+                                        const groups = EntityModel.getAllGroups();
+                                        if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
+                                        
+                                        return `
+                                        <div class="col-12 mt-2">
+                                            <div class="card border-light">
+                                                <div class="card-header bg-light py-2">
+                                                    <h6 class="mb-0"><i class="bi bi-filter me-1"></i>Filtrar por grupos de ${entityName.toLowerCase()}s</h6>
+                                                </div>
+                                                <div class="card-body p-2">
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        ${groups.map(group => 
+                                                            `<button type="button" class="btn btn-sm btn-outline-info entity-group-filter" data-group="${group}">${group}</button>`
+                                                        ).join('')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        `;
+                                    })()}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
