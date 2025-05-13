@@ -8,9 +8,52 @@ const KPIsView = {
     selectedFields: [],
     
     /**
+     * Estilo de los KPIs (modern o classic)
+     */
+    kpiStyle: 'modern',
+    
+    /**
+     * Número de decimales para mostrar
+     */
+    kpiDecimalPlaces: 2,
+    
+    /**
+     * Tipo de agregación predeterminada
+     */
+    kpiDefaultAggregation: 'sum',
+    
+    /**
+     * Métricas adicionales a mostrar
+     */
+    kpiMetrics: {
+        showCount: false,
+        showDailyAvg: false,
+        showEntitiesCount: false,
+        showGrowthRate: false,
+        showPredictions: false,
+        showPercentChange: false
+    },
+    
+    /**
      * Inicializa la vista de KPIs
      */
     init() {
+        // Inicializar propiedades desde la configuración
+        const config = StorageService.getConfig();
+        if (config) {
+            this.kpiStyle = config.kpiStyle || 'modern';
+            this.kpiDecimalPlaces = config.kpiDecimalPlaces || 2;
+            this.kpiDefaultAggregation = config.kpiDefaultAggregation || 'sum';
+            this.kpiMetrics = config.kpiMetrics || {
+                showCount: false,
+                showDailyAvg: false,
+                showEntitiesCount: false,
+                showGrowthRate: false,
+                showPredictions: false,
+                showPercentChange: false
+            };
+        }
+        
         // Cargar campos seleccionados guardados
         this.loadSelectedFields();
         
