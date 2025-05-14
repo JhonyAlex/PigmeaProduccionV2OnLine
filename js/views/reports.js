@@ -3043,11 +3043,11 @@ const ReportsView = {
                             <h5 class="mb-0">Reportes Comparativos</h5>
                         </div>
                         <div class="card-body">
-                            ${allNumericFields.length === 0 ? `
+                            ${allFields.length === 0 ? `
                                 <div class="alert alert-info">
-                                    No hay campos numéricos compartidos entre ${entityName.toLowerCase()}s para generar reportes comparativos.
+                                    No hay campos disponibles para generar reportes comparativos.
                                     <hr>
-                                    <p class="mb-0">Para generar reportes comparativos, debe crear campos numéricos y asignarlos a múltiples ${entityName.toLowerCase()}s.</p>
+                                    <p class="mb-0">Para generar reportes comparativos, debe crear campos en sus ${entityName.toLowerCase()}s.</p>
                                 </div>
                             ` : `
                                 <form id="report-form" class="row g-3 mb-4">
