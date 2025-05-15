@@ -1106,9 +1106,9 @@ const ReportsView = {
         const filters = {
             entityIds: entityFilter.length > 0 ? entityFilter : undefined,
             fromDate: fromDateFilter || undefined,
-            toDate: toDateFilter || undefined,
-            horizontalFieldId: horizontalFieldId || undefined,
-            horizontalFieldOption: horizontalFieldOption || undefined // Filtro de opción específica
+            toDate: toDateFilter || undefined
+            // No incluimos horizontalFieldId y horizontalFieldOption aquí ya que no están disponibles
+            // en este contexto, solo se usan en generateReport
         };
 
         // Obtener registros filtrados
