@@ -1106,7 +1106,9 @@ const ReportsView = {
         const filters = {
             entityIds: entityFilter.length > 0 ? entityFilter : undefined,
             fromDate: fromDateFilter || undefined,
-            toDate: toDateFilter || undefined
+            toDate: toDateFilter || undefined,
+            horizontalFieldId: horizontalFieldId || undefined,
+            horizontalFieldOption: horizontalFieldOption || undefined // Filtro de opción específica
         };
 
         // Obtener registros filtrados
@@ -1908,11 +1910,12 @@ const ReportsView = {
     },
     generateReport() {
         try {
-            // Obtener los campos seleccionados (ahora puede ser múltiple)
-            const reportFieldSelect = document.getElementById('report-field');
-            const selectedFields = reportFieldSelect ? Array.from(reportFieldSelect.selectedOptions).map(option => option.value) : [];
-            const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
-            const aggregation = document.getElementById('report-aggregation')?.value;
+                    // Obtener los campos seleccionados (ahora puede ser múltiple)
+        const reportFieldSelect = document.getElementById('report-field');
+        const selectedFields = reportFieldSelect ? Array.from(reportFieldSelect.selectedOptions).map(option => option.value) : [];
+        const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
+        const horizontalFieldOption = document.getElementById('horizontal-field-options')?.value;
+        const aggregation = document.getElementById('report-aggregation')?.value;
             const reportForm = document.getElementById('report-form'); // Para mostrar alertas cerca
     
             if (selectedFields.length === 0) {
@@ -1975,22 +1978,22 @@ const ReportsView = {
                 // Guardar los datos para el resumen final
                 allReportsData.push(reportData);
                 
-                // Crear un div para este reporte específico
-                const reportDiv = document.createElement('div');
-                reportDiv.className = 'report-item mb-4';
-                reportDiv.innerHTML = `
-                    <h5 class="mb-3">${reportData.field || 'Reporte'}</h5>
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="chart-container">
-                                <canvas id="report-chart-${fieldId}"></canvas>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div id="report-summary-${fieldId}"></div>
+                            // Crear un div para este reporte específico
+            const reportDiv = document.createElement('div');
+            reportDiv.className = 'report-item mb-4';
+            reportDiv.innerHTML = `
+                <h5 class="mb-3">${reportData.field || 'Reporte'}</h5>
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="chart-container" style="min-height: 400px; overflow-x: auto;">
+                            <canvas id="report-chart-${fieldId}"></canvas>
                         </div>
                     </div>
-                `;
+                    <div class="col-md-4">
+                        <div id="report-summary-${fieldId}"></div>
+                    </div>
+                </div>
+            `;
                 
                 // Añadir al contenedor principal
                 reportContainer.appendChild(reportDiv);
@@ -3051,15 +3054,24 @@ const ReportsView = {
                                 </div>
                             ` : `
                                 <form id="report-form" class="row g-3 mb-4">
-                                    <div class="col-md-4">
-                                        <label for="report-horizontal-field" class="form-label">Eje Horizontal</label>
-                                        <select class="form-select" id="report-horizontal-field">
-                                            <option value="">${entityName} Principal</option>
-                                            ${sharedFields.map(field =>
-                                                `<option value="${field.id}" ${(horizontalAxisField && horizontalAxisField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
+                                                    <div class="col-md-4">
+                                    <label for="report-horizontal-field" class="form-label">Eje Horizontal</label>
+                                    <select class="form-select" id="report-horizontal-field">
+                                        <option value="">${entityName} Principal</option>
+                                        ${sharedFields.map(field =>
+                                            `<option value="${field.id}" data-field-type="${field.type || ''}" ${(horizontalAxisField && horizontalAxisField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                
+                                <!-- Nuevo selector para opciones del campo select (inicialmente oculto) -->
+                                <div class="col-md-4" id="horizontal-field-options-container" style="display: none;">
+                                    <label for="horizontal-field-options" class="form-label">Opciones específicas</label>
+                                    <select class="form-select" id="horizontal-field-options">
+                                        <option value="">Todas las opciones</option>
+                                        <!-- Las opciones se cargarán dinámicamente -->
+                                    </select>
+                                </div>
                                     <div class="col-md-4">
                                         <label for="report-field" class="form-label">Campos a Comparar</label>
                                         <select class="form-select" id="report-field" required multiple size="4">
@@ -3082,18 +3094,19 @@ const ReportsView = {
                                     </div>
                                 </form>
 
-                                <div id="report-container" style="display: none;">
-                                    <div class="row">
-                                        <div class="col-md-8">
-                                            <div class="chart-container">
-                                                <canvas id="report-chart"></canvas>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div id="report-summary"></div>
+                                                            <div id="report-container" style="display: none; overflow-x: auto;">
+                                <!-- Se ha añadido overflow-x: auto para permitir desplazamiento horizontal -->
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="chart-container" style="min-height: 400px; overflow-x: auto;">
+                                            <canvas id="report-chart"></canvas>
                                         </div>
                                     </div>
+                                    <div class="col-md-4">
+                                        <div id="report-summary"></div>
+                                    </div>
                                 </div>
+                            </div>
                             `}
                         </div>
                     </div>
@@ -3203,17 +3216,19 @@ const ReportsView = {
 
             mainContent.innerHTML = template;
 
-            // Esperar a que el DOM se actualice
-            setTimeout(() => {
-                try {
-                    this.updateColumnHeaders();
-                    this.applyFilters();
-                    // Inicializar el calendario después de renderizar
-                    this.setupCalendar();
-                } catch (error) {
-                    console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
-                }
-            }, 0);
+                            // Esperar a que el DOM se actualice
+                setTimeout(() => {
+                    try {
+                        this.updateColumnHeaders();
+                        this.applyFilters();
+                        // Inicializar el calendario después de renderizar
+                        this.setupCalendar();
+                        // Configurar evento para mostrar/ocultar el selector de opciones de campo select
+                        this.setupHorizontalFieldOptionsSelector();
+                    } catch (error) {
+                        console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
+                    }
+                }, 0);
 
         } catch (error) {
             console.error("Error al renderizar vista de reportes:", error);
@@ -3225,6 +3240,72 @@ const ReportsView = {
      */
     updateColumnHeaders() {
         // ... (código para actualizar encabezados de columna) ...
+    },
+
+    /**
+     * Configura el selector de opciones para campos tipo select en el eje horizontal
+     */
+    setupHorizontalFieldOptionsSelector() {
+        const horizontalFieldSelect = document.getElementById('report-horizontal-field');
+        const optionsContainer = document.getElementById('horizontal-field-options-container');
+        const optionsSelect = document.getElementById('horizontal-field-options');
+        
+        if (!horizontalFieldSelect || !optionsContainer || !optionsSelect) {
+            console.warn("No se encontraron los elementos del selector de opciones de campo horizontal");
+            return;
+        }
+        
+        // Función para cargar las opciones del campo select seleccionado
+        const loadFieldOptions = (fieldId) => {
+            if (!fieldId) {
+                optionsContainer.style.display = 'none';
+                return;
+            }
+            
+            const field = FieldModel.getById(fieldId);
+            if (!field || field.type !== 'select' || !field.options || field.options.length === 0) {
+                optionsContainer.style.display = 'none';
+                return;
+            }
+            
+            // Limpiar opciones actuales
+            optionsSelect.innerHTML = '<option value="">Todas las opciones</option>';
+            
+            // Añadir las opciones del campo select
+            field.options.forEach(option => {
+                const optElement = document.createElement('option');
+                optElement.value = option;
+                optElement.textContent = option;
+                optionsSelect.appendChild(optElement);
+            });
+            
+            // Mostrar el contenedor de opciones
+            optionsContainer.style.display = 'block';
+        };
+        
+        // Evento para cuando cambia el campo horizontal
+        horizontalFieldSelect.addEventListener('change', () => {
+            const selectedOption = horizontalFieldSelect.options[horizontalFieldSelect.selectedIndex];
+            const fieldType = selectedOption.getAttribute('data-field-type');
+            const fieldId = horizontalFieldSelect.value;
+            
+            if (fieldType === 'select' && fieldId) {
+                loadFieldOptions(fieldId);
+            } else {
+                optionsContainer.style.display = 'none';
+            }
+        });
+        
+        // Cargar opciones iniciales (si es necesario)
+        const initialSelectedOption = horizontalFieldSelect.options[horizontalFieldSelect.selectedIndex];
+        if (initialSelectedOption) {
+            const fieldType = initialSelectedOption.getAttribute('data-field-type');
+            const fieldId = horizontalFieldSelect.value;
+            
+            if (fieldType === 'select' && fieldId) {
+                loadFieldOptions(fieldId);
+            }
+        }
     },
 
     /**

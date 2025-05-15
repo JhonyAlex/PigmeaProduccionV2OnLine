@@ -95,6 +95,13 @@ const RecordModel = {
             records = records.filter(record => new Date(record.timestamp) <= toDate);
         }
         
+        // Filtrar por opción específica de campo horizontal (si está presente)
+        if (filters.horizontalFieldId && filters.horizontalFieldOption) {
+            records = records.filter(record => 
+                record.data[filters.horizontalFieldId] === filters.horizontalFieldOption
+            );
+        }
+        
         return records;
     },
     
