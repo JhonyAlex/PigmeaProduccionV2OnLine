@@ -179,11 +179,18 @@ const RecordModel = {
             
             // Obtener valores únicos del campo horizontal
             const uniqueValues = new Set();
-            filteredRecords.forEach(record => {
-                if (record.data[horizontalFieldId] !== undefined) {
-                    uniqueValues.add(record.data[horizontalFieldId]);
-                }
-            });
+            
+            // Si hay una opción específica seleccionada, usar solo esa
+            if (filters.horizontalFieldOption) {
+                uniqueValues.add(filters.horizontalFieldOption);
+            } else {
+                // Si no hay opción específica, obtener todos los valores únicos
+                filteredRecords.forEach(record => {
+                    if (record.data[horizontalFieldId] !== undefined) {
+                        uniqueValues.add(record.data[horizontalFieldId]);
+                    }
+                });
+            }
             
             // Para cada valor único, calcular la agregación
             Array.from(uniqueValues).forEach(value => {

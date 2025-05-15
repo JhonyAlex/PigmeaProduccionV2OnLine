@@ -1908,14 +1908,15 @@ const ReportsView = {
         // }, 500); // Esperar a que terminen las transiciones de Bootstrap
         console.warn("removeModalBackdrop: Se recomienda dejar que Bootstrap maneje los backdrops.");
     },
-    generateReport() {
+        generateReport() {
         try {
-                    // Obtener los campos seleccionados (ahora puede ser múltiple)
-        const reportFieldSelect = document.getElementById('report-field');
-        const selectedFields = reportFieldSelect ? Array.from(reportFieldSelect.selectedOptions).map(option => option.value) : [];
-        const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
-        const horizontalFieldOption = document.getElementById('horizontal-field-options')?.value;
-        const aggregation = document.getElementById('report-aggregation')?.value;
+            // Obtener los campos seleccionados (ahora puede ser múltiple)
+            const reportFieldSelect = document.getElementById('report-field');
+            const selectedFields = reportFieldSelect ? Array.from(reportFieldSelect.selectedOptions).map(option => option.value) : [];
+            const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
+            const horizontalFieldOptionsElement = document.getElementById('horizontal-field-options');
+            const horizontalFieldOption = horizontalFieldOptionsElement?.value; 
+            const aggregation = document.getElementById('report-aggregation')?.value;
             const reportForm = document.getElementById('report-form'); // Para mostrar alertas cerca
     
             if (selectedFields.length === 0) {
@@ -1946,10 +1947,19 @@ const ReportsView = {
             const fromDateFilter = document.getElementById('filter-from-date')?.value;
             const toDateFilter = document.getElementById('filter-to-date')?.value;
     
+            // Validar si hay una opción específica seleccionada
+            let horizontalFieldOptionValue = null;
+            if (horizontalFieldId && horizontalFieldOption) {
+                console.log(`Filtrando por opción específica: ${horizontalFieldOption} en campo ${horizontalFieldId}`);
+                horizontalFieldOptionValue = horizontalFieldOption;
+            }
+
             const filters = {
                 entityIds: entityFilter.length > 0 ? entityFilter : undefined,
                 fromDate: fromDateFilter || undefined,
-                toDate: toDateFilter || undefined
+                toDate: toDateFilter || undefined,
+                horizontalFieldId: horizontalFieldId || undefined,
+                horizontalFieldOption: horizontalFieldOptionValue // Filtro de opción específica
             };
     
             // Mostrar contenedor del reporte
