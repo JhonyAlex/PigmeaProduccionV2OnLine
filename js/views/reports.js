@@ -50,16 +50,7 @@ const ReportsView = {
 
                 this.render(); // Renderizar vista principal
                 
-                // Inicializar el módulo de filtros
-                if (typeof ReportFilters !== 'undefined') {
-                    // Inicializar con referencia a esta instancia
-                    ReportFilters.init(this);
-                    console.log("Módulo de filtros inicializado");
-                } else {
-                    console.warn("Módulo ReportFilters no encontrado, usando funcionalidad integrada");
-                    // Usar la configuración de eventos integrada si el módulo no está disponible
-                    this.setupEventListeners();
-                }
+                // La inicialización del módulo de filtros se moverá después del render
 
                 // Generar automáticamente el reporte al cargar la página
                 this.autoGenerateReport();
@@ -2991,21 +2982,32 @@ const ReportsView = {
                 </div>
             `;
 
-            mainContent.innerHTML = template;
+                        mainContent.innerHTML = template;
 
-                            // Esperar a que el DOM se actualice
-                setTimeout(() => {
-                    try {
-                        this.updateColumnHeaders();
-                        this.applyFilters();
-                        // Inicializar el calendario después de renderizar
-                        this.setupCalendar();
-                        // Configurar evento para mostrar/ocultar el selector de opciones de campo select
-                        this.setupHorizontalFieldOptionsSelector();
-                    } catch (error) {
-                        console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
+            // Esperar a que el DOM se actualice
+            setTimeout(() => {
+                try {
+                    // Inicializar el módulo de filtros ahora que el DOM está listo
+                    if (typeof ReportFilters !== 'undefined') {
+                        // Inicializar con referencia a esta instancia
+                        ReportFilters.init(this);
+                        console.log("Módulo de filtros inicializado");
+                    } else {
+                        console.warn("Módulo ReportFilters no encontrado, usando funcionalidad integrada");
+                        // Usar la configuración de eventos integrada si el módulo no está disponible
+                        this.setupEventListeners();
                     }
-                }, 0);
+                    
+                    this.updateColumnHeaders();
+                    this.applyFilters();
+                    // Inicializar el calendario después de renderizar
+                    this.setupCalendar();
+                    // Configurar evento para mostrar/ocultar el selector de opciones de campo select
+                    this.setupHorizontalFieldOptionsSelector();
+                } catch (error) {
+                    console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
+                }
+            }, 0);
 
         } catch (error) {
             console.error("Error al renderizar vista de reportes:", error);

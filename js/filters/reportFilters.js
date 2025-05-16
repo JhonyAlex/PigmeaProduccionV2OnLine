@@ -230,8 +230,9 @@ const ReportFilters = {
      */
     renderFiltersSection(container) {
         if (!this.reportsView) {
-            console.error("No hay instancia de ReportsView disponible para renderizar filtros");
-            return '';
+            console.warn("No hay instancia de ReportsView disponible para renderizar filtros - usando configuración por defecto");
+            // En lugar de fallar, continuar con valores por defecto
+            // Esto permitirá que la renderización funcione incluso si todavía no se ha inicializado completamente
         }
         
         // Formatear fechas
