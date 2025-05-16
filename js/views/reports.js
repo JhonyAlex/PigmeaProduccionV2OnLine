@@ -1954,12 +1954,26 @@ const ReportsView = {
                 horizontalFieldOptionValue = horizontalFieldOption;
             }
 
+            // Obtener campos adicionales para análisis detallado
+            const additionalFieldsSelect = document.getElementById('additional-fields');
+            let additionalFields = [];
+            if (additionalFieldsSelect && horizontalFieldOptionValue) {
+                additionalFields = Array.from(additionalFieldsSelect.selectedOptions || [])
+                    .map(option => option.value)
+                    .filter(id => id !== '');
+                
+                if (additionalFields.length > 0) {
+                    console.log(`Campos adicionales seleccionados: ${additionalFields.join(', ')}`);
+                }
+            }
+            
             const filters = {
                 entityIds: entityFilter.length > 0 ? entityFilter : undefined,
                 fromDate: fromDateFilter || undefined,
                 toDate: toDateFilter || undefined,
                 horizontalFieldId: horizontalFieldId || undefined,
-                horizontalFieldOption: horizontalFieldOptionValue // Filtro de opción específica
+                horizontalFieldOption: horizontalFieldOptionValue, // Filtro de opción específica
+                additionalFields: additionalFields.length > 0 ? additionalFields : undefined // Campos adicionales
             };
     
             // Mostrar contenedor del reporte
@@ -2070,6 +2084,77 @@ const ReportsView = {
                             
                             // Añadir la tabla al resumen
                             summaryDiv.innerHTML += optionsTableHTML;
+                        }
+                    }
+                }
+            }
+            
+            // Generar reportes adicionales si hay campos adicionales seleccionados
+            if (filters.additionalFields && filters.additionalFields.length > 0 && filters.horizontalFieldOption) {
+                // Título para la sección de análisis detallado
+                const detailedTitle = document.createElement('h4');
+                detailedTitle.className = 'mt-5 mb-3';
+                detailedTitle.innerHTML = `<i class="bi bi-clipboard-data"></i> Análisis detallado para <strong>${filters.horizontalFieldOption}</strong>`;
+                reportContainer.appendChild(detailedTitle);
+                
+                // Explicación
+                const explanation = document.createElement('p');
+                explanation.className = 'text-muted mb-4';
+                explanation.textContent = `Las siguientes métricas muestran información detallada para ${filters.horizontalFieldOption} en relación a los campos seleccionados.`;
+                reportContainer.appendChild(explanation);
+                
+                // Contenedor para las gráficas adicionales
+                const additionalChartsContainer = document.createElement('div');
+                additionalChartsContainer.className = 'additional-charts';
+                reportContainer.appendChild(additionalChartsContainer);
+                
+                // Generar un reporte para cada campo adicional
+                for (const additionalFieldId of filters.additionalFields) {
+                    const field = FieldModel.getById(additionalFieldId);
+                    if (!field) continue;
+                    
+                    // Solo procesar campos existentes
+                    console.log(`Generando reporte adicional para campo: ${field.name}`);
+                    
+                    // Generar datos del reporte para este campo adicional
+                    const additionalReportData = RecordModel.generateReportMultiple(additionalFieldId, aggregation, filters);
+                    
+                    if (additionalReportData.error) {
+                        console.error(`Error al generar reporte adicional para campo ${field.name}:`, additionalReportData.error);
+                        continue;
+                    }
+                    
+                    // Crear un div para este reporte adicional
+                    const reportDiv = document.createElement('div');
+                    reportDiv.className = 'report-item mb-4';
+                    reportDiv.innerHTML = `
+                        <h5 class="mb-3">${additionalReportData.field || field.name} - ${filters.horizontalFieldOption}</h5>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="chart-container" style="min-height: 350px; overflow-x: auto;">
+                                    <canvas id="additional-chart-${additionalFieldId}"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div id="additional-summary-${additionalFieldId}"></div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Añadir al contenedor de reportes adicionales
+                    additionalChartsContainer.appendChild(reportDiv);
+                    
+                    // Crear gráfico para este campo adicional
+                    if (ChartUtils) {
+                        ChartUtils.createBarChart(`additional-chart-${additionalFieldId}`, additionalReportData);
+                        
+                        // Crear tabla resumen para este campo adicional
+                        const summaryDiv = document.getElementById(`additional-summary-${additionalFieldId}`);
+                        if (summaryDiv) {
+                            summaryDiv.innerHTML = `
+                                <h6 class="mb-2">Resumen</h6>
+                                ${ChartUtils.createSummaryTable(additionalReportData)}
+                            `;
                         }
                     }
                 }
@@ -3082,16 +3167,26 @@ const ReportsView = {
                                         <!-- Las opciones se cargarán dinámicamente -->
                                     </select>
                                 </div>
-                                    <div class="col-md-4">
-                                        <label for="report-field" class="form-label">Campos a Comparar</label>
-                                        <select class="form-select" id="report-field" required multiple size="4">
-                                            <option value="">Seleccione uno o más campos</option>
-                                            ${allFields.map(field =>
-                                                `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}${field.type ? ` (${field.type})` : ''}</option>`
-                                            ).join('')}
-                                        </select>
-                                        <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples campos</div>
-                                    </div>
+                                                                    <div class="col-md-4">
+                                    <label for="report-field" class="form-label">Campos a Comparar</label>
+                                    <select class="form-select" id="report-field" required multiple size="4">
+                                        <option value="">Seleccione uno o más campos</option>
+                                        ${allFields.map(field =>
+                                            `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}${field.type ? ` (${field.type})` : ''}</option>`
+                                        ).join('')}
+                                    </select>
+                                    <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples campos</div>
+                                </div>
+                                
+                                <!-- Nuevo selector para campos adicionales relacionados con la opción seleccionada (inicialmente oculto) -->
+                                <div class="col-md-4" id="additional-fields-container" style="display: none;">
+                                    <label for="additional-fields" class="form-label">Métricas adicionales</label>
+                                    <select class="form-select" id="additional-fields" multiple size="4">
+                                        <option value="">Seleccione campos adicionales</option>
+                                        <!-- Las opciones se cargarán dinámicamente -->
+                                    </select>
+                                    <div class="form-text">Campos adicionales para análisis detallado</div>
+                                </div>
                                     <div class="col-md-4">
                                         <label for="report-aggregation" class="form-label">Tipo de Agregación</label>
                                         <select class="form-select" id="report-aggregation">
@@ -3259,6 +3354,8 @@ const ReportsView = {
         const horizontalFieldSelect = document.getElementById('report-horizontal-field');
         const optionsContainer = document.getElementById('horizontal-field-options-container');
         const optionsSelect = document.getElementById('horizontal-field-options');
+        const additionalFieldsContainer = document.getElementById('additional-fields-container');
+        const additionalFieldsSelect = document.getElementById('additional-fields');
         
         if (!horizontalFieldSelect || !optionsContainer || !optionsSelect) {
             console.warn("No se encontraron los elementos del selector de opciones de campo horizontal");
@@ -3269,12 +3366,14 @@ const ReportsView = {
         const loadFieldOptions = (fieldId) => {
             if (!fieldId) {
                 optionsContainer.style.display = 'none';
+                if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
                 return;
             }
             
             const field = FieldModel.getById(fieldId);
             if (!field || field.type !== 'select' || !field.options || field.options.length === 0) {
                 optionsContainer.style.display = 'none';
+                if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
                 return;
             }
             
@@ -3293,6 +3392,82 @@ const ReportsView = {
             optionsContainer.style.display = 'block';
         };
         
+        // Función para cargar los campos adicionales disponibles para una entidad específica
+        const loadAdditionalFields = () => {
+            if (!additionalFieldsSelect) return;
+            
+            // Limpiar opciones actuales
+            additionalFieldsSelect.innerHTML = '';
+            
+            // Obtener todos los campos disponibles excepto el seleccionado en eje horizontal
+            const horizontalFieldId = horizontalFieldSelect.value;
+            const allFields = FieldModel.getAll();
+            
+            // Filtrar campos relevantes para análisis (numéricos, fechas, selects)
+            const relevantFields = allFields.filter(field => 
+                field.id !== horizontalFieldId && 
+                (field.type === 'number' || field.type === 'date' || field.type === 'select')
+            );
+            
+            if (relevantFields.length === 0) {
+                if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
+                return;
+            }
+            
+            // Agrupar campos por tipo para mejor organización
+            const numericFields = relevantFields.filter(field => field.type === 'number');
+            const dateFields = relevantFields.filter(field => field.type === 'date');
+            const selectFields = relevantFields.filter(field => field.type === 'select');
+            
+            // Añadir campos numéricos primero (suelen ser los más útiles para análisis)
+            if (numericFields.length > 0) {
+                const numericGroup = document.createElement('optgroup');
+                numericGroup.label = "Campos Numéricos";
+                
+                numericFields.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field.id;
+                    option.textContent = field.name;
+                    numericGroup.appendChild(option);
+                });
+                
+                additionalFieldsSelect.appendChild(numericGroup);
+            }
+            
+            // Añadir campos de selección
+            if (selectFields.length > 0) {
+                const selectGroup = document.createElement('optgroup');
+                selectGroup.label = "Campos de Selección";
+                
+                selectFields.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field.id;
+                    option.textContent = field.name;
+                    selectGroup.appendChild(option);
+                });
+                
+                additionalFieldsSelect.appendChild(selectGroup);
+            }
+            
+            // Añadir campos de fecha
+            if (dateFields.length > 0) {
+                const dateGroup = document.createElement('optgroup');
+                dateGroup.label = "Campos de Fecha";
+                
+                dateFields.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field.id;
+                    option.textContent = field.name;
+                    dateGroup.appendChild(option);
+                });
+                
+                additionalFieldsSelect.appendChild(dateGroup);
+            }
+            
+            // Mostrar contenedor
+            if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'block';
+        };
+        
         // Evento para cuando cambia el campo horizontal
         horizontalFieldSelect.addEventListener('change', () => {
             const selectedOption = horizontalFieldSelect.options[horizontalFieldSelect.selectedIndex];
@@ -3303,6 +3478,18 @@ const ReportsView = {
                 loadFieldOptions(fieldId);
             } else {
                 optionsContainer.style.display = 'none';
+                if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
+            }
+        });
+        
+        // Evento para cuando se selecciona una opción específica
+        optionsSelect.addEventListener('change', () => {
+            if (optionsSelect.value && optionsSelect.value !== '') {
+                // Si se seleccionó una opción específica, mostrar campos adicionales
+                loadAdditionalFields();
+            } else {
+                // Si se seleccionó "Todas las opciones", ocultar campos adicionales
+                if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
             }
         });
         
@@ -3314,6 +3501,11 @@ const ReportsView = {
             
             if (fieldType === 'select' && fieldId) {
                 loadFieldOptions(fieldId);
+                
+                // Si ya hay una opción seleccionada, cargar campos adicionales
+                if (optionsSelect.value && optionsSelect.value !== '') {
+                    loadAdditionalFields();
+                }
             }
         }
     },
