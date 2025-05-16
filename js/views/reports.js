@@ -675,7 +675,22 @@ const ReportsView = {
             // Generar reporte comparativo
             const reportForm = document.getElementById('report-form');
             if (reportForm) {
+                console.log("🔍 Encontrado formulario de reporte, configurando listener");
                 reportForm.addEventListener('submit', (e) => {
+                    console.log("🔹 Evento submit capturado en formulario de reporte");
+                    e.preventDefault();
+                    this.generateReport();
+                });
+            } else {
+                console.warn("⚠️ No se encontró el formulario de reporte (#report-form)");
+            }
+            
+            // Añadir también un listener directo al botón de generar reporte
+            const generateReportBtn = document.querySelector('#report-form button[type="submit"]');
+            if (generateReportBtn) {
+                console.log("🔍 Encontrado botón de generar reporte, configurando listener directo");
+                generateReportBtn.addEventListener('click', (e) => {
+                    console.log("🔹 Click directo en botón de generar reporte");
                     e.preventDefault();
                     this.generateReport();
                 });
@@ -1631,6 +1646,7 @@ const ReportsView = {
         console.warn("removeModalBackdrop: Se recomienda dejar que Bootstrap maneje los backdrops.");
     },
         generateReport() {
+        console.log("⭐ Iniciando generación de reporte");
         try {
             // Obtener los campos seleccionados (ahora puede ser múltiple)
             const reportFieldSelect = document.getElementById('report-field');
