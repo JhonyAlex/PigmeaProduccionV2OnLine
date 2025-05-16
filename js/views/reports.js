@@ -2105,9 +2105,9 @@ const ReportsView = {
                     detailTitle.innerHTML = `
                         <h4 class="d-flex align-items-center">
                             <i class="bi bi-graph-up me-2"></i>
-                            Análisis detallado para <span class="badge bg-primary ms-2">${horizontalFieldOption}</span>
+                            Análisis detallado de ${FieldModel.getById(horizontalFieldId)?.name || 'Campo'}: <span class="badge bg-primary ms-2">${horizontalFieldOption}</span>
                         </h4>
-                        <p class="text-muted">Las siguientes gráficas muestran diferentes dimensiones de análisis para el operario seleccionado.</p>
+                        <p class="text-muted">Las siguientes gráficas muestran diferentes dimensiones de análisis para ${FieldModel.getById(horizontalFieldId)?.name || 'el campo'} seleccionado.</p>
                     `;
                     reportContainer.appendChild(detailTitle);
                     
@@ -2203,7 +2203,7 @@ const ReportsView = {
                                         plugins: {
                                             title: {
                                                 display: true,
-                                                text: `${mainField.name} de ${horizontalFieldOption} por ${additionalField.name}`
+                                                text: `${mainField.name} de ${FieldModel.getById(horizontalFieldId)?.name || 'Campo'} "${horizontalFieldOption}" por ${additionalField.name}`
                                             },
                                             tooltip: {
                                                 callbacks: {
@@ -2232,7 +2232,7 @@ const ReportsView = {
                                     summaryDiv.innerHTML = `
                                         <h6 class="mb-3">Resumen de datos</h6>
                                         <div class="small text-muted mb-3">
-                                            <span class="d-block mb-1"><i class="bi bi-person-fill me-1"></i> Operario: <strong>${horizontalFieldOption}</strong></span>
+                                            <span class="d-block mb-1"><i class="bi bi-person-fill me-1"></i> ${FieldModel.getById(horizontalFieldId)?.name || 'Campo'}: <strong>${horizontalFieldOption}</strong></span>
                                             <span class="d-block mb-1"><i class="bi bi-bar-chart-fill me-1"></i> Valor: <strong>${mainField.name}</strong></span>
                                             <span class="d-block mb-1"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Distribución: <strong>${additionalField.name}</strong></span>
                                         </div>
