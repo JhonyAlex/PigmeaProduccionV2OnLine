@@ -2574,103 +2574,106 @@ const ReportsView = {
                 <div class="container mt-4">
                     <h2>Reportes y Análisis</h2>
 
-                    <!-- Filtros -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Filtros</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="filter-form" class="row g-3">
-                                <div class="col-md-4">
-                                    <label for="filter-entity" class="form-label">${entityName}(es)</label>
-                                    <select class="form-select" id="filter-entity" multiple size="4">
-                                        <option value="">Todas las ${entityName.toLowerCase()}s</option>
-                                        ${entities.map(entity =>
-                                            `<option value="${entity.id}">${entity.name}</option>`
-                                        ).join('')}
-                                    </select>
-                                    <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples ${entityName.toLowerCase()}s</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="filter-from-date" class="form-label">Desde</label>
-                                    <input type="date" class="form-control" id="filter-from-date" value="${lastMonthStr}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="filter-to-date" class="form-label">Hasta</label>
-                                    <input type="date" class="form-control" id="filter-to-date" value="${today}">
-                                </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Atajos de fecha -->
+                                        <!-- Filtros y atajos de fecha unificados -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Atajos de fecha</h5>
-                            <button class="btn btn-sm btn-outline-light collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fechasCollapse" aria-expanded="false" aria-controls="fechasCollapse">
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
+                            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros y atajos</h5>
+                            <div>
+                                <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="true" aria-controls="filtersCollapse">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="collapse" id="fechasCollapse">
+                        <div class="collapse show" id="filtersCollapse">
                             <div class="card-body">
-                                <div class="row g-2">
-                                    <!-- Periodos comunes -->
-                                    <div class="col-md-6">
-                                        <div class="card h-100 border-light">
-                                            <div class="card-header bg-light py-2">
-                                                <h6 class="mb-0"><i class="bi bi-calendar-range me-1"></i>Periodos comunes</h6>
-                                            </div>
-                                            <div class="card-body p-2">
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="yesterday">
-                                                        <i class="bi bi-calendar-day"></i> Ayer
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisWeek">
-                                                        <i class="bi bi-calendar-week"></i> Esta semana
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastWeek">
-                                                        <i class="bi bi-calendar-week-fill"></i> Semana pasada
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisMonth">
-                                                        <i class="bi bi-calendar-month"></i> Mes actual
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastMonth">
-                                                        <i class="bi bi-calendar-month-fill"></i> Mes pasado
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-
-                                    
-                                    <!-- Grupos de entidades (condicional) -->
-                                    ${(() => {
-                                        // Obtener todos los grupos de entidades
-                                        const groups = EntityModel.getAllGroups();
-                                        if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
-                                        
-                                        return `
-                                        <div class="col-12 mt-2">
-                                            <div class="card border-light">
+                                <form id="filter-form" class="mb-3">
+                                    <div class="row g-3">
+                                        <!-- Fechas y atajos -->
+                                        <div class="col-lg-6">
+                                            <div class="card border-light h-100">
                                                 <div class="card-header bg-light py-2">
-                                                    <h6 class="mb-0"><i class="bi bi-filter me-1"></i>Filtrar por grupos de ${entityName.toLowerCase()}s</h6>
+                                                    <h6 class="mb-0"><i class="bi bi-calendar-range me-2"></i>Rango de fechas</h6>
                                                 </div>
-                                                <div class="card-body p-2">
-                                                    <div class="d-flex flex-wrap gap-1">
-                                                        ${groups.map(group => 
-                                                            `<button type="button" class="btn btn-sm btn-outline-info entity-group-filter" data-group="${group}">${group}</button>`
-                                                        ).join('')}
+                                                <div class="card-body">
+                                                    <div class="row g-2 mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="filter-from-date" class="form-label">Desde</label>
+                                                            <input type="date" class="form-control" id="filter-from-date" value="${lastMonthStr}">
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="filter-to-date" class="form-label">Hasta</label>
+                                                            <input type="date" class="form-control" id="filter-to-date" value="${today}">
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label fw-medium">Atajos rápidos</label>
+                                                        <div class="d-flex flex-wrap gap-1">
+                                                            <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="yesterday">
+                                                                <i class="bi bi-calendar-day"></i> Ayer
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisWeek">
+                                                                <i class="bi bi-calendar-week"></i> Esta semana
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastWeek">
+                                                                <i class="bi bi-calendar-week-fill"></i> Semana pasada
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="thisMonth">
+                                                                <i class="bi bi-calendar-month"></i> Mes actual
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-primary date-shortcut" data-range="lastMonth">
+                                                                <i class="bi bi-calendar-month-fill"></i> Mes pasado
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        `;
-                                    })()}
-                                </div>
+                                        
+                                        <!-- Entidades -->
+                                        <div class="col-lg-6">
+                                            <div class="card border-light h-100">
+                                                <div class="card-header bg-light py-2">
+                                                    <h6 class="mb-0"><i class="bi bi-building me-2"></i>${entityName}s</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <select class="form-select" id="filter-entity" multiple size="5">
+                                                            <option value="">Todas las ${entityName.toLowerCase()}s</option>
+                                                            ${entities.map(entity =>
+                                                                `<option value="${entity.id}">${entity.name}</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                        <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples ${entityName.toLowerCase()}s</div>
+                                                    </div>
+                                                    
+                                                    ${(() => {
+                                                        // Obtener todos los grupos de entidades
+                                                        const groups = EntityModel.getAllGroups();
+                                                        if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
+                                                        
+                                                        return `
+                                                        <div class="mb-2">
+                                                            <label class="form-label fw-medium">Filtrar por grupos</label>
+                                                            <div class="d-flex flex-wrap gap-1">
+                                                                ${groups.map(group => 
+                                                                    `<button type="button" class="btn btn-sm btn-outline-info entity-group-filter" data-group="${group}">${group}</button>`
+                                                                ).join('')}
+                                                            </div>
+                                                        </div>
+                                                        `;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Botón de aplicar filtros -->
+                                        <div class="col-12 text-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-search me-1"></i> Aplicar filtros
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
