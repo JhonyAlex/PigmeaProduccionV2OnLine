@@ -2691,54 +2691,78 @@ const ReportsView = {
                                     <p class="mb-0">Para generar reportes comparativos, debe crear campos en sus ${entityName.toLowerCase()}s.</p>
                                 </div>
                             ` : `
-                                <form id="report-form" class="row g-3 mb-4">
-                                                    <div class="col-md-4">
-                                    <label for="report-horizontal-field" class="form-label">Eje Horizontal</label>
-                                    <select class="form-select" id="report-horizontal-field">
-                                        <option value="">${entityName} Principal</option>
-                                        ${sharedFields.map(field =>
-                                            `<option value="${field.id}" data-field-type="${field.type || ''}" ${(horizontalAxisField && horizontalAxisField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
-                                        ).join('')}
-                                    </select>
-                                </div>
-                                
-                                <!-- Nuevo selector para opciones del campo select (inicialmente oculto) -->
-                                <div class="col-md-4" id="horizontal-field-options-container" style="display: none;">
-                                    <label for="horizontal-field-options" class="form-label">Opciones específicas</label>
-                                    <select class="form-select" id="horizontal-field-options">
-                                        <option value="">Todas las opciones</option>
-                                        <!-- Las opciones se cargarán dinámicamente -->
-                                    </select>
-                                </div>
-                                                                    <div class="col-md-4">
-                                    <label for="report-field" class="form-label">Campos a Comparar</label>
-                                    <select class="form-select" id="report-field" required multiple size="4">
-                                        <option value="">Seleccione uno o más campos</option>
-                                        ${allFields.map(field =>
-                                            `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}${field.type ? ` (${field.type})` : ''}</option>`
-                                        ).join('')}
-                                    </select>
-                                    <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples campos</div>
-                                </div>
-                                
-                                <!-- Nuevo selector para campos adicionales relacionados con la opción seleccionada (inicialmente oculto) -->
-                                <div class="col-md-4" id="additional-fields-container" style="display: none;">
-                                    <label for="additional-fields" class="form-label">Métricas adicionales</label>
-                                    <select class="form-select" id="additional-fields" multiple size="4">
-                                        <option value="">Seleccione campos adicionales</option>
-                                        <!-- Las opciones se cargarán dinámicamente -->
-                                    </select>
-                                    <div class="form-text">Campos adicionales para análisis detallado</div>
-                                </div>
-                                    <div class="col-md-4">
-                                        <label for="report-aggregation" class="form-label">Tipo de Agregación</label>
-                                        <select class="form-select" id="report-aggregation">
-                                            <option value="sum">Suma</option>
-                                            <option value="average">Promedio</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-12">
-                                        <button type="submit" class="btn btn-primary">Generar Reporte</button>
+                                                                <form id="report-form" class="mb-4">
+                                    <div class="row g-3">
+                                        <!-- Primera fila -->
+                                        <div class="col-md-4">
+                                            <label for="report-horizontal-field" class="form-label">Eje Horizontal</label>
+                                            <select class="form-select" id="report-horizontal-field">
+                                                <option value="">${entityName} Principal</option>
+                                                ${sharedFields.map(field =>
+                                                `<option value="${field.id}" data-field-type="${field.type || ''}" ${(horizontalAxisField && horizontalAxisField.id === field.id) ? 'selected' : ''}>${field.name}</option>`
+                                                ).join('')}
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Selector para opciones específicas del campo select -->
+                                        <div class="col-md-4" id="horizontal-field-options-container" style="display: none;">
+                                            <label for="horizontal-field-options" class="form-label">
+                                                <span class="text-primary">
+                                                    <i class="bi bi-filter-square"></i> Opciones específicas
+                                                </span>
+                                            </label>
+                                            <select class="form-select" id="horizontal-field-options">
+                                                <option value="">Todas las opciones</option>
+                                                <!-- Las opciones se cargarán dinámicamente -->
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="col-md-4">
+                                            <label for="report-aggregation" class="form-label">Tipo de Agregación</label>
+                                            <select class="form-select" id="report-aggregation">
+                                                <option value="sum">Suma</option>
+                                                <option value="average">Promedio</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Segunda fila -->
+                                        <div class="col-md-4">
+                                            <label for="report-field" class="form-label">
+                                                Campos a Comparar
+                                                <span class="text-danger">*</span>
+                                            </label>
+                                            <select class="form-select" id="report-field" required multiple size="4">
+                                                <option value="">Seleccione uno o más campos</option>
+                                                ${allFields.map(field =>
+                                                    `<option value="${field.id}" ${(compareField && compareField.id === field.id) ? 'selected' : ''}>${field.name}${field.type ? ` (${field.type})` : ''}</option>`
+                                                ).join('')}
+                                            </select>
+                                            <div class="form-text">Mantenga presionado Ctrl (⌘ en Mac) para seleccionar múltiples campos</div>
+                                        </div>
+                                    
+                                        <!-- Selector para métricas adicionales -->
+                                        <div class="col-md-8" id="additional-fields-container" style="display: none;">
+                                            <label for="additional-fields" class="form-label">
+                                                <span class="text-success">
+                                                    <i class="bi bi-graph-up"></i> Métricas adicionales para análisis detallado
+                                                </span>
+                                            </label>
+                                            <select class="form-select" id="additional-fields" multiple size="4">
+                                                <option value="">Seleccione campos adicionales</option>
+                                                <!-- Las opciones se cargarán dinámicamente -->
+                                            </select>
+                                            <div class="form-text">
+                                                <i class="bi bi-info-circle text-info me-1"></i>
+                                                Estos campos permiten análisis multidimensional cuando seleccionas una opción específica
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Botón de generación -->
+                                        <div class="col-12 mt-2">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-bar-chart-line me-1"></i> Generar Reporte
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
 
