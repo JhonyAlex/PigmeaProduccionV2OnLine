@@ -62,6 +62,14 @@ const ReportsView = {
 
     // El código del calendario interactivo ha sido eliminado
 
+    /**
+     * Función de reserva para evitar errores al eliminar el calendario
+     */
+    setupCalendar() {
+        // Función vacía para evitar errores tras eliminar el calendario
+        console.log("Función de calendario deshabilitada");
+    },
+
     // Función de calendario eliminada
 
     // Se eliminaron funciones de diagnóstico que ya no son necesarias
@@ -2929,8 +2937,11 @@ const ReportsView = {
             return;
         }
         
+        console.log("Configurando selector de opciones horizontales");
+        
         // Función para cargar las opciones del campo select seleccionado
         const loadFieldOptions = (fieldId) => {
+            console.log("Cargando opciones para campo:", fieldId);
             if (!fieldId) {
                 optionsContainer.style.display = 'none';
                 if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
@@ -2938,14 +2949,31 @@ const ReportsView = {
             }
             
             const field = FieldModel.getById(fieldId);
-            if (!field || field.type !== 'select' || !field.options || field.options.length === 0) {
+            console.log("Campo seleccionado:", field);
+            
+            if (!field) {
+                console.warn("No se encontró el campo con ID:", fieldId);
+                optionsContainer.style.display = 'none';
+                return;
+            }
+            
+            if (field.type !== 'select') {
+                console.log("El campo no es de tipo select:", field.type);
                 optionsContainer.style.display = 'none';
                 if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
                 return;
             }
             
+            if (!field.options || field.options.length === 0) {
+                console.warn("El campo no tiene opciones definidas");
+                optionsContainer.style.display = 'none';
+                return;
+            }
+            
             // Limpiar opciones actuales
             optionsSelect.innerHTML = '<option value="">Todas las opciones</option>';
+            
+            console.log("Añadiendo opciones:", field.options);
             
             // Añadir las opciones del campo select
             field.options.forEach(option => {
@@ -2957,6 +2985,7 @@ const ReportsView = {
             
             // Mostrar el contenedor de opciones
             optionsContainer.style.display = 'block';
+            console.log("Contenedor de opciones mostrado");
         };
         
         // Función para cargar los campos adicionales disponibles para una entidad específica
@@ -3033,13 +3062,24 @@ const ReportsView = {
             
             // Mostrar contenedor
             if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'block';
+            console.log("Contenedor de métricas adicionales mostrado");
         };
         
         // Evento para cuando cambia el campo horizontal
-        horizontalFieldSelect.addEventListener('change', () => {
-            const selectedOption = horizontalFieldSelect.options[horizontalFieldSelect.selectedIndex];
+        horizontalFieldSelect.addEventListener('change', (e) => {
+            console.log("Campo horizontal cambiado");
+            
+            const selectedIndex = horizontalFieldSelect.selectedIndex;
+            if (selectedIndex < 0) return;
+            
+            const selectedOption = horizontalFieldSelect.options[selectedIndex];
+            console.log("Opción seleccionada:", selectedOption.textContent);
+            
             const fieldType = selectedOption.getAttribute('data-field-type');
+            console.log("Tipo de campo:", fieldType);
+            
             const fieldId = horizontalFieldSelect.value;
+            console.log("ID de campo:", fieldId);
             
             if (fieldType === 'select' && fieldId) {
                 loadFieldOptions(fieldId);
@@ -3051,6 +3091,8 @@ const ReportsView = {
         
         // Evento para cuando se selecciona una opción específica
         optionsSelect.addEventListener('change', () => {
+            console.log("Opción específica seleccionada:", optionsSelect.value);
+            
             if (optionsSelect.value && optionsSelect.value !== '') {
                 // Si se seleccionó una opción específica, mostrar campos adicionales
                 loadAdditionalFields();
@@ -3060,19 +3102,28 @@ const ReportsView = {
             }
         });
         
-        // Cargar opciones iniciales (si es necesario)
-        const initialSelectedOption = horizontalFieldSelect.options[horizontalFieldSelect.selectedIndex];
-        if (initialSelectedOption) {
+        // IMPORTANTE: Verificar inicialmente si ya hay un campo seleccionado para cargar sus opciones
+        console.log("Verificando selección inicial");
+        if (horizontalFieldSelect.selectedIndex >= 0) {
+            const initialSelectedOption = horizontalFieldSelect.options[horizontalFieldSelect.selectedIndex];
+            console.log("Opción inicial seleccionada:", initialSelectedOption.textContent);
+            
             const fieldType = initialSelectedOption.getAttribute('data-field-type');
+            console.log("Tipo de campo inicial:", fieldType);
+            
             const fieldId = horizontalFieldSelect.value;
+            console.log("ID de campo inicial:", fieldId);
             
             if (fieldType === 'select' && fieldId) {
-                loadFieldOptions(fieldId);
-                
-                // Si ya hay una opción seleccionada, cargar campos adicionales
-                if (optionsSelect.value && optionsSelect.value !== '') {
-                    loadAdditionalFields();
-                }
+                // Forzar un pequeño delay para asegurar que los selectores existen
+                setTimeout(() => {
+                    loadFieldOptions(fieldId);
+                    
+                    // Si ya hay una opción seleccionada, cargar campos adicionales
+                    if (optionsSelect.value && optionsSelect.value !== '') {
+                        loadAdditionalFields();
+                    }
+                }, 50);
             }
         }
     },
