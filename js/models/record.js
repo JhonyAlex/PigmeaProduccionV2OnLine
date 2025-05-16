@@ -175,6 +175,28 @@ const RecordModel = {
         
         // Si se proporciona un campo para el eje horizontal, lo usamos
         if (horizontalFieldId) {
+            // Caso especial: cuando horizontalFieldId es una cadena vacía, significa que estamos agrupando por entidad principal
+            if (horizontalFieldId === '') {
+                // Este es el caso de "Entidad Principal" como eje horizontal
+                console.log("Generando reporte con Entidad Principal como eje horizontal");
+                
+                // Si hay una entidad específica seleccionada, usar solo esa
+                if (filters.specificEntityId) {
+                    console.log(`Filtrando por entidad específica: ${filters.specificEntityId}`);
+                    const specificEntity = EntityModel.getById(filters.specificEntityId);
+                    
+                    if (!specificEntity) {
+                        return { error: 'La entidad específica seleccionada no existe' };
+                    }
+                    
+                    // El resto del procesamiento se hará normalmente, ya que ya filtramos por entityIds
+                }
+                
+                // Seguir con la generación normal ya que el eje horizontal será manejado automáticamente en la sección de entidades
+                return this.generateReportByEntities(field, effectiveAggregation, filteredRecords, entities);
+            }
+            
+            // Caso normal: usar un campo como eje horizontal
             const horizontalField = FieldModel.getById(horizontalFieldId);
             if (!horizontalField) {
                 return { error: 'El campo seleccionado para el eje horizontal no existe' };
@@ -265,6 +287,22 @@ const RecordModel = {
         }
         
         // Si no hay campo horizontal, usamos las entidades como siempre
+        return this.generateReportByEntities(field, effectiveAggregation, filteredRecords, entities);
+    },
+    
+    /**
+     * Genera un reporte agrupado por entidades
+     * Función auxiliar para generar reportes cuando se usa la entidad como eje horizontal
+     * @param {Object} field El campo a analizar
+     * @param {string} effectiveAggregation Tipo de agregación ('sum', 'average', 'count')
+     * @param {Array} filteredRecords Registros ya filtrados
+     * @param {Array} entities Entidades a incluir en el reporte
+     * @returns {Object} Datos del reporte
+     */
+    generateReportByEntities(field, effectiveAggregation, filteredRecords, entities) {
+        const fieldId = field.id;
+        const isSelect = field.type === 'select';
+        
         const reportData = {
             field: field.name,
             fieldType: field.type,

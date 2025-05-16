@@ -1669,10 +1669,24 @@ const ReportsView = {
                         // Validar si hay una opción específica seleccionada
             let horizontalFieldOptionValue = null;
             let operarioFieldId = null;
+            let specificEntityId = null;
+            
+            // Caso 1: Campo horizontal seleccionado (no es la entidad principal)
             if (horizontalFieldId && horizontalFieldOption) {
                 console.log(`Filtrando por opción específica: ${horizontalFieldOption} en campo ${horizontalFieldId}`);
                 horizontalFieldOptionValue = horizontalFieldOption;
                 operarioFieldId = horizontalFieldId; // Guardamos el campo de operario para filtrar por él
+            } 
+            // Caso 2: Entidad Principal como eje horizontal y entidad específica seleccionada
+            else if (horizontalFieldId === '' && horizontalFieldOption) {
+                console.log(`Filtrando por entidad específica: ${horizontalFieldOption}`);
+                // Si se seleccionó la entidad principal y una opción específica, filtrar por esa entidad
+                specificEntityId = horizontalFieldOption;
+                
+                // Si ya hay filtros de entidad, sobrescribimos con la entidad específica
+                if (entityFilter.length === 0) {
+                    entityFilter = [specificEntityId];
+                }
             }
 
             // Obtener campos adicionales para análisis detallado
@@ -1688,13 +1702,18 @@ const ReportsView = {
                 }
             }
             
+            // Usar la entidad específica si se seleccionó la entidad principal como eje
+            const entityIdsToUse = specificEntityId && entityFilter.length === 0 ? 
+                [specificEntityId] : (entityFilter.length > 0 ? entityFilter : undefined);
+                
             const filters = {
-                entityIds: entityFilter.length > 0 ? entityFilter : undefined,
+                entityIds: entityIdsToUse,
                 fromDate: fromDateFilter || undefined,
                 toDate: toDateFilter || undefined,
                 operarioFieldId: operarioFieldId, // Guardamos el ID del campo de operario para filtrado posterior
                 operarioOption: horizontalFieldOptionValue, // El operario seleccionado
-                additionalFields: additionalFields.length > 0 ? additionalFields : undefined // Campos adicionales
+                additionalFields: additionalFields.length > 0 ? additionalFields : undefined, // Campos adicionales
+                specificEntityId: specificEntityId // Nueva propiedad para entidad específica cuando se usa entidad principal
             };
     
             // Mostrar contenedor del reporte
@@ -2942,6 +2961,39 @@ const ReportsView = {
         // Función para cargar las opciones del campo select seleccionado
         const loadFieldOptions = (fieldId) => {
             console.log("Cargando opciones para campo:", fieldId);
+            
+            // Si fieldId está vacío, es la opción de "Entidad Principal"
+            if (fieldId === '') {
+                console.log("Cargando opciones para Entidad Principal");
+                
+                // Limpiar opciones actuales
+                optionsSelect.innerHTML = '<option value="">Todas las entidades</option>';
+                
+                // Cargar todas las entidades disponibles
+                const entities = EntityModel.getAll();
+                console.log("Entidades disponibles:", entities.length);
+                
+                if (entities && entities.length > 0) {
+                    entities.forEach(entity => {
+                        const optElement = document.createElement('option');
+                        optElement.value = entity.id;
+                        optElement.textContent = entity.name;
+                        optionsSelect.appendChild(optElement);
+                    });
+                    
+                    // Mostrar el contenedor de opciones
+                    optionsContainer.style.display = 'block';
+                    console.log("Contenedor de opciones para entidades mostrado");
+                    return;
+                } else {
+                    // No hay entidades
+                    optionsContainer.style.display = 'none';
+                    if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
+                    return;
+                }
+            }
+            
+            // Si no es la entidad principal, continuar con la lógica original
             if (!fieldId) {
                 optionsContainer.style.display = 'none';
                 if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none';
@@ -3081,7 +3133,12 @@ const ReportsView = {
             const fieldId = horizontalFieldSelect.value;
             console.log("ID de campo:", fieldId);
             
-            if (fieldType === 'select' && fieldId) {
+            // Caso especial: valor vacío significa "Entidad Principal"
+            if (fieldId === '') {
+                console.log("Entidad Principal seleccionada como eje horizontal");
+                loadFieldOptions('');  // Llamar con cadena vacía para manejar el caso especial
+            }
+            else if (fieldType === 'select' && fieldId) {
                 loadFieldOptions(fieldId);
             } else {
                 optionsContainer.style.display = 'none';
@@ -3114,7 +3171,20 @@ const ReportsView = {
             const fieldId = horizontalFieldSelect.value;
             console.log("ID de campo inicial:", fieldId);
             
-            if (fieldType === 'select' && fieldId) {
+            // Caso especial: si se selecciona "Entidad Principal" (valor vacío)
+            if (fieldId === '') {
+                console.log("Entidad Principal seleccionada inicialmente");
+                // Forzar un pequeño delay para asegurar que los selectores existen
+                setTimeout(() => {
+                    loadFieldOptions('');
+                    
+                    // Si ya hay una opción seleccionada, cargar campos adicionales
+                    if (optionsSelect.value && optionsSelect.value !== '') {
+                        loadAdditionalFields();
+                    }
+                }, 50);
+            }
+            else if (fieldType === 'select' && fieldId) {
                 // Forzar un pequeño delay para asegurar que los selectores existen
                 setTimeout(() => {
                     loadFieldOptions(fieldId);
