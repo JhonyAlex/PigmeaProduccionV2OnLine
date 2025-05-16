@@ -1840,12 +1840,29 @@ const ReportsView = {
                     // Crear un título para la sección de análisis detallado
                     const detailTitle = document.createElement('div');
                     detailTitle.className = 'mt-5 mb-4 border-top pt-4';
+                    
+                    // Determinar el texto a mostrar basado en si es entidad principal u otro campo
+                    let fieldDisplayName, optionDisplayName;
+                    
+                    if (horizontalFieldId === '') {
+                        // Es una entidad principal
+                        fieldDisplayName = config.entityName || 'Entidad';
+                        
+                        // Obtener el nombre real de la entidad
+                        const entityObj = EntityModel.getById(horizontalFieldOption);
+                        optionDisplayName = entityObj ? entityObj.name : horizontalFieldOption;
+                    } else {
+                        // Es un campo normal
+                        fieldDisplayName = FieldModel.getById(horizontalFieldId)?.name || 'Campo';
+                        optionDisplayName = horizontalFieldOption;
+                    }
+                    
                     detailTitle.innerHTML = `
                         <h4 class="d-flex align-items-center">
                             <i class="bi bi-graph-up me-2"></i>
-                            Análisis detallado de ${FieldModel.getById(horizontalFieldId)?.name || 'Campo'}: <span class="badge bg-primary ms-2">${horizontalFieldOption}</span>
+                            Análisis detallado de ${fieldDisplayName}: <span class="badge bg-primary ms-2">${optionDisplayName}</span>
                         </h4>
-                        <p class="text-muted">Las siguientes gráficas muestran diferentes dimensiones de análisis para ${FieldModel.getById(horizontalFieldId)?.name || 'el campo'} seleccionado.</p>
+                        <p class="text-muted">Las siguientes gráficas muestran diferentes dimensiones de análisis para ${fieldDisplayName} seleccionado.</p>
                     `;
                     reportContainer.appendChild(detailTitle);
                     
@@ -1897,7 +1914,9 @@ const ReportsView = {
                                     <div class="card shadow-sm">
                                         <div class="card-header bg-light">
                                             <h5 class="mb-0">
-                                                <span class="badge bg-primary me-2">${horizontalFieldOption}</span>
+                                                <span class="badge bg-primary me-2">${horizontalFieldId === '' ? 
+                                                    (EntityModel.getById(horizontalFieldOption)?.name || horizontalFieldOption) : 
+                                                    horizontalFieldOption}</span>
                                                 ${mainField.name} por ${additionalField.name}
                                             </h5>
                                         </div>
@@ -1941,7 +1960,11 @@ const ReportsView = {
                                         plugins: {
                                             title: {
                                                 display: true,
-                                                text: `${mainField.name} de ${FieldModel.getById(horizontalFieldId)?.name || 'Campo'} "${horizontalFieldOption}" por ${additionalField.name}`
+                                                text: `${mainField.name} de ${horizontalFieldId === '' ? 
+                                                    (config.entityName || 'Entidad') : 
+                                                    (FieldModel.getById(horizontalFieldId)?.name || 'Campo')} "${horizontalFieldId === '' ? 
+                                                        (EntityModel.getById(horizontalFieldOption)?.name || horizontalFieldOption) : 
+                                                        horizontalFieldOption}" por ${additionalField.name}`
                                             },
                                             tooltip: {
                                                 callbacks: {
@@ -1970,7 +1993,15 @@ const ReportsView = {
                                     summaryDiv.innerHTML = `
                                         <h6 class="mb-3">Resumen de datos</h6>
                                         <div class="small text-muted mb-3">
-                                            <span class="d-block mb-1"><i class="bi bi-person-fill me-1"></i> ${FieldModel.getById(horizontalFieldId)?.name || 'Campo'}: <strong>${horizontalFieldOption}</strong></span>
+                                            <span class="d-block mb-1">
+                                                <i class="bi bi-person-fill me-1"></i> 
+                                                ${horizontalFieldId === '' ? 
+                                                    (config.entityName || 'Entidad') : 
+                                                    (FieldModel.getById(horizontalFieldId)?.name || 'Campo')}: 
+                                                <strong>${horizontalFieldId === '' ? 
+                                                    (EntityModel.getById(horizontalFieldOption)?.name || horizontalFieldOption) : 
+                                                    horizontalFieldOption}</strong>
+                                            </span>
                                             <span class="d-block mb-1"><i class="bi bi-bar-chart-fill me-1"></i> Valor: <strong>${mainField.name}</strong></span>
                                             <span class="d-block mb-1"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Distribución: <strong>${additionalField.name}</strong></span>
                                         </div>
