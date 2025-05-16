@@ -226,13 +226,16 @@ const ReportFilters = {
     /**
      * Renderiza la sección de filtros y atajos
      * @param {HTMLElement} container Contenedor donde se renderizará la sección de filtros
+     * @param {Object} reportsViewInstance Opcional - Referencia a ReportsView para usar en lugar de this.reportsView
      * @returns {string} HTML generado para la sección de filtros
      */
-    renderFiltersSection(container) {
-        if (!this.reportsView) {
-            console.warn("No hay instancia de ReportsView disponible para renderizar filtros - usando configuración por defecto");
-            // En lugar de fallar, continuar con valores por defecto
-            // Esto permitirá que la renderización funcione incluso si todavía no se ha inicializado completamente
+    renderFiltersSection(container, reportsViewInstance) {
+        // Usar la instancia proporcionada o la almacenada internamente
+        const reportsView = reportsViewInstance || this.reportsView;
+        
+        if (!reportsView) {
+            console.log("Usando valores por defecto para renderizar filtros");
+            // Continuar con valores por defecto
         }
         
         // Formatear fechas

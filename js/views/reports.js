@@ -2657,7 +2657,8 @@ const ReportsView = {
             // Si el módulo ReportFilters está disponible, usarlo para renderizar la sección de filtros
             if (typeof ReportFilters !== 'undefined') {
                 const filtersContainer = document.createElement('div');
-                ReportFilters.renderFiltersSection(filtersContainer);
+                // Pasar this como la instancia de ReportsView para evitar el mensaje de error
+                ReportFilters.renderFiltersSection(filtersContainer, this);
                 filtersHtml = filtersContainer.innerHTML;
             } else {
                 // Plantilla fallback por si el módulo no está disponible
