@@ -1841,6 +1841,9 @@ const ReportsView = {
                     const detailTitle = document.createElement('div');
                     detailTitle.className = 'mt-5 mb-4 border-top pt-4';
                     
+                    // Obtener la configuración para nombres personalizados
+                    const config = StorageService.getConfig();
+                    
                     // Determinar el texto a mostrar basado en si es entidad principal u otro campo
                     let fieldDisplayName, optionDisplayName;
                     
@@ -1961,7 +1964,7 @@ const ReportsView = {
                                             title: {
                                                 display: true,
                                                 text: `${mainField.name} de ${horizontalFieldId === '' ? 
-                                                    (config.entityName || 'Entidad') : 
+                                                    (StorageService.getConfig().entityName || 'Entidad') : 
                                                     (FieldModel.getById(horizontalFieldId)?.name || 'Campo')} "${horizontalFieldId === '' ? 
                                                         (EntityModel.getById(horizontalFieldOption)?.name || horizontalFieldOption) : 
                                                         horizontalFieldOption}" por ${additionalField.name}`
@@ -1996,7 +1999,7 @@ const ReportsView = {
                                             <span class="d-block mb-1">
                                                 <i class="bi bi-person-fill me-1"></i> 
                                                 ${horizontalFieldId === '' ? 
-                                                    (config.entityName || 'Entidad') : 
+                                                    (StorageService.getConfig().entityName || 'Entidad') : 
                                                     (FieldModel.getById(horizontalFieldId)?.name || 'Campo')}: 
                                                 <strong>${horizontalFieldId === '' ? 
                                                     (EntityModel.getById(horizontalFieldOption)?.name || horizontalFieldOption) : 
