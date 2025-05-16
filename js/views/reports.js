@@ -2089,72 +2089,82 @@ const ReportsView = {
                 }
             }
             
-            // Generar reportes adicionales si hay campos adicionales seleccionados
+            // Si hay campos adicionales seleccionados, usarlos como eje horizontal mientras mantenemos el filtro de operario
             if (filters.additionalFields && filters.additionalFields.length > 0 && filters.horizontalFieldOption) {
-                // Título para la sección de análisis detallado
-                const detailedTitle = document.createElement('h4');
-                detailedTitle.className = 'mt-5 mb-3';
-                detailedTitle.innerHTML = `<i class="bi bi-clipboard-data"></i> Análisis detallado para <strong>${filters.horizontalFieldOption}</strong>`;
-                reportContainer.appendChild(detailedTitle);
+                console.log(`Generando reportes con ${filters.additionalFields.length} campos adicionales como eje horizontal`);
                 
-                // Explicación
-                const explanation = document.createElement('p');
-                explanation.className = 'text-muted mb-4';
-                explanation.textContent = `Las siguientes métricas muestran información detallada para ${filters.horizontalFieldOption} en relación a los campos seleccionados.`;
-                reportContainer.appendChild(explanation);
-                
-                // Contenedor para las gráficas adicionales
-                const additionalChartsContainer = document.createElement('div');
-                additionalChartsContainer.className = 'additional-charts';
-                reportContainer.appendChild(additionalChartsContainer);
-                
-                // Generar un reporte para cada campo adicional
+                // Para cada campo adicional, vamos a usarlo como eje horizontal
                 for (const additionalFieldId of filters.additionalFields) {
-                    const field = FieldModel.getById(additionalFieldId);
-                    if (!field) continue;
+                    const additionalField = FieldModel.getById(additionalFieldId);
+                    if (!additionalField) continue;
                     
-                    // Solo procesar campos existentes
-                    console.log(`Generando reporte adicional para campo: ${field.name}`);
+                    console.log(`Usando campo '${additionalField.name}' como eje horizontal para ${filters.horizontalFieldOption}`);
                     
-                    // Generar datos del reporte para este campo adicional
-                    const additionalReportData = RecordModel.generateReportMultiple(additionalFieldId, aggregation, filters);
-                    
-                    if (additionalReportData.error) {
-                        console.error(`Error al generar reporte adicional para campo ${field.name}:`, additionalReportData.error);
-                        continue;
-                    }
-                    
-                    // Crear un div para este reporte adicional
-                    const reportDiv = document.createElement('div');
-                    reportDiv.className = 'report-item mb-4';
-                    reportDiv.innerHTML = `
-                        <h5 class="mb-3">${additionalReportData.field || field.name} - ${filters.horizontalFieldOption}</h5>
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="chart-container" style="min-height: 350px; overflow-x: auto;">
-                                    <canvas id="additional-chart-${additionalFieldId}"></canvas>
+                    // Para cada campo seleccionado originalmente, generamos un reporte con el campo adicional como eje horizontal
+                    for (const fieldId of selectedFields) {
+                        // Generar un reporte usando el campo adicional como eje horizontal
+                        // pero manteniendo el filtro de la opción específica (operario)
+                        const reportData = RecordModel.generateReportMultiple(
+                            fieldId,                 // Campo a comparar (valor)
+                            aggregation,             // Tipo de agregación
+                            filters,                 // Mantener los filtros (incluyendo el operario específico)
+                            additionalFieldId        // Usar el campo adicional como eje horizontal
+                        );
+                        
+                        if (reportData.error) {
+                            console.error(`Error al generar reporte para ${fieldId} con eje ${additionalFieldId}:`, reportData.error);
+                            continue;
+                        }
+                        
+                        // Añadir el nombre del operario al título para claridad
+                        const mainField = FieldModel.getById(fieldId);
+                        const operarioField = FieldModel.getById(horizontalFieldId);
+                        
+                        // Crear un reporte personalizado
+                        const reportDiv = document.createElement('div');
+                        reportDiv.className = 'report-item mb-5';
+                        reportDiv.innerHTML = `
+                            <h5 class="mb-3 report-title">
+                                <span class="badge bg-primary me-2">${filters.horizontalFieldOption}</span>
+                                ${mainField ? mainField.name : 'Campo'} por ${additionalField.name}
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="chart-container" style="min-height: 350px; overflow-x: auto;">
+                                        <canvas id="combined-chart-${fieldId}-${additionalFieldId}"></canvas>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div id="combined-summary-${fieldId}-${additionalFieldId}"></div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div id="additional-summary-${additionalFieldId}"></div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Añadir al contenedor de reportes adicionales
-                    additionalChartsContainer.appendChild(reportDiv);
-                    
-                    // Crear gráfico para este campo adicional
-                    if (ChartUtils) {
-                        ChartUtils.createBarChart(`additional-chart-${additionalFieldId}`, additionalReportData);
+                        `;
                         
-                        // Crear tabla resumen para este campo adicional
-                        const summaryDiv = document.getElementById(`additional-summary-${additionalFieldId}`);
-                        if (summaryDiv) {
-                            summaryDiv.innerHTML = `
-                                <h6 class="mb-2">Resumen</h6>
-                                ${ChartUtils.createSummaryTable(additionalReportData)}
-                            `;
+                        // Añadir el reporte al contenedor principal
+                        reportContainer.appendChild(reportDiv);
+                        
+                        // Crear el gráfico
+                        if (ChartUtils) {
+                            ChartUtils.createBarChart(`combined-chart-${fieldId}-${additionalFieldId}`, reportData);
+                            
+                            // Crear tabla resumen
+                            const summaryDiv = document.getElementById(`combined-summary-${fieldId}-${additionalFieldId}`);
+                            if (summaryDiv) {
+                                summaryDiv.innerHTML = `
+                                    <div class="card border-light">
+                                        <div class="card-header bg-light py-2">
+                                            <h6 class="mb-0">Resumen</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="text-muted small mb-3">
+                                                Datos de ${mainField ? mainField.name : 'Campo'} para ${filters.horizontalFieldOption} 
+                                                distribuidos por ${additionalField.name}
+                                            </p>
+                                            ${ChartUtils.createSummaryTable(reportData)}
+                                        </div>
+                                    </div>
+                                `;
+                            }
                         }
                     }
                 }
