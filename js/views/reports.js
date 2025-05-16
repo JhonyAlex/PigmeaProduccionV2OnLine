@@ -41,15 +41,25 @@ const ReportsView = {
                     return;
                 }
 
-                // Reiniciar estado al inicializar (opcional pero recomendado)
-                this.pagination = { currentPage: 1, itemsPerPage: 20 }; // Simplificado
+                // Reiniciar estado al inicializar
+                this.pagination = { currentPage: 1, itemsPerPage: 20 };
                 this.sorting = { column: 'timestamp', direction: 'desc' };
                 this.selectedColumns = { field1: '', field2: '', field3: '' };
                 this.filteredRecords = null;
                 this.searchedRecords = null;
 
-                this.render(); // Ahora 'this.selectedColumns' existe
-                this.setupEventListeners();
+                this.render(); // Renderizar vista principal
+                
+                // Inicializar el módulo de filtros
+                if (typeof ReportFilters !== 'undefined') {
+                    // Inicializar con referencia a esta instancia
+                    ReportFilters.init(this);
+                    console.log("Módulo de filtros inicializado");
+                } else {
+                    console.warn("Módulo ReportFilters no encontrado, usando funcionalidad integrada");
+                    // Usar la configuración de eventos integrada si el módulo no está disponible
+                    this.setupEventListeners();
+                }
 
                 // Generar automáticamente el reporte al cargar la página
                 this.autoGenerateReport();
@@ -809,6 +819,13 @@ const ReportsView = {
     },
 
     applyFilters() {
+        // Si el módulo ReportFilters está disponible, usar su método
+        if (typeof ReportFilters !== 'undefined') {
+            ReportFilters.applyFilters();
+            return;
+        }
+        
+        // Implementación de respaldo si el módulo no está disponible
         const entityFilterSelect = document.getElementById('filter-entity');
         const selectedEntities = Array.from(entityFilterSelect.selectedOptions).map(option => option.value);
         // Obtener nombre personalizado de la entidad
@@ -826,15 +843,10 @@ const ReportsView = {
             entityIds: entityFilter.length > 0 ? entityFilter : undefined,
             fromDate: fromDateFilter || undefined,
             toDate: toDateFilter || undefined
-            // No incluimos horizontalFieldId y horizontalFieldOption aquí ya que no están disponibles
-            // en este contexto, solo se usan en generateReport
         };
 
         // Obtener registros filtrados
         const filteredRecords = RecordModel.filterMultiple(filters);
-
-        // Actualizar contador (antes de la búsqueda)
-        // document.getElementById('records-count').textContent = `${filteredRecords.length} registros`; // Movido a filterRecordsBySearch
 
         // Guardar los registros filtrados para usarlos en la búsqueda
         this.filteredRecords = filteredRecords;
@@ -2047,12 +2059,19 @@ const ReportsView = {
         }
     },
     setDateRange(range) {
+        // Si el módulo ReportFilters está disponible, usar su método
+        if (typeof ReportFilters !== 'undefined') {
+            return ReportFilters.setDateRange(range);
+        }
+        
+        // Implementación de respaldo si el módulo no está disponible
         // ... (código de setDateRange sin cambios, ya estaba correcto) ...
         const fromDateInput = document.getElementById('filter-from-date');
         const toDateInput = document.getElementById('filter-to-date');
 
         if (!fromDateInput || !toDateInput) return;
 
+        // Resto del código original...
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let fromDate, toDate;
@@ -2118,6 +2137,12 @@ const ReportsView = {
     },
 
     formatDateForInput(date) {
+        // Si el módulo ReportFilters está disponible, usar su método
+        if (typeof ReportFilters !== 'undefined') {
+            return ReportFilters.formatDateForInput(date);
+        }
+        
+        // Implementación de respaldo si el módulo no está disponible
         // ... (código de formatDateForInput sin cambios) ...
         if (!(date instanceof Date) || isNaN(date)) {
             return '';
@@ -2252,6 +2277,12 @@ const ReportsView = {
      * @param {string} groupName Nombre del grupo a filtrar
      */
     filterByEntityGroup(groupName) {
+        // Si el módulo ReportFilters está disponible, usar su método
+        if (typeof ReportFilters !== 'undefined') {
+            return ReportFilters.filterByEntityGroup(groupName);
+        }
+        
+        // Implementación de respaldo si el módulo no está disponible
         if (!groupName) return;
         
         // Obtener el selector de entidades
@@ -2631,11 +2662,15 @@ const ReportsView = {
             const compareField = FieldModel.getAll().find(field => field.isCompareField);
 
             // --- HTML Template Reorganizado ---
-            const template = `
-                <div class="container mt-4">
-                    <h2>Reportes y Análisis</h2>
-
-                                        <!-- Filtros y atajos de fecha unificados -->
+            let filtersHtml = '';
+            // Si el módulo ReportFilters está disponible, usarlo para renderizar la sección de filtros
+            if (typeof ReportFilters !== 'undefined') {
+                const filtersContainer = document.createElement('div');
+                ReportFilters.renderFiltersSection(filtersContainer);
+                filtersHtml = filtersContainer.innerHTML;
+            } else {
+                // Plantilla fallback por si el módulo no está disponible
+                filtersHtml = `
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                             <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros y atajos</h5>
@@ -2738,6 +2773,15 @@ const ReportsView = {
                             </div>
                         </div>
                     </div>
+                `;
+            }
+            
+            const template = `
+                <div class="container mt-4">
+                    <h2>Reportes y Análisis</h2>
+
+                    <!-- Filtros y atajos de fecha -->
+                    ${filtersHtml}
 
                     <!-- Reportes Comparativos -->
                     <div class="card mb-4">
