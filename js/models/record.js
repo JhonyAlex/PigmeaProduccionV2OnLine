@@ -102,6 +102,18 @@ const RecordModel = {
             );
         }
         
+        // Filtrar por operario (para análisis detallado)
+        if (filters.operarioFieldId && filters.operarioOption) {
+            records = records.filter(record => 
+                record.data[filters.operarioFieldId] === filters.operarioOption
+            );
+        }
+        
+        // Aplicar filtro personalizado si existe (para análisis detallado avanzado)
+        if (typeof filters.customFilter === 'function') {
+            records = records.filter(filters.customFilter);
+        }
+        
         return records;
     },
     

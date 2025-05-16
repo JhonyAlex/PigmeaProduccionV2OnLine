@@ -1947,11 +1947,13 @@ const ReportsView = {
             const fromDateFilter = document.getElementById('filter-from-date')?.value;
             const toDateFilter = document.getElementById('filter-to-date')?.value;
     
-            // Validar si hay una opción específica seleccionada
+                        // Validar si hay una opción específica seleccionada
             let horizontalFieldOptionValue = null;
+            let operarioFieldId = null;
             if (horizontalFieldId && horizontalFieldOption) {
                 console.log(`Filtrando por opción específica: ${horizontalFieldOption} en campo ${horizontalFieldId}`);
                 horizontalFieldOptionValue = horizontalFieldOption;
+                operarioFieldId = horizontalFieldId; // Guardamos el campo de operario para filtrar por él
             }
 
             // Obtener campos adicionales para análisis detallado
@@ -1971,8 +1973,8 @@ const ReportsView = {
                 entityIds: entityFilter.length > 0 ? entityFilter : undefined,
                 fromDate: fromDateFilter || undefined,
                 toDate: toDateFilter || undefined,
-                horizontalFieldId: horizontalFieldId || undefined,
-                horizontalFieldOption: horizontalFieldOptionValue, // Filtro de opción específica
+                operarioFieldId: operarioFieldId, // Guardamos el ID del campo de operario para filtrado posterior
+                operarioOption: horizontalFieldOptionValue, // El operario seleccionado
                 additionalFields: additionalFields.length > 0 ? additionalFields : undefined // Campos adicionales
             };
     
@@ -2098,16 +2100,31 @@ const ReportsView = {
                     const additionalField = FieldModel.getById(additionalFieldId);
                     if (!additionalField) continue;
                     
-                    console.log(`Usando campo '${additionalField.name}' como eje horizontal para ${filters.horizontalFieldOption}`);
+                    console.log(`Usando campo '${additionalField.name}' como eje horizontal para ${filters.operarioOption}`);
                     
                     // Para cada campo seleccionado originalmente, generamos un reporte con el campo adicional como eje horizontal
                     for (const fieldId of selectedFields) {
+                        // Creamos un nuevo filtro que incluye la restricción del operario
+                        const reportFilters = {
+                            ...filters,  // Mantener filtros base (entidades, fechas)
+                            horizontalFieldId: null,  // Borrar para que no interfiera
+                            horizontalFieldOption: null,  // Borrar para que no interfiera
+                        };
+                        
+                        // Añadir un filtro personalizado para el operario seleccionado
+                        if (filters.operarioFieldId && filters.operarioOption) {
+                            // Crear un objeto con la restricción del operario para filterMultiple
+                            reportFilters.customFilter = (record) => {
+                                return record.data[filters.operarioFieldId] === filters.operarioOption;
+                            };
+                        }
+                        
                         // Generar un reporte usando el campo adicional como eje horizontal
-                        // pero manteniendo el filtro de la opción específica (operario)
+                        // pero aplicando un filtro para el operario específico
                         const reportData = RecordModel.generateReportMultiple(
                             fieldId,                 // Campo a comparar (valor)
                             aggregation,             // Tipo de agregación
-                            filters,                 // Mantener los filtros (incluyendo el operario específico)
+                            reportFilters,           // Filtros con operario específico
                             additionalFieldId        // Usar el campo adicional como eje horizontal
                         );
                         
@@ -2118,14 +2135,14 @@ const ReportsView = {
                         
                         // Añadir el nombre del operario al título para claridad
                         const mainField = FieldModel.getById(fieldId);
-                        const operarioField = FieldModel.getById(horizontalFieldId);
+                        const operarioField = FieldModel.getById(filters.operarioFieldId);
                         
                         // Crear un reporte personalizado
                         const reportDiv = document.createElement('div');
-                        reportDiv.className = 'report-item mb-5';
+                        reportDiv.className = 'report-item mb-5 additional-report';
                         reportDiv.innerHTML = `
                             <h5 class="mb-3 report-title">
-                                <span class="badge bg-primary me-2">${filters.horizontalFieldOption}</span>
+                                <span class="badge bg-primary me-2">${filters.operarioOption}</span>
                                 ${mainField ? mainField.name : 'Campo'} por ${additionalField.name}
                             </h5>
                             <div class="row">
@@ -2145,7 +2162,34 @@ const ReportsView = {
                         
                         // Crear el gráfico
                         if (ChartUtils) {
-                            ChartUtils.createBarChart(`combined-chart-${fieldId}-${additionalFieldId}`, reportData);
+                            // Añadir configuración específica para este gráfico
+                            const chartConfig = {
+                                type: 'bar',
+                                options: {
+                                    scales: {
+                                        x: {
+                                            title: {
+                                                display: true,
+                                                text: additionalField.name
+                                            }
+                                        },
+                                        y: {
+                                            title: {
+                                                display: true,
+                                                text: mainField ? mainField.name : 'Valor'
+                                            }
+                                        }
+                                    },
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: `${mainField ? mainField.name : 'Datos'} de ${filters.operarioOption}`
+                                        }
+                                    }
+                                }
+                            };
+                            
+                            ChartUtils.createBarChart(`combined-chart-${fieldId}-${additionalFieldId}`, reportData, chartConfig);
                             
                             // Crear tabla resumen
                             const summaryDiv = document.getElementById(`combined-summary-${fieldId}-${additionalFieldId}`);
@@ -2157,8 +2201,9 @@ const ReportsView = {
                                         </div>
                                         <div class="card-body">
                                             <p class="text-muted small mb-3">
-                                                Datos de ${mainField ? mainField.name : 'Campo'} para ${filters.horizontalFieldOption} 
-                                                distribuidos por ${additionalField.name}
+                                                <strong>${additionalField.name}</strong> en el eje horizontal<br>
+                                                <strong>${mainField ? mainField.name : 'Valor'}</strong> en el eje vertical<br>
+                                                Datos filtrados para <strong>${filters.operarioOption}</strong>
                                             </p>
                                             ${ChartUtils.createSummaryTable(reportData)}
                                         </div>
