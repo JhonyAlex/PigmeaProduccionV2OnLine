@@ -2091,124 +2091,156 @@ const ReportsView = {
                 }
             }
             
-            // Si hay campos adicionales seleccionados, usarlos como eje horizontal mientras mantenemos el filtro de operario
-            if (filters.additionalFields && filters.additionalFields.length > 0 && filters.horizontalFieldOption) {
-                console.log(`Generando reportes con ${filters.additionalFields.length} campos adicionales como eje horizontal`);
-                
-                // Para cada campo adicional, vamos a usarlo como eje horizontal
-                for (const additionalFieldId of filters.additionalFields) {
-                    const additionalField = FieldModel.getById(additionalFieldId);
-                    if (!additionalField) continue;
+            // Sistema mejorado y simplificado de análisis multidimensional
+            if (additionalFieldsSelect) {
+                const additionalFields = Array.from(additionalFieldsSelect.selectedOptions || [])
+                    .map(option => option.value)
+                    .filter(id => id !== '');
                     
-                    console.log(`Usando campo '${additionalField.name}' como eje horizontal para ${filters.operarioOption}`);
+                // Si hay un operario específico seleccionado + campos adicionales
+                if (horizontalFieldOption && additionalFields.length > 0) {
+                    // Crear un título para la sección de análisis detallado
+                    const detailTitle = document.createElement('div');
+                    detailTitle.className = 'mt-5 mb-4 border-top pt-4';
+                    detailTitle.innerHTML = `
+                        <h4 class="d-flex align-items-center">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Análisis detallado para <span class="badge bg-primary ms-2">${horizontalFieldOption}</span>
+                        </h4>
+                        <p class="text-muted">Las siguientes gráficas muestran diferentes dimensiones de análisis para el operario seleccionado.</p>
+                    `;
+                    reportContainer.appendChild(detailTitle);
                     
-                    // Para cada campo seleccionado originalmente, generamos un reporte con el campo adicional como eje horizontal
-                    for (const fieldId of selectedFields) {
-                        // Creamos un nuevo filtro que incluye la restricción del operario
-                        const reportFilters = {
-                            ...filters,  // Mantener filtros base (entidades, fechas)
-                            horizontalFieldId: null,  // Borrar para que no interfiera
-                            horizontalFieldOption: null,  // Borrar para que no interfiera
-                        };
+                    // Para cada campo adicional, vamos a usarlo como eje horizontal
+                    for (const additionalFieldId of additionalFields) {
+                        const additionalField = FieldModel.getById(additionalFieldId);
+                        if (!additionalField) continue;
                         
-                        // Añadir un filtro personalizado para el operario seleccionado
-                        if (filters.operarioFieldId && filters.operarioOption) {
-                            // Crear un objeto con la restricción del operario para filterMultiple
-                            reportFilters.customFilter = (record) => {
-                                return record.data[filters.operarioFieldId] === filters.operarioOption;
+                        console.log(`Usando campo '${additionalField.name}' como eje horizontal para ${horizontalFieldOption}`);
+                        
+                        // Para cada campo seleccionado (como metros), creamos un reporte
+                        for (const fieldId of selectedFields) {
+                            const mainField = FieldModel.getById(fieldId);
+                            if (!mainField) continue;
+                            
+                            // Filtrar solo registros para el operario seleccionado
+                            const operarioFilters = {
+                                entityIds: entityFilter.length > 0 ? entityFilter : undefined,
+                                fromDate: fromDateFilter || undefined,
+                                toDate: toDateFilter || undefined,
+                                operarioFieldId: horizontalFieldId,
+                                operarioOption: horizontalFieldOption
                             };
-                        }
-                        
-                        // Generar un reporte usando el campo adicional como eje horizontal
-                        // pero aplicando un filtro para el operario específico
-                        const reportData = RecordModel.generateReportMultiple(
-                            fieldId,                 // Campo a comparar (valor)
-                            aggregation,             // Tipo de agregación
-                            reportFilters,           // Filtros con operario específico
-                            additionalFieldId        // Usar el campo adicional como eje horizontal
-                        );
-                        
-                        if (reportData.error) {
-                            console.error(`Error al generar reporte para ${fieldId} con eje ${additionalFieldId}:`, reportData.error);
-                            continue;
-                        }
-                        
-                        // Añadir el nombre del operario al título para claridad
-                        const mainField = FieldModel.getById(fieldId);
-                        const operarioField = FieldModel.getById(filters.operarioFieldId);
-                        
-                        // Crear un reporte personalizado
-                        const reportDiv = document.createElement('div');
-                        reportDiv.className = 'report-item mb-5 additional-report';
-                        reportDiv.innerHTML = `
-                            <h5 class="mb-3 report-title">
-                                <span class="badge bg-primary me-2">${filters.operarioOption}</span>
-                                ${mainField ? mainField.name : 'Campo'} por ${additionalField.name}
-                            </h5>
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="chart-container" style="min-height: 350px; overflow-x: auto;">
-                                        <canvas id="combined-chart-${fieldId}-${additionalFieldId}"></canvas>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div id="combined-summary-${fieldId}-${additionalFieldId}"></div>
-                                </div>
-                            </div>
-                        `;
-                        
-                        // Añadir el reporte al contenedor principal
-                        reportContainer.appendChild(reportDiv);
-                        
-                        // Crear el gráfico
-                        if (ChartUtils) {
-                            // Añadir configuración específica para este gráfico
-                            const chartConfig = {
-                                type: 'bar',
-                                options: {
-                                    scales: {
-                                        x: {
-                                            title: {
-                                                display: true,
-                                                text: additionalField.name
-                                            }
-                                        },
-                                        y: {
-                                            title: {
-                                                display: true,
-                                                text: mainField ? mainField.name : 'Valor'
-                                            }
-                                        }
-                                    },
-                                    plugins: {
-                                        title: {
-                                            display: true,
-                                            text: `${mainField ? mainField.name : 'Datos'} de ${filters.operarioOption}`
-                                        }
-                                    }
+                            
+                            try {
+                                // Generar el reporte con campo adicional como eje horizontal
+                                const reportData = RecordModel.generateReportMultiple(
+                                    fieldId,                 // Campo principal (como metros)
+                                    aggregation,             // Tipo de agregación
+                                    operarioFilters,         // Filtros con operario específico 
+                                    additionalFieldId        // Eje horizontal (como turnos)
+                                );
+                                
+                                if (!reportData || reportData.error) {
+                                    console.error(`Error al generar reporte detallado: ${reportData?.error || 'Datos no disponibles'}`);
+                                    continue;
                                 }
-                            };
-                            
-                            ChartUtils.createBarChart(`combined-chart-${fieldId}-${additionalFieldId}`, reportData, chartConfig);
-                            
-                            // Crear tabla resumen
-                            const summaryDiv = document.getElementById(`combined-summary-${fieldId}-${additionalFieldId}`);
-                            if (summaryDiv) {
-                                summaryDiv.innerHTML = `
-                                    <div class="card border-light">
-                                        <div class="card-header bg-light py-2">
-                                            <h6 class="mb-0">Resumen</h6>
+                                
+                                // Verificar que hay datos para mostrar
+                                if (!reportData.entities || reportData.entities.length === 0) {
+                                    console.log(`No hay datos para mostrar en el reporte ${mainField.name} por ${additionalField.name}`);
+                                    continue;
+                                }
+                                
+                                // Crear un reporte visual
+                                const detailReport = document.createElement('div');
+                                detailReport.className = 'report-item mb-4 detail-report';
+                                detailReport.innerHTML = `
+                                    <div class="card shadow-sm">
+                                        <div class="card-header bg-light">
+                                            <h5 class="mb-0">
+                                                <span class="badge bg-primary me-2">${horizontalFieldOption}</span>
+                                                ${mainField.name} por ${additionalField.name}
+                                            </h5>
                                         </div>
                                         <div class="card-body">
-                                            <p class="text-muted small mb-3">
-                                                <strong>${additionalField.name}</strong> en el eje horizontal<br>
-                                                <strong>${mainField ? mainField.name : 'Valor'}</strong> en el eje vertical<br>
-                                                Datos filtrados para <strong>${filters.operarioOption}</strong>
-                                            </p>
-                                            ${ChartUtils.createSummaryTable(reportData)}
+                                            <div class="row">
+                                                <div class="col-md-8">
+                                                    <div class="chart-container" style="min-height: 350px; overflow-x: auto;">
+                                                        <canvas id="detail-chart-${fieldId}-${additionalFieldId}"></canvas>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div id="detail-summary-${fieldId}-${additionalFieldId}"></div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 `;
+                                
+                                // Añadir el reporte al contenedor
+                                reportContainer.appendChild(detailReport);
+                                
+                                // Crear el gráfico con etiquetas claras
+                                const chartConfig = {
+                                    type: 'bar',
+                                    options: {
+                                        scales: {
+                                            x: {
+                                                title: {
+                                                    display: true,
+                                                    text: additionalField.name
+                                                }
+                                            },
+                                            y: {
+                                                title: {
+                                                    display: true,
+                                                    text: mainField.name
+                                                },
+                                                beginAtZero: true
+                                            }
+                                        },
+                                        plugins: {
+                                            title: {
+                                                display: true,
+                                                text: `${mainField.name} de ${horizontalFieldOption} por ${additionalField.name}`
+                                            },
+                                            tooltip: {
+                                                callbacks: {
+                                                    title: (tooltipItems) => {
+                                                        return `${additionalField.name}: ${tooltipItems[0].label}`;
+                                                    },
+                                                    label: (context) => {
+                                                        return `${mainField.name}: ${ChartUtils.formatNumber(context.raw)}`;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                };
+                                
+                                // Generar el gráfico
+                                ChartUtils.createBarChart(
+                                    `detail-chart-${fieldId}-${additionalFieldId}`, 
+                                    reportData, 
+                                    chartConfig
+                                );
+                                
+                                // Crear la tabla de resumen
+                                const summaryDiv = document.getElementById(`detail-summary-${fieldId}-${additionalFieldId}`);
+                                if (summaryDiv) {
+                                    summaryDiv.innerHTML = `
+                                        <h6 class="mb-3">Resumen de datos</h6>
+                                        <div class="small text-muted mb-3">
+                                            <span class="d-block mb-1"><i class="bi bi-person-fill me-1"></i> Operario: <strong>${horizontalFieldOption}</strong></span>
+                                            <span class="d-block mb-1"><i class="bi bi-bar-chart-fill me-1"></i> Valor: <strong>${mainField.name}</strong></span>
+                                            <span class="d-block mb-1"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Distribución: <strong>${additionalField.name}</strong></span>
+                                        </div>
+                                        ${ChartUtils.createSummaryTable(reportData)}
+                                    `;
+                                }
+                            } catch (error) {
+                                console.error("Error generando reporte detallado:", error);
                             }
                         }
                     }
