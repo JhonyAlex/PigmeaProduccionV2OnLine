@@ -2816,199 +2816,253 @@ const ReportsView = {
      * Añade los event listeners al calendario
      */
     addCalendarEventListeners(container) {
-        // Eventos para los días
-        const days = container.querySelectorAll('.day');
-        let isDragging = false;
-        let dragStartDate = null;
-        let lastHoveredDate = null;
+        console.log("🔍 Iniciando asignación de event listeners al calendario");
         
-        days.forEach(day => {
-            // Manejo de clic simple
-            day.addEventListener('click', (e) => {
+        // Limpiar listeners existentes para evitar duplicaciones
+        this.removeCalendarEventListeners(container);
+        
+        // Usar delegación de eventos para mayor eficiencia y robustez
+        container.addEventListener('click', this.handleCalendarElementClick = (event) => {
+            // Identificar qué elemento fue clickeado
+            const target = event.target;
+            const closestBtn = target.closest('button');
+            
+            // === MANEJO DE BOTONES DE NAVEGACIÓN ===
+            if (closestBtn) {
+                // Botón de mes anterior
+                if (closestBtn.classList.contains('prev-month')) {
+                    console.log("🔄 Click en 'Mes anterior'");
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Asegurar que tenemos fecha actual inicializada
+                    if (!this.currentCalendarDate) {
+                        this.currentCalendarDate = new Date();
+                    }
+                    
+                    // Ir al mes anterior
+                    const date = new Date(this.currentCalendarDate);
+                    date.setMonth(date.getMonth() - 1);
+                    this.currentCalendarDate = date;
+                    
+                    // Renderizar con delay para evitar problemas
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, date);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de mes siguiente
+                if (closestBtn.classList.contains('next-month')) {
+                    console.log("🔄 Click en 'Mes siguiente'");
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Asegurar que tenemos fecha actual inicializada
+                    if (!this.currentCalendarDate) {
+                        this.currentCalendarDate = new Date();
+                    }
+                    
+                    // Ir al mes siguiente
+                    const date = new Date(this.currentCalendarDate);
+                    date.setMonth(date.getMonth() + 1);
+                    this.currentCalendarDate = date;
+                    
+                    // Renderizar con delay para evitar problemas
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, date);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de hoy
+                if (closestBtn.classList.contains('today-btn')) {
+                    console.log("🔄 Click en 'Hoy'");
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Ir al mes actual
+                    this.currentCalendarDate = new Date();
+                    
+                    // Renderizar con delay para evitar problemas
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, this.currentCalendarDate);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de vista mensual
+                if (closestBtn.id === 'month-view-btn') {
+                    console.log("🔄 Click en 'Vista Mensual'");
+                    event.preventDefault();
+                    
+                    // Cambiar clases activas
+                    const weekViewBtn = container.querySelector('#week-view-btn');
+                    if (weekViewBtn) weekViewBtn.classList.remove('active');
+                    closestBtn.classList.add('active');
+                    
+                    // Renderizar vista mensual
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, this.currentCalendarDate);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de vista semanal
+                if (closestBtn.id === 'week-view-btn') {
+                    console.log("🔄 Click en 'Vista Semanal'");
+                    event.preventDefault();
+                    
+                    // Cambiar clases activas
+                    const monthViewBtn = container.querySelector('#month-view-btn');
+                    if (monthViewBtn) monthViewBtn.classList.remove('active');
+                    closestBtn.classList.add('active');
+                    
+                    // Mostrar mensaje de feature en desarrollo
+                    container.innerHTML = `
+                        <div class="simple-calendar">
+                            <div class="calendar-header">
+                                <div class="navigation-buttons">
+                                    <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
+                                        Hoy
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary prev-week" title="Semana anterior">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary next-week" title="Semana siguiente">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                </div>
+                                <h5 class="month-title mb-0">Vista Semanal</h5>
+                                <div class="view-selectors">
+                                    <button class="btn btn-sm btn-outline-secondary" id="month-view-btn">Mes</button>
+                                    <button class="btn btn-sm btn-outline-secondary active" id="week-view-btn">Semana</button>
+                                </div>
+                            </div>
+                            <div class="p-3 text-center">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle"></i> Vista semanal en desarrollo. Por favor, utilice la vista mensual.
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Volver a añadir listeners al nuevo contenido
+                    setTimeout(() => {
+                        this.addCalendarEventListeners(container);
+                    }, 10);
+                    return;
+                }
+            }
+            
+            // === MANEJO DE DÍAS DEL CALENDARIO ===
+            const day = target.closest('.day');
+            if (day) {
                 const dateStr = day.getAttribute('data-date');
                 if (!dateStr) return;
                 
-                // Si no estamos en modo arrastrar, tratar como clic simple
-                if (!isDragging) {
-                    // Marcar día seleccionado
-                    days.forEach(d => d.classList.remove('selected'));
-                    day.classList.add('selected');
-                    
-                    // Actualizar inputs de fecha
-                    const fromDateInput = document.getElementById('filter-from-date');
-                    const toDateInput = document.getElementById('filter-to-date');
-                    
-                    if (fromDateInput && toDateInput) {
-                        fromDateInput.value = dateStr;
-                        toDateInput.value = dateStr;
-                        
-                        // Aplicar filtros automáticamente
-                        const filterForm = document.getElementById('filter-form');
-                        if (filterForm) {
-                            filterForm.dispatchEvent(new Event('submit'));
-                        }
-                    }
-                }
-            });
-            
-            // Eventos para selección por arrastre
-            day.addEventListener('mousedown', (e) => {
-                // Iniciar arrastre
-                isDragging = true;
-                dragStartDate = new Date(day.getAttribute('data-date'));
-                lastHoveredDate = dragStartDate;
+                console.log(`🔄 Click en día: ${dateStr}`);
                 
-                // Evitar selección de texto durante el arrastre
-                e.preventDefault();
-            });
-            
-            day.addEventListener('mouseover', (e) => {
-                if (isDragging && dragStartDate) {
-                    const currentDate = new Date(day.getAttribute('data-date'));
-                    lastHoveredDate = currentDate;
-                    
-                    // Actualizar visualización de rango
-                    this.updateRangeSelection(days, dragStartDate, currentDate);
-                }
-            });
-        });
-        
-        // Manejo del fin del arrastre
-        document.addEventListener('mouseup', (e) => {
-            if (isDragging && dragStartDate && lastHoveredDate) {
-                // Ordenar fechas
-                let startDate, endDate;
-                if (dragStartDate <= lastHoveredDate) {
-                    startDate = dragStartDate;
-                    endDate = lastHoveredDate;
-                } else {
-                    startDate = lastHoveredDate;
-                    endDate = dragStartDate;
-                }
+                // Marcar este día como seleccionado
+                container.querySelectorAll('.day').forEach(d => {
+                    d.classList.remove('selected');
+                });
+                day.classList.add('selected');
                 
-                // Actualizar inputs de fecha
+                // Actualizar los inputs de fecha del filtro
                 const fromDateInput = document.getElementById('filter-from-date');
                 const toDateInput = document.getElementById('filter-to-date');
                 
                 if (fromDateInput && toDateInput) {
-                    fromDateInput.value = this.formatDateForInput(startDate);
-                    toDateInput.value = this.formatDateForInput(endDate);
+                    fromDateInput.value = dateStr;
+                    toDateInput.value = dateStr;
                     
                     // Aplicar filtros automáticamente
                     const filterForm = document.getElementById('filter-form');
                     if (filterForm) {
+                        console.log("🔄 Aplicando filtros con nueva fecha");
                         filterForm.dispatchEvent(new Event('submit'));
                     }
                 }
             }
+        });
+        
+        // === SOPORTE PARA SELECCIÓN DE RANGO POR ARRASTRE ===
+        let isDragging = false;
+        let dragStartDate = null;
+        let lastHoveredDate = null;
+        
+        // Iniciar arrastre
+        container.addEventListener('mousedown', this.handleCalendarMouseDown = (event) => {
+            const day = event.target.closest('.day');
+            if (!day) return;
             
-            // Resetear estado de arrastre
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            isDragging = true;
+            dragStartDate = new Date(dateStr);
+            lastHoveredDate = dragStartDate;
+            
+            // Evitar selección de texto durante el arrastre
+            event.preventDefault();
+        });
+        
+        // Durante arrastre
+        container.addEventListener('mouseover', this.handleCalendarMouseOver = (event) => {
+            if (!isDragging || !dragStartDate) return;
+            
+            const day = event.target.closest('.day');
+            if (!day) return;
+            
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            const currentDate = new Date(dateStr);
+            lastHoveredDate = currentDate;
+            
+            // Actualizar visualización de rango
+            this.updateRangeSelection(container.querySelectorAll('.day'), dragStartDate, currentDate);
+        });
+        
+        // Finalizar arrastre (a nivel de documento para capturar eventos fuera del calendario)
+        this.handleCalendarMouseUp = (event) => {
+            if (!isDragging || !dragStartDate || !lastHoveredDate) return;
+            
+            // Ordenar fechas
+            let startDate, endDate;
+            if (dragStartDate <= lastHoveredDate) {
+                startDate = dragStartDate;
+                endDate = lastHoveredDate;
+            } else {
+                startDate = lastHoveredDate;
+                endDate = dragStartDate;
+            }
+            
+            // Actualizar inputs de fecha
+            const fromDateInput = document.getElementById('filter-from-date');
+            const toDateInput = document.getElementById('filter-to-date');
+            
+            if (fromDateInput && toDateInput) {
+                fromDateInput.value = this.formatDateForInput(startDate);
+                toDateInput.value = this.formatDateForInput(endDate);
+                
+                // Aplicar filtros automáticamente
+                const filterForm = document.getElementById('filter-form');
+                if (filterForm) {
+                    console.log("🔄 Aplicando filtros con rango de fechas");
+                    filterForm.dispatchEvent(new Event('submit'));
+                }
+            }
+            
+            // Resetear estado
             isDragging = false;
             dragStartDate = null;
             lastHoveredDate = null;
-        });
+        };
+        document.addEventListener('mouseup', this.handleCalendarMouseUp);
         
-        // Navegar entre meses
-        const prevMonthBtn = container.querySelector('.prev-month');
-        const nextMonthBtn = container.querySelector('.next-month');
-        const todayBtn = container.querySelector('.today-btn');
-        
-        // Asegurarse de que currentCalendarDate esté inicializado
-        if (!this.currentCalendarDate) {
-            this.currentCalendarDate = new Date();
-        }
-        
-        if (prevMonthBtn) {
-            console.log("Agregando event listener a botón prev-month");
-            prevMonthBtn.addEventListener('click', () => {
-                console.log("Click en botón prev-month");
-                if (!this.currentCalendarDate) {
-                    this.currentCalendarDate = new Date();
-                }
-                const date = new Date(this.currentCalendarDate);
-                date.setMonth(date.getMonth() - 1);
-                this.currentCalendarDate = date;
-                this.renderCalendarMonth(container, date);
-            });
-        } else {
-            console.warn("Botón prev-month no encontrado");
-        }
-        
-        if (nextMonthBtn) {
-            console.log("Agregando event listener a botón next-month");
-            nextMonthBtn.addEventListener('click', () => {
-                console.log("Click en botón next-month");
-                if (!this.currentCalendarDate) {
-                    this.currentCalendarDate = new Date();
-                }
-                const date = new Date(this.currentCalendarDate);
-                date.setMonth(date.getMonth() + 1);
-                this.currentCalendarDate = date;
-                this.renderCalendarMonth(container, date);
-            });
-        } else {
-            console.warn("Botón next-month no encontrado");
-        }
-        
-        if (todayBtn) {
-            console.log("Agregando event listener a botón today-btn");
-            todayBtn.addEventListener('click', () => {
-                console.log("Click en botón today-btn");
-                this.currentCalendarDate = new Date();
-                this.renderCalendarMonth(container, this.currentCalendarDate);
-            });
-        } else {
-            console.warn("Botón today-btn no encontrado");
-        }
-        
-        // Cambio de vista (mes/semana)
-        const monthViewBtn = container.querySelector('#month-view-btn');
-        const weekViewBtn = container.querySelector('#week-view-btn');
-        
-        if (monthViewBtn && weekViewBtn) {
-            monthViewBtn.addEventListener('click', () => {
-                monthViewBtn.classList.add('active');
-                weekViewBtn.classList.remove('active');
-                this.renderCalendarMonth(container, this.currentCalendarDate);
-            });
-            
-            weekViewBtn.addEventListener('click', () => {
-                weekViewBtn.classList.add('active');
-                monthViewBtn.classList.remove('active');
-                // Aquí podríamos implementar una vista semanal si fuera necesario
-                // Por ahora, mostramos un mensaje
-                container.innerHTML = `
-                    <div class="simple-calendar">
-                        <div class="calendar-header">
-                            <div class="navigation-buttons">
-                                <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
-                                    Hoy
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary prev-week" title="Semana anterior">
-                                    <i class="bi bi-chevron-left"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary next-week" title="Semana siguiente">
-                                    <i class="bi bi-chevron-right"></i>
-                                </button>
-                            </div>
-                            <h5 class="month-title mb-0">Vista Semanal</h5>
-                            <div class="view-selectors">
-                                <button class="btn btn-sm btn-outline-secondary" id="month-view-btn">Mes</button>
-                                <button class="btn btn-sm btn-outline-secondary active" id="week-view-btn">Semana</button>
-                            </div>
-                        </div>
-                        <div class="p-3 text-center">
-                            <div class="alert alert-info mb-0">
-                                <i class="bi bi-info-circle"></i> Vista semanal en desarrollo. Por favor, utilice la vista mensual.
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Volver a añadir listeners
-                this.addCalendarEventListeners(container);
-            });
-        }
+        console.log("✅ Event listeners del calendario configurados correctamente");
     },
     
     /**
