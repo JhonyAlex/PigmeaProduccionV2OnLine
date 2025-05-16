@@ -1650,14 +1650,26 @@ const ReportsView = {
         try {
             // Obtener los campos seleccionados (ahora puede ser múltiple)
             const reportFieldSelect = document.getElementById('report-field');
+            console.log("🔍 Selector de campos:", reportFieldSelect);
+            
             const selectedFields = reportFieldSelect ? Array.from(reportFieldSelect.selectedOptions).map(option => option.value) : [];
+            console.log("🔍 Campos seleccionados:", selectedFields);
+            
             const horizontalFieldId = document.getElementById('report-horizontal-field')?.value;
+            console.log("🔍 ID de campo horizontal:", horizontalFieldId);
+            
             const horizontalFieldOptionsElement = document.getElementById('horizontal-field-options');
             const horizontalFieldOption = horizontalFieldOptionsElement?.value; 
+            console.log("🔍 Opción de campo horizontal:", horizontalFieldOption);
+            
             const aggregation = document.getElementById('report-aggregation')?.value;
+            console.log("🔍 Tipo de agregación:", aggregation);
+            
             const reportForm = document.getElementById('report-form'); // Para mostrar alertas cerca
+            console.log("🔍 Formulario de reporte encontrado:", !!reportForm);
     
             if (selectedFields.length === 0) {
+                console.log("⚠️ No hay campos seleccionados para el reporte");
                 // Verificar que reportForm existe antes de mostrar la alerta
                 if (reportForm) {
                     UIUtils.showAlert('Seleccione al menos un campo para generar el reporte', 'warning', reportForm);
@@ -1666,20 +1678,25 @@ const ReportsView = {
                 }
                 return;
             }
+            
+            console.log("✅ Campos seleccionados correctamente, continuando con generación");
     
             // Obtener filtros actuales
             const entityFilterSelect = document.getElementById('filter-entity');
+            console.log("🔍 Selector de entidades:", entityFilterSelect);
             
             // Verificar si el selector de entidad existe antes de acceder a sus propiedades
             let entityFilter = [];
             if (entityFilterSelect) {
                 const selectedEntities = Array.from(entityFilterSelect.selectedOptions || [])
                     .map(option => option.value);
+                console.log("🔍 Entidades seleccionadas:", selectedEntities);
     
                 // Si se selecciona "Todas las entidades" o no se selecciona ninguna, no aplicamos filtro de entidad
                 entityFilter = selectedEntities.includes('') || selectedEntities.length === 0
                     ? []
                     : selectedEntities;
+                console.log("🔍 Filtro de entidades:", entityFilter);
             }
     
             const fromDateFilter = document.getElementById('filter-from-date')?.value;
@@ -1737,13 +1754,18 @@ const ReportsView = {
     
             // Mostrar contenedor del reporte
             const reportContainer = document.getElementById('report-container');
+            console.log("🔍 Buscando contenedor del reporte:", reportContainer);
+            
             if (!reportContainer) {
                 console.error("No se encontró el contenedor del reporte (#report-container)");
                 return; // Salir si no existe el contenedor
             }
             
+            console.log("✅ Contenedor de reporte encontrado, preparando para renderizar");
+            
             // Limpiar el contenedor de reportes para los nuevos gráficos
             reportContainer.innerHTML = '';
+            console.log("🧹 Contenedor de reporte limpiado");
             
             // Variable para almacenar todos los datos de los reportes
             const allReportsData = [];
@@ -2041,14 +2063,19 @@ const ReportsView = {
             // Mostrar el contenedor principal si hay al menos un reporte generado
             if (allReportsData.length > 0) {
                 reportContainer.style.display = 'block';
+                console.log("✅ Reporte generado y mostrado correctamente:", allReportsData);
             } else {
                 reportContainer.style.display = 'none';
+                console.log("⚠️ No se generaron datos para el reporte");
                 if (reportForm) {
                     UIUtils.showAlert('No se pudo generar ningún reporte con los campos seleccionados', 'warning', reportForm);
                 }
             }
+            
+            console.log("🏁 Proceso de generación de reporte finalizado");
         } catch (error) {
-            console.error("Error al generar el reporte:", error);
+            console.error("❌ Error al generar el reporte:", error);
+            console.error("Stack trace:", error.stack);
             // Intentar mostrar un mensaje de error en un contenedor que debe existir
             const mainContent = document.querySelector('.main-content');
             if (mainContent) {
