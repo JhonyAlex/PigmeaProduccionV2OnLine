@@ -1544,7 +1544,7 @@ const AdminView = {
         }
         console.log('Nombre extraído:', entityName);
 
-        // Recolectar los nuevos IDs de campos asignados desde el DOM
+        // Recolectar los nuevos IDs de campos asignados desde el DOM EN EL ORDEN ACTUAL
         const assignedFieldsList = document.getElementById('assigned-fields-list');
         const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
         const assignedFieldIds = [];
@@ -1554,16 +1554,28 @@ const AdminView = {
                 assignedFieldIds.push(fieldId);
             }
         });
-        console.log('Campos asignados recolectados:', assignedFieldIds);
+        
+        // Registrar el orden de forma clara para depuración
+        console.log('---------------------------------------');
+        console.log('GUARDANDO ORDEN DE CAMPOS:');
+        assignedFieldIds.forEach((id, index) => {
+            const fieldName = FieldModel.getById(id)?.name || 'Desconocido';
+            console.log(`${index + 1}. ${id} (${fieldName})`);
+        });
+        console.log('---------------------------------------');
 
         // Crear un objeto COMPLETAMENTE NUEVO y LIMPIO para la actualización
         // Solo incluir las propiedades que queremos actualizar.
         const updateData = {
-            name: String(entityName),      // Asegurar que el nombre es un string
-            fields: [...assignedFieldIds]  // Asegurar que es un array limpio
+            fields: [...assignedFieldIds]  // Usamos spread operator para crear una copia nueva del array
         };
         
-        console.log('Intentando actualizar entidad con datos limpios:', entityId, updateData);
+        // Si el nombre ha cambiado, también actualizarlo
+        if (originalEntity.name !== entityName) {
+            updateData.name = String(entityName);
+        }
+        
+        console.log('Intentando actualizar entidad con datos y orden nuevo:', entityId, updateData);
         
         // Usar EntityModel.update con el objeto limpio
         const success = EntityModel.update(entityId, updateData);
@@ -1572,17 +1584,24 @@ const AdminView = {
             console.log('Actualización exitosa reportada por EntityModel.update.');
             // Verificar el estado de la entidad DESPUÉS de la actualización
             const updatedEntity = EntityModel.getById(entityId);
-            console.log('Entidad recuperada DESPUÉS de actualizar:', JSON.stringify(updatedEntity));
+            console.log('Entidad recuperada DESPUÉS de actualizar con orden nuevo:', JSON.stringify(updatedEntity));
+            console.log('Campos en orden salvado:', JSON.stringify(updatedEntity.fields));
 
             // Cerrar el modal manualmente
             try {
                 const modalElement = document.getElementById('assignFieldsModal');
-                modalElement.classList.remove('show');
-                modalElement.style.display = 'none';
-                document.body.classList.remove('modal-open');
-                document.body.removeAttribute('style');
-                const backdrop = document.querySelector('.modal-backdrop');
-                if (backdrop) backdrop.remove();
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    modalInstance.hide();
+                } else {
+                    // Fallback manual si no podemos obtener la instancia
+                    modalElement.classList.remove('show');
+                    modalElement.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                    document.body.removeAttribute('style');
+                    const backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) backdrop.remove();
+                }
             } catch (e) {
                 console.warn('Error al cerrar modal manualmente:', e);
             }

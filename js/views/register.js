@@ -325,12 +325,21 @@ const RegisterView = {
 
         // Ordenar los campos según el orden en entity.fields (esto asegura que se respete el orden definido)
         const orderedFields = [];
+        
+        // Añadir más información de registro para depuración
+        console.log('Entity fields order:', JSON.stringify(entity.fields));
+        console.log('Available fields:', fields.map(f => f ? `${f.id}:${f.name}` : 'undefined').join(', '));
+        
         entity.fields.forEach(fieldId => {
             const field = fields.find(f => f && f.id === fieldId);
             if (field) {
                 orderedFields.push(field);
+            } else {
+                console.warn(`Campo con ID ${fieldId} asignado a la entidad pero no encontrado`);
             }
         });
+        
+        console.log('Ordered fields for rendering:', orderedFields.map(f => f.name).join(', '));
 
         // Renderizar cada campo en el orden correcto
         orderedFields.forEach(field => {

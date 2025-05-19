@@ -71,8 +71,13 @@ const EntityModel = {
             entityToUpdate.name = String(updateData.name); 
         }
         if (updateData.hasOwnProperty('fields')) {
-            // Asegurarse de que fields sea un array
-            entityToUpdate.fields = Array.isArray(updateData.fields) ? [...updateData.fields] : []; 
+            // Asegurarse de que fields sea un array y preservar el orden exacto
+            // Importante: creamos una nueva instancia del array para asegurar que se detecte el cambio
+            entityToUpdate.fields = Array.isArray(updateData.fields) ? [...updateData.fields] : [];
+            
+            // Registrar el orden para depuración
+            console.log(`EntityModel.update: Nuevo orden de campos para entidad ${id}:`, 
+                         JSON.stringify(entityToUpdate.fields));
         }
         if (updateData.hasOwnProperty('group')) {
             // Asegurarse de que group sea un string
@@ -80,8 +85,9 @@ const EntityModel = {
         }
         // Se podrían añadir más propiedades aquí si fuera necesario en el futuro
         
-        console.log(`EntityModel.update: Actualizando entidad ${id} con:`, entityToUpdate);
+        console.log(`EntityModel.update: Actualizando entidad ${id} con:`, JSON.stringify(entityToUpdate, null, 2));
         
+        // Guardar los datos actualizados
         StorageService.saveData(data);
         
         // Devolver una copia para evitar mutaciones accidentales fuera del modelo
