@@ -3384,3 +3384,35 @@ const ReportsView = {
         }
     },
 }; // Fin del objeto ReportsView
+
+/**
+ * Evita la duplicación de contenido al actualizar elementos del DOM
+ * @param {string|Element} selector - Selector CSS o elemento DOM a actualizar
+ * @param {string|Function} content - HTML para insertar o función que devuelve HTML
+ * @param {boolean} append - Si es true, añade al final; si es false, reemplaza contenido
+ */
+function safeUpdateContent(selector, content, append = false) {
+    // Obtener el elemento, ya sea por selector o directamente
+    const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    
+    // Verificar que el elemento existe
+    if (!element) {
+        console.warn(`Elemento no encontrado: ${typeof selector === 'string' ? selector : 'Elemento DOM'}`);
+        return;
+    }
+    
+    // Determinar el contenido a insertar
+    const htmlContent = typeof content === 'function' ? content() : content;
+    
+    // Si no es modo append, limpiar el contenido existente
+    if (!append) {
+        element.innerHTML = '';
+    }
+    
+    // Insertar el nuevo contenido
+    element.insertAdjacentHTML(append ? 'beforeend' : 'afterbegin', htmlContent);
+}
+
+// Ejemplo de uso:
+// safeUpdateContent('#info-message-container', '<div class="alert alert-info">Mensaje de información</div>');
+// safeUpdateContent(document.getElementById('info-message-container'), () => `<div class="alert alert-info">Mensaje generado a las ${new Date().toLocaleTimeString()}</div>`);

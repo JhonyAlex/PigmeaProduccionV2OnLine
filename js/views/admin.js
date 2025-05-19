@@ -1115,6 +1115,11 @@ const AdminView = {
         // Añadir mensaje informativo sobre la función de arrastrar y ordenar
         const assignedFieldsHeader = assignedFieldsList.closest('.col-md-6').querySelector('h6');
         if (assignedFieldsHeader) {
+            // Eliminar mensajes informativos existentes para evitar duplicación
+            const existingHelpTexts = assignedFieldsHeader.parentNode.querySelectorAll('small.text-muted');
+            existingHelpTexts.forEach(helpText => helpText.remove());
+            
+            // Añadir mensaje informativo una vez limpiado
             const helpText = document.createElement('small');
             helpText.className = 'text-muted d-block mt-1 mb-2';
             helpText.innerHTML = '<i class="bi bi-info-circle"></i> Puede arrastrar los campos para reordenarlos. El orden se respetará en el formulario de registro.';
@@ -1598,23 +1603,22 @@ const AdminView = {
                     modalElement.classList.remove('show');
                     modalElement.style.display = 'none';
                     document.body.classList.remove('modal-open');
-                    document.body.removeAttribute('style');
                     const backdrop = document.querySelector('.modal-backdrop');
                     if (backdrop) backdrop.remove();
                 }
-            } catch (e) {
-                console.warn('Error al cerrar modal manualmente:', e);
-            }
-            
-            // Recargar la lista de entidades y mostrar mensaje
-            setTimeout(() => {
-                this.loadEntities();
+                
+                // Mostrar alerta de éxito UNA SOLA VEZ
                 const config = StorageService.getConfig();
                 const entityTypeName = config.entityName || 'Entidad';
                 UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
-            }, 100); 
+                
+            } catch (error) {
+                console.error('Error al cerrar modal o mostrar mensaje:', error);
+                // Intentar mostrar alerta de éxito de todos modos
+                UIUtils.showAlert(`Campos asignados guardados correctamente.`, 'success', document.querySelector('.container'));
+            }
         } else {
-            console.error("Falló EntityModel.update para la entidad:", entityId, updateData);
+            console.error('Error reportado al guardar asignación de campos.');
             UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
         }
     },
