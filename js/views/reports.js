@@ -734,6 +734,14 @@ const ReportsView = {
                     );
                 });
             }
+            
+            // Manejar evento del botón de edición masiva
+            const bulkEditBtn = document.getElementById('bulk-edit-btn');
+            if (bulkEditBtn) {
+                bulkEditBtn.addEventListener('click', () => {
+                    this.showBulkEditModal();
+                });
+            }
 
             // Buscador en la tabla de registros
             const searchInput = document.getElementById('search-records');
@@ -1166,23 +1174,9 @@ const ReportsView = {
             selectAllCheckbox.checked = false;
         }
 
-        // Añadir botón de edición masiva si no existe
+        // Asegurarse que el botón de edición masiva esté oculto inicialmente
         const bulkEditBtn = document.getElementById('bulk-edit-btn');
-        if (!bulkEditBtn) {
-            const newBulkEditBtn = document.createElement('button');
-            newBulkEditBtn.id = 'bulk-edit-btn';
-            newBulkEditBtn.className = 'btn btn-warning btn-sm ms-2';
-            newBulkEditBtn.innerHTML = '<i class="bi bi-clock"></i> Editar Fechas Seleccionadas';
-            newBulkEditBtn.style.display = 'none';
-            newBulkEditBtn.addEventListener('click', () => this.showBulkEditModal());
-            
-            // Buscar el contenedor correcto para el botón
-            const headerDiv = document.querySelector('.card-header.bg-primary.text-white.d-flex');
-            if (headerDiv && headerDiv.querySelector('div')) {
-                headerDiv.querySelector('div').appendChild(newBulkEditBtn);
-            }
-        } else {
-            // Si ya existe el botón, solo ocultar
+        if (bulkEditBtn) {
             bulkEditBtn.style.display = 'none';
         }
 
@@ -2219,8 +2213,12 @@ const ReportsView = {
      */
     showBulkEditModal() {
         const modal = UIUtils.initModal('bulkEditModal');
-        const modalTitle = document.getElementById('bulkEditModalLabel');
+        if (!modal) {
+            UIUtils.showAlert('Error al abrir el modal de edición en lote. Compruebe la consola para más detalles.', 'danger');
+            return;
+        }
         
+        const modalTitle = document.getElementById('bulkEditModalLabel');
         if (modalTitle) {
             modalTitle.textContent = `Editar Fechas de ${this.recordName}s Seleccionados`;
         }
@@ -2244,7 +2242,13 @@ const ReportsView = {
             });
         }
         
-        modal.show();
+        // Mostrar el modal de forma segura
+        try {
+            modal.show();
+        } catch (error) {
+            console.error("Error al mostrar el modal:", error);
+            UIUtils.showAlert('Error al mostrar el modal de edición en lote.', 'danger');
+        }
     },
 
     /**
@@ -2930,6 +2934,9 @@ const ReportsView = {
                             <div>
                                 <button id="export-csv-btn" class="btn btn-outline-light btn-sm me-2">
                                     <i class="bi bi-file-earmark-spreadsheet"></i> Exportar a CSV
+                                </button>
+                                <button id="bulk-edit-btn" class="btn btn-outline-light btn-sm me-2">
+                                    <i class="bi bi-calendar-event"></i> Editar Fechas Seleccionadas
                                 </button>
                                 <span id="records-count" class="badge bg-light text-dark">0 ${this.recordName.toLowerCase()}s</span>
                             </div>

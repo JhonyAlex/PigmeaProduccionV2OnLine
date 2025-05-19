@@ -47,7 +47,22 @@ const UIUtils = {
      */
     initModal(modalId) {
         const modalElement = document.getElementById(modalId);
-        return new bootstrap.Modal(modalElement);
+        if (!modalElement) {
+            console.error(`Error: No se encontró el modal con ID '${modalId}'`);
+            return null;
+        }
+        
+        try {
+            // Comprobar si ya existe una instancia de modal
+            let modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (!modalInstance) {
+                modalInstance = new bootstrap.Modal(modalElement);
+            }
+            return modalInstance;
+        } catch (error) {
+            console.error(`Error al inicializar el modal '${modalId}':`, error);
+            return null;
+        }
     },
     
     /**
