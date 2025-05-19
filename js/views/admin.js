@@ -1112,6 +1112,15 @@ const AdminView = {
         availableFieldsList.innerHTML = '';
         assignedFieldsList.innerHTML = '';
         
+        // Añadir mensaje informativo sobre la función de arrastrar y ordenar
+        const assignedFieldsHeader = assignedFieldsList.closest('.col-md-6').querySelector('h6');
+        if (assignedFieldsHeader) {
+            const helpText = document.createElement('small');
+            helpText.className = 'text-muted d-block mt-1 mb-2';
+            helpText.innerHTML = '<i class="bi bi-info-circle"></i> Puede arrastrar los campos para reordenarlos. El orden se respetará en el formulario de registro.';
+            assignedFieldsHeader.insertAdjacentElement('afterend', helpText);
+        }
+        
         // Renderizar campos disponibles
         if (availableFields.length === 0) {
             availableFieldsList.innerHTML = '<div class="text-center text-muted">No hay campos disponibles</div>';
@@ -1147,9 +1156,30 @@ const AdminView = {
         }
         
         // Mostrar título de la entidad
-        const entityNameEl = document.getElementById('assign-fields-entity-name');
+        const entityNameEl = document.getElementById('entity-name-title');
         if (entityNameEl) {
             entityNameEl.textContent = entity.name;
+        }
+        
+        // Inicializar la funcionalidad de arrastrar y ordenar en la lista de campos asignados
+        if (window.Sortable && assignedFieldsList) {
+            // Destruir instancia previa si existe
+            if (this.assignedFieldsSortable) {
+                this.assignedFieldsSortable.destroy();
+            }
+            
+            // Crear nueva instancia de Sortable
+            this.assignedFieldsSortable = new Sortable(assignedFieldsList, {
+                animation: 150,
+                handle: '.badge',  // Usar el badge como mango para arrastrar
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                onEnd: (evt) => {
+                    // Opcional: Actualizar clases visuales o realizar otras acciones después de ordenar
+                    console.log('Campo reordenado:', evt.item.getAttribute('data-field-id'));
+                }
+            });
         }
         
         // Mostrar modal
@@ -1166,6 +1196,7 @@ const AdminView = {
         const item = document.createElement('div');
         item.className = 'list-group-item field-item';
         item.setAttribute('data-field-id', field.id);
+        item.setAttribute('title', 'Haga clic para mover entre listas. En la lista de campos asignados, puede arrastrar para reordenar.');
         
         // Mostrar tipo de campo formateado
         let fieldType = this._getFieldTypeLabel(field.type);
@@ -1176,8 +1207,8 @@ const AdminView = {
                     <strong>${field.name}</strong>
                     <small class="text-muted ms-2">${fieldType}</small>
                 </div>
-                <span class="badge bg-primary rounded-pill">
-                    <i class="fas fa-arrows-alt-h"></i>
+                <span class="badge bg-primary rounded-pill drag-handle" title="Arrastrar para reordenar">
+                    <i class="bi bi-grip-vertical"></i>
                 </span>
             </div>
         `;
@@ -1219,6 +1250,12 @@ const AdminView = {
         
         // Actualizar clases
         item.classList.toggle('selected');
+        
+        // Si movemos un campo a la lista de asignados, asegurarse de que Sortable siga funcionando
+        if (listType === 'available' && window.Sortable && this.assignedFieldsSortable) {
+            // Refrescar la instancia de Sortable para reconocer el nuevo elemento
+            this.assignedFieldsSortable.option("disabled", false);
+        }
     },
 
     /**

@@ -323,8 +323,17 @@ const RegisterView = {
         // Array para guardar funciones de limpieza (para selects buscables)
         const cleanupFunctions = [];
 
-        // Renderizar cada campo
-        fields.forEach(field => {
+        // Ordenar los campos según el orden en entity.fields (esto asegura que se respete el orden definido)
+        const orderedFields = [];
+        entity.fields.forEach(fieldId => {
+            const field = fields.find(f => f && f.id === fieldId);
+            if (field) {
+                orderedFields.push(field);
+            }
+        });
+
+        // Renderizar cada campo en el orden correcto
+        orderedFields.forEach(field => {
             if (!field) return; // Saltarse campos nulos o indefinidos
 
             const fieldContainer = document.createElement('div');
