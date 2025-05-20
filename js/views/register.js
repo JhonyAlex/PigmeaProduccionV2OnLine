@@ -92,12 +92,6 @@ const RegisterView = {
                                     </div>
 
                                     <div id="submit-container" style="display: none;">
-                                        <div class="form-check mb-3">
-                                            <input class="form-check-input" type="checkbox" id="yesterday-check">
-                                            <label class="form-check-label" for="yesterday-check">
-                                                ${this.recordName.toLowerCase().charAt(0).toUpperCase() + this.recordName.toLowerCase().slice(1)} como de ayer
-                                            </label>
-                                        </div>
                                         <button type="submit" class="btn btn-primary">Guardar</button>
                                     </div>
                                 </form>
@@ -423,10 +417,90 @@ const RegisterView = {
             dynamicFieldsContainer.addEventListener('DOMNodeRemovedFromDocument', dynamicFieldsContainer._eventCleanupFn);
         }
 
+        // Añadir campo de fecha/hora personalizada
+        const dateContainer = document.createElement('div');
+        dateContainer.className = 'mb-3';
+        dateContainer.innerHTML = `
+            <label for="custom-date" class="form-label">Fecha y hora del registro</label>
+            <div class="input-group">
+                <input type="datetime-local" id="custom-date" class="form-control" name="custom-date">
+                <button type="button" class="btn btn-outline-secondary" id="reset-date">Usar fecha actual</button>
+                <button type="button" class="btn btn-outline-secondary" id="yesterday-date">Usar fecha de ayer</button>
+            </div>
+            <div class="form-text">Si no se especifica, se usará la fecha y hora actual.</div>
+        `;
+        dynamicFieldsContainer.appendChild(dateContainer);
+
+        // Establecer la fecha actual como valor predeterminado
+        const customDateInput = document.getElementById('custom-date');
+        if (customDateInput) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            customDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            
+            // Agregar event listener para el botón de restablecer a fecha actual
+            const resetDateBtn = document.getElementById('reset-date');
+            if (resetDateBtn) {
+                resetDateBtn.addEventListener('click', () => {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    
+                    customDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                });
+            }
+            
+            // Agregar event listener para el botón de fecha de ayer
+            const yesterdayDateBtn = document.getElementById('yesterday-date');
+            if (yesterdayDateBtn) {
+                yesterdayDateBtn.addEventListener('click', () => {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    const year = yesterday.getFullYear();
+                    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+                    const day = String(yesterday.getDate()).padStart(2, '0');
+                    const hours = String(yesterday.getHours()).padStart(2, '0');
+                    const minutes = String(yesterday.getMinutes()).padStart(2, '0');
+                    
+                    customDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                });
+            }
+        }
+
         // Pre-rellenar campos con los últimos datos guardados para esta entidad (si existen)
         setTimeout(() => {
             if (this.lastEnteredData[entityId]) {
                 const lastData = this.lastEnteredData[entityId];
+                
+                // Manejar el campo de fecha personalizada
+                const customDateInput = document.getElementById('custom-date');
+                if (customDateInput && lastData['custom-date']) {
+                    // Verificar si la fecha guardada es "actual" o una fecha específica
+                    if (lastData['custom-date'] === 'current') {
+                        // Si es "actual", actualizar al momento presente
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = String(now.getMonth() + 1).padStart(2, '0');
+                        const day = String(now.getDate()).padStart(2, '0');
+                        const hours = String(now.getHours()).padStart(2, '0');
+                        const minutes = String(now.getMinutes()).padStart(2, '0');
+                        
+                        customDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    } else {
+                        // Si es una fecha específica, usar esa
+                        customDateInput.value = lastData['custom-date'];
+                    }
+                }
+                
                 fields.forEach(field => {
                     const fieldElement = document.getElementById(field.id);
                     if (fieldElement && lastData[field.id] !== undefined) {
@@ -492,19 +566,40 @@ const RegisterView = {
             // Guardar los datos validados en nuestra variable temporal ANTES de crear el registro
             this.lastEnteredData[entityId] = { ...validation.data };
 
-            // Verificar si el checkbox "Ayer" está marcado
-            const yesterdayCheck = document.getElementById('yesterday-check');
-            const useYesterdayDate = yesterdayCheck && yesterdayCheck.checked;
+            // Obtener el valor del campo de fecha personalizada
+            const customDateInput = document.getElementById('custom-date');
+            let useCustomDate = false;
+            let customDate = null;
+
+            if (customDateInput && customDateInput.value) {
+                // Verificar si la fecha seleccionada es diferente a la actual (con margen de 1 minuto)
+                const selectedDate = new Date(customDateInput.value);
+                const currentDate = new Date();
+                const diffMinutes = Math.abs((selectedDate - currentDate) / (1000 * 60));
+                
+                if (diffMinutes > 1) {
+                    // Si hay más de 1 minuto de diferencia, considerarla como fecha personalizada
+                    useCustomDate = true;
+                    customDate = selectedDate;
+                    
+                    // Guardar en lastEnteredData para mantenerla entre registros
+                    this.lastEnteredData[entityId]['custom-date'] = customDateInput.value;
+                } else {
+                    // Es aproximadamente la fecha actual, marcarla como "current" para que se actualice
+                    this.lastEnteredData[entityId]['custom-date'] = 'current';
+                }
+            } else {
+                // No hay fecha personalizada, usar la actual
+                this.lastEnteredData[entityId]['custom-date'] = 'current';
+            }
 
             // Guardar registro
             const newRecord = RecordModel.create(entityId, validation.data);
 
             if (newRecord) {
-                // Si el checkbox de ayer está marcado, actualizar la fecha
-                if (useYesterdayDate) {
-                    const currentDate = new Date(newRecord.timestamp);
-                    currentDate.setDate(currentDate.getDate() - 1);
-                    RecordModel.updateDate(newRecord.id, currentDate.toISOString());
+                // Si hay una fecha personalizada, actualizarla
+                if (useCustomDate) {
+                    RecordModel.updateDate(newRecord.id, customDate.toISOString());
                 }
 
                 // Disparar un evento personalizado antes de limpiar el formulario
