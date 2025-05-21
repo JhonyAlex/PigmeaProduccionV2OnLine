@@ -162,6 +162,28 @@ const RegisterView = {
             // Añadir el listener
             form.addEventListener('submit', form._submitHandler);
 
+            // Añadir listener para tecla Enter en cualquier campo del formulario
+            if (form._keydownHandler) {
+                form.removeEventListener('keydown', form._keydownHandler);
+            }
+            form._keydownHandler = (e) => {
+                // Si se presiona Enter en un input del formulario
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+                    // Prevenir comportamiento por defecto
+                    e.preventDefault();
+                    
+                    // Obtener el ID de la entidad seleccionada
+                    const entityIdField = document.getElementById('selected-entity-id');
+                    const entityId = entityIdField ? entityIdField.value : null;
+                    
+                    // Solo guardar si hay una entidad seleccionada
+                    if (entityId) {
+                        this.saveRecord();
+                    }
+                }
+            };
+            form.addEventListener('keydown', form._keydownHandler);
+
         } else {
             console.error("Formulario de registro #register-form no encontrado dentro del contenedor principal.");
         }
@@ -279,6 +301,11 @@ const RegisterView = {
         // Limpiar contenedor
         dynamicFieldsContainer.innerHTML = '';
 
+        // Eliminar evento keydown previo si existe
+        if (dynamicFieldsContainer._keydownHandler) {
+            dynamicFieldsContainer.removeEventListener('keydown', dynamicFieldsContainer._keydownHandler);
+        }
+
         // Si no hay entidad seleccionada, ocultar el botón de envío
         const submitContainer = document.getElementById('submit-container');
         if (submitContainer) {
@@ -286,6 +313,22 @@ const RegisterView = {
         }
 
         if (!entityId) return;
+
+        // Añadir evento keydown al contenedor para capturar la tecla Enter en cualquier campo
+        dynamicFieldsContainer._keydownHandler = (e) => {
+            if (e.key === 'Enter' && dynamicFieldsContainer.contains(e.target)) {
+                // Prevenir el comportamiento predeterminado del Enter
+                e.preventDefault();
+                
+                // Solo guardar si hay una entidad seleccionada
+                if (entityId) {
+                    this.saveRecord();
+                }
+            }
+        };
+        
+        // Añadir el listener al contenedor de campos
+        dynamicFieldsContainer.addEventListener('keydown', dynamicFieldsContainer._keydownHandler);
 
         // Obtener entidad y sus campos
         const entity = EntityModel.getById(entityId);
@@ -411,7 +454,14 @@ const RegisterView = {
             // Crear una nueva función de limpieza
             dynamicFieldsContainer._eventCleanupFn = function() {
                 cleanupFunctions.forEach(cleanup => cleanup());
-                console.log("Limpiando listeners de selects para:", entityId);
+                
+                // Limpiar también el evento keydown
+                if (dynamicFieldsContainer._keydownHandler) {
+                    dynamicFieldsContainer.removeEventListener('keydown', dynamicFieldsContainer._keydownHandler);
+                    dynamicFieldsContainer._keydownHandler = null;
+                }
+                
+                console.log("Limpiando listeners de selects y keydown para:", entityId);
             };
             
             dynamicFieldsContainer.addEventListener('DOMNodeRemovedFromDocument', dynamicFieldsContainer._eventCleanupFn);
@@ -608,8 +658,14 @@ const RegisterView = {
                 });
                 form.dispatchEvent(cleanupEvent);
 
-                // Limpiar formulario
+                // Limpiar formulario y sus eventos
                 form.reset();
+                
+                // Limpiar el evento keydown del formulario si existe
+                if (form._keydownHandler) {
+                    form.removeEventListener('keydown', form._keydownHandler);
+                    form._keydownHandler = null;
+                }
 
                 // Limpiar el contenedor de campos dinámicos
                 const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
