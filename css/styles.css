@@ -28,6 +28,59 @@ body {
     background-color: rgba(0, 123, 255, 0.2);
 }
 
+/* Estilos para la funcionalidad de arrastrar y ordenar */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #f0f0f0;
+}
+
+.sortable-chosen {
+    background-color: rgba(0, 123, 255, 0.15);
+}
+
+.sortable-drag {
+    opacity: 0.8;
+    background-color: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para el mango de arrastre */
+.field-item .badge.drag-handle {
+    cursor: grab;
+}
+
+.field-item .badge.drag-handle:active {
+    cursor: grabbing;
+}
+
+.field-item .badge.drag-handle .bi-grip-vertical {
+    font-size: 14px;
+}
+
+#assigned-fields-list .field-item {
+    position: relative;
+}
+
+#assigned-fields-list .field-item::before {
+    content: '';  /* Quitamos el icono texto, usamos BI en su lugar */
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    opacity: 0.5;
+}
+
+#assigned-fields-list .field-item {
+    padding-left: 15px;
+    transition: all 0.2s ease;
+}
+
+#assigned-fields-list .field-item:hover {
+    background-color: rgba(0, 123, 255, 0.08);
+    transform: translateX(2px);
+}
+
 /* Lista de registros recientes */
 #recent-records-table {
     font-size: 0.9rem;

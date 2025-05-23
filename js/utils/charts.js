@@ -74,9 +74,10 @@ const ChartUtils = {
      * Crea o actualiza un gráfico de barras
      * @param {string} canvasId ID del elemento canvas
      * @param {Object} reportData Datos del reporte
+     * @param {Object} customConfig Configuración personalizada (opcional)
      * @returns {Chart} Instancia del gráfico
      */
-    createBarChart(canvasId, reportData) {
+    createBarChart(canvasId, reportData, customConfig = null) {
         const canvas = document.getElementById(canvasId);
         
         // Destruir gráfico anterior si existe
@@ -88,15 +89,61 @@ const ChartUtils = {
         const labels = reportData.entities.map(entity => entity.name);
         const values = reportData.entities.map(entity => entity.value);
         
-        // Título según el tipo de agregación y campos
+        // Título según el tipo de agregación y campos (si no hay configuración personalizada)
         const horizontalFieldName = reportData.horizontalField ? reportData.horizontalField : 'Entidad';
         const title = reportData.aggregation === 'sum' 
             ? `Suma total de ${reportData.field} por ${horizontalFieldName}`
             : `Promedio de ${reportData.field} por ${horizontalFieldName}`;
         
+        // Verificar si se proporciona configuración personalizada
+        let type = 'bar';
+        let options = {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: title
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const value = this.formatNumber(context.raw);
+                            return `${context.dataset.label}: ${value}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => {
+                            return this.formatNumber(value);
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Si hay configuración personalizada, combinarla con la configuración por defecto
+        if (customConfig) {
+            // Usar el tipo personalizado si está definido
+            if (customConfig.type) {
+                type = customConfig.type;
+            }
+            
+            // Fusionar opciones personalizadas con las predeterminadas
+            if (customConfig.options) {
+                options = this.mergeDeep(options, customConfig.options);
+            }
+        }
+        
         // Crear el gráfico
         const chart = new Chart(canvas, {
-            type: 'bar',
+            type: type,
             data: {
                 labels: labels,
                 datasets: [{
@@ -107,42 +154,43 @@ const ChartUtils = {
                     borderWidth: 1
                 }]
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: title
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const value = this.formatNumber(context.raw);
-                                return `${context.dataset.label}: ${value}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: (value) => {
-                                return this.formatNumber(value);
-                            }
-                        }
-                    }
-                }
-            }
+            options: options
         });
         
         // Guardar referencia al gráfico en el canvas
         canvas.chart = chart;
         
         return chart;
+    },
+    
+    /**
+     * Fusiona recursivamente dos objetos
+     * @param {Object} target Objeto destino
+     * @param {Object} source Objeto fuente
+     * @returns {Object} Objeto fusionado
+     */
+    mergeDeep(target, source) {
+        const isObject = obj => obj && typeof obj === 'object' && !Array.isArray(obj);
+        
+        if (!source) return target;
+        
+        let output = Object.assign({}, target);
+        
+        if (isObject(target) && isObject(source)) {
+            Object.keys(source).forEach(key => {
+                if (isObject(source[key])) {
+                    if (!(key in target)) {
+                        Object.assign(output, { [key]: source[key] });
+                    } else {
+                        output[key] = this.mergeDeep(target[key], source[key]);
+                    }
+                } else {
+                    Object.assign(output, { [key]: source[key] });
+                }
+            });
+        }
+        
+        return output;
     },
     
     /**
@@ -169,13 +217,17 @@ const ChartUtils = {
         // Determinar el título de la primera columna
         const entityHeaderTitle = reportData.horizontalField ? reportData.horizontalField : 'Entidad';
         
+        // Obtener el nombre personalizado para "Registro"
+        const config = StorageService.getConfig();
+        const recordName = config.recordName || 'Registro';
+        
         return `
             <table class="table table-sm table-striped">
                 <thead>
                     <tr>
                         <th>${entityHeaderTitle}</th>
                         <th class="text-end">${reportData.aggregation === 'sum' ? 'Total' : 'Promedio'}</th>
-                        <th class="text-end">Registros</th>
+                        <th class="text-end">${recordName}s</th>
                     </tr>
                 </thead>
                 <tbody>

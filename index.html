@@ -66,6 +66,16 @@
                             <label for="entity-name" class="form-label">Nombre</label>
                             <input type="text" class="form-control" id="entity-name" required>
                         </div>
+                        <div class="mb-3">
+                            <label for="entity-group" class="form-label">Grupo (opcional)</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="entity-group" list="existing-groups" placeholder="Seleccione o ingrese un grupo">
+                                <datalist id="existing-groups">
+                                    <!-- Las opciones se generarán dinámicamente -->
+                                </datalist>
+                            </div>
+                            <small class="text-muted">Agrupar entidades facilita el filtrado y la organización</small>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -220,14 +230,14 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Detalles del Registro</h5>
+                    <h5 class="modal-title" id="recordModalTitle">Detalles del Registro</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="record-details"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-danger me-auto" id="deleteRecordBtn">Eliminar registro</button>
+                    <button type="button" class="btn btn-danger me-auto" id="deleteRecordBtn">Eliminar</button>
                     <button type="button" class="btn btn-warning" id="editDateBtn">Editar fecha</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
@@ -277,8 +287,29 @@
     </div>
 </div>
 
-
-
+<!-- Modal para edición en lote de fechas -->
+<div class="modal fade" id="bulkEditModal" tabindex="-1" aria-labelledby="bulkEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkEditModalLabel">Editar Fechas de Registros Seleccionados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bulk-edit-form">
+                    <div class="mb-3">
+                        <label for="bulk-edit-date" class="form-label">Nueva fecha para los registros seleccionados</label>
+                        <input type="datetime-local" class="form-control" id="bulk-edit-date" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveBulkEdit">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Bootstrap 5 JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -309,6 +340,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/config/firebase-config.js"></script>
     <script src="js/utils/dom-utils.js"></script>
+    <!-- SortableJS para funcionalidad de arrastrar y ordenar -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </body>
 </html>
 

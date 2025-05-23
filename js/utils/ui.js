@@ -7,8 +7,25 @@ const UIUtils = {
      * @param {string} message Mensaje a mostrar
      * @param {string} type Tipo de alerta ('success', 'danger', 'warning', 'info')
      * @param {HTMLElement} container Elemento donde mostrar la alerta
+     * @param {number} timeout Tiempo en ms para ocultar la alerta (por defecto 5000)
      */
-    showAlert(message, type = 'info', container = document.body) {
+    showAlert(message, type = 'info', container = document.body, timeout = 5000) {
+        // Verificar si ya existe una alerta con el mismo mensaje
+        const existingAlerts = container.querySelectorAll('.alert');
+        for (const alert of existingAlerts) {
+            // Obtener el texto de la alerta sin el botón de cierre
+            const alertClone = alert.cloneNode(true);
+            const closeButton = alertClone.querySelector('.btn-close');
+            if (closeButton) closeButton.remove();
+            const alertText = alertClone.textContent.trim();
+            
+            // Si ya existe una alerta con el mismo texto, no crear una nueva
+            if (alertText === message) {
+                console.log('Alerta duplicada evitada:', message);
+                return;
+            }
+        }
+        
         const alertId = 'alert-' + Date.now();
         const alertHTML = `
             <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
@@ -20,14 +37,45 @@ const UIUtils = {
         // Insertar al inicio del contenedor
         container.insertAdjacentHTML('afterbegin', alertHTML);
         
-        // Auto-eliminar después de 5 segundos
+        // Auto-eliminar después del tiempo especificado
         setTimeout(() => {
             const alertElement = document.getElementById(alertId);
             if (alertElement) {
                 const bsAlert = new bootstrap.Alert(alertElement);
                 bsAlert.close();
             }
-        }, 5000);
+        }, timeout);
+    },
+    
+    /**
+     * Actualiza el contenido de un elemento del DOM de manera segura, evitando duplicaciones
+     * @param {string|Element} selector - Selector CSS o elemento DOM a actualizar
+     * @param {string|Function} content - HTML para insertar o función que devuelve HTML
+     * @param {boolean} append - Si es true, añade al final; si es false, reemplaza contenido
+     * @returns {Element} El elemento actualizado o null si no se encontró
+     */
+    safeUpdate(selector, content, append = false) {
+        // Obtener el elemento, ya sea por selector o directamente
+        const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
+        
+        // Verificar que el elemento existe
+        if (!element) {
+            console.warn(`Elemento no encontrado: ${typeof selector === 'string' ? selector : 'Elemento DOM'}`);
+            return null;
+        }
+        
+        // Determinar el contenido a insertar
+        const htmlContent = typeof content === 'function' ? content() : content;
+        
+        // Si no es modo append, limpiar el contenido existente
+        if (!append) {
+            element.innerHTML = '';
+        }
+        
+        // Insertar el nuevo contenido
+        element.insertAdjacentHTML(append ? 'beforeend' : 'afterbegin', htmlContent);
+        
+        return element;
     },
     
     /**
@@ -47,7 +95,22 @@ const UIUtils = {
      */
     initModal(modalId) {
         const modalElement = document.getElementById(modalId);
-        return new bootstrap.Modal(modalElement);
+        if (!modalElement) {
+            console.error(`Error: No se encontró el modal con ID '${modalId}'`);
+            return null;
+        }
+        
+        try {
+            // Comprobar si ya existe una instancia de modal
+            let modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (!modalInstance) {
+                modalInstance = new bootstrap.Modal(modalElement);
+            }
+            return modalInstance;
+        } catch (error) {
+            console.error(`Error al inicializar el modal '${modalId}':`, error);
+            return null;
+        }
     },
     
     /**

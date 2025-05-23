@@ -116,6 +116,7 @@ const StorageService = {
                 title: "Sistema de Registro de Datos",
                 description: "Registre sus datos de manera flexible y personalizada",
                 entityName: "Entidad",
+                recordName: "Registro",
                 navbarTitle: "Sistema de Registro Flexible",
                 kpiFields: []
             },
@@ -209,6 +210,7 @@ const StorageService = {
                 title: "Sistema de Registro de Datos",
                 description: "Registre sus datos de manera flexible y personalizada",
                 entityName: "Entidad",
+                recordName: "Registro",
                 navbarTitle: "Sistema de Registro Flexible",
                 kpiFields: []
             };
@@ -225,6 +227,21 @@ const StorageService = {
      * @returns {Promise} Promesa que se resuelve cuando los datos se han guardado
      */
     saveData(data) {
+        // Asegurarse de que los arrays se serialicen correctamente
+        // Especialmente importante para los arrays de campos
+        if (data && data.entities) {
+            data.entities.forEach(entity => {
+                if (entity.fields && Array.isArray(entity.fields)) {
+                    // Nos aseguramos de que el array sea una copia fresca para evitar
+                    // problemas de referencia y de que Firebase detecte el cambio
+                    entity.fields = [...entity.fields];
+                    
+                    // Registrar el estado del array antes de guardar
+                    console.log(`StorageService: Guardando entidad ${entity.id} con campos:`, JSON.stringify(entity.fields));
+                }
+            });
+        }
+        
         // Actualizar caché inmediatamente para operaciones rápidas
         this._cachedData = data;
         

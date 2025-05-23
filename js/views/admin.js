@@ -55,6 +55,11 @@ const AdminView = {
                                     <small class="text-muted">Este nombre reemplazará la palabra "Entidad" en todo el sistema</small>
                                 </div>
                                 <div class="mb-3">
+                                    <label for="record-name-config" class="form-label">Nombre de Registro</label>
+                                    <input type="text" class="form-control" id="record-name-config" value="${config.recordName || 'Registro'}" required>
+                                    <small class="text-muted">Este nombre reemplazará la palabra "Registro" en todo el sistema</small>
+                                </div>
+                                <div class="mb-3">
                                     <label for="navbar-title" class="form-label">Título del Sistema</label>
                                     <input type="text" class="form-control" id="navbar-title" value="${config.navbarTitle || 'Sistema de Registro Flexible'}" required>
                                     <small class="text-muted">Este título aparecerá en la barra de navegación</small>
@@ -500,12 +505,14 @@ const AdminView = {
         const title = document.getElementById('app-title').value;
         const description = document.getElementById('app-description').value;
         const entityName = document.getElementById('entity-name-config').value;
+        const recordName = document.getElementById('record-name-config').value;
         const navbarTitle = document.getElementById('navbar-title').value;
         
         const config = {
             title: title,
             description: description,
             entityName: entityName,
+            recordName: recordName,
             navbarTitle: navbarTitle
         };
         
@@ -517,6 +524,9 @@ const AdminView = {
         
         // Actualizar menciones de "Entidad" visibles en la página actual
         this.updateEntityNameReferences(entityName);
+        
+        // Actualizar menciones de "Registro" visibles en la página actual
+        this.updateRecordNameReferences(recordName);
         
         console.log("Configuración guardada:", config);
     },
@@ -530,6 +540,8 @@ const AdminView = {
         const modalTitle = document.getElementById('entityModalTitle');
         const entityIdInput = document.getElementById('entity-id');
         const entityNameInput = document.getElementById('entity-name');
+        const entityGroupInput = document.getElementById('entity-group');
+        const groupsDatalist = document.getElementById('existing-groups');
         
         // Obtener nombre personalizado
         const config = StorageService.getConfig();
@@ -537,6 +549,15 @@ const AdminView = {
         
         // Limpiar formulario
         document.getElementById('entityForm').reset();
+        
+        // Cargar grupos existentes
+        groupsDatalist.innerHTML = '';
+        const groups = EntityModel.getAllGroups();
+        groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group;
+            groupsDatalist.appendChild(option);
+        });
         
         if (entityId) {
             // Modo edición
@@ -546,10 +567,12 @@ const AdminView = {
             modalTitle.textContent = `Editar ${entityName} Principal`;
             entityIdInput.value = entity.id;
             entityNameInput.value = entity.name;
+            entityGroupInput.value = entity.group || '';
         } else {
             // Modo creación
             modalTitle.textContent = `Nueva ${entityName} Principal`;
             entityIdInput.value = '';
+            entityGroupInput.value = '';
         }
         
         modal.show();
@@ -595,6 +618,7 @@ const AdminView = {
         
         const entityId = document.getElementById('entity-id').value;
         const entityName = document.getElementById('entity-name').value;
+        const entityGroup = document.getElementById('entity-group').value.trim();
         
         // Obtener el nombre personalizado para entidad
         const config = StorageService.getConfig();
@@ -603,11 +627,13 @@ const AdminView = {
         let result;
         if (entityId) {
             // Actualizar entidad existente
-            result = EntityModel.update(entityId, { name: entityName }); 
-
+            result = EntityModel.update(entityId, { 
+                name: entityName,
+                group: entityGroup
+            }); 
         } else {
             // Crear nueva entidad
-            result = EntityModel.create(entityName);
+            result = EntityModel.create(entityName, entityGroup);
         }
         
         if (result) {
@@ -1086,6 +1112,20 @@ const AdminView = {
         availableFieldsList.innerHTML = '';
         assignedFieldsList.innerHTML = '';
         
+        // Añadir mensaje informativo sobre la función de arrastrar y ordenar
+        const assignedFieldsHeader = assignedFieldsList.closest('.col-md-6').querySelector('h6');
+        if (assignedFieldsHeader) {
+            // Eliminar mensajes informativos existentes para evitar duplicación
+            const existingHelpTexts = assignedFieldsHeader.parentNode.querySelectorAll('small.text-muted');
+            existingHelpTexts.forEach(helpText => helpText.remove());
+            
+            // Añadir mensaje informativo una vez limpiado
+            const helpText = document.createElement('small');
+            helpText.className = 'text-muted d-block mt-1 mb-2';
+            helpText.innerHTML = '<i class="bi bi-info-circle"></i> Puede arrastrar los campos para reordenarlos. El orden se respetará en el formulario de registro.';
+            assignedFieldsHeader.insertAdjacentElement('afterend', helpText);
+        }
+        
         // Renderizar campos disponibles
         if (availableFields.length === 0) {
             availableFieldsList.innerHTML = '<div class="text-center text-muted">No hay campos disponibles</div>';
@@ -1121,9 +1161,30 @@ const AdminView = {
         }
         
         // Mostrar título de la entidad
-        const entityNameEl = document.getElementById('assign-fields-entity-name');
+        const entityNameEl = document.getElementById('entity-name-title');
         if (entityNameEl) {
             entityNameEl.textContent = entity.name;
+        }
+        
+        // Inicializar la funcionalidad de arrastrar y ordenar en la lista de campos asignados
+        if (window.Sortable && assignedFieldsList) {
+            // Destruir instancia previa si existe
+            if (this.assignedFieldsSortable) {
+                this.assignedFieldsSortable.destroy();
+            }
+            
+            // Crear nueva instancia de Sortable
+            this.assignedFieldsSortable = new Sortable(assignedFieldsList, {
+                animation: 150,
+                handle: '.badge',  // Usar el badge como mango para arrastrar
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                onEnd: (evt) => {
+                    // Opcional: Actualizar clases visuales o realizar otras acciones después de ordenar
+                    console.log('Campo reordenado:', evt.item.getAttribute('data-field-id'));
+                }
+            });
         }
         
         // Mostrar modal
@@ -1140,6 +1201,7 @@ const AdminView = {
         const item = document.createElement('div');
         item.className = 'list-group-item field-item';
         item.setAttribute('data-field-id', field.id);
+        item.setAttribute('title', 'Haga clic para mover entre listas. En la lista de campos asignados, puede arrastrar para reordenar.');
         
         // Mostrar tipo de campo formateado
         let fieldType = this._getFieldTypeLabel(field.type);
@@ -1150,8 +1212,8 @@ const AdminView = {
                     <strong>${field.name}</strong>
                     <small class="text-muted ms-2">${fieldType}</small>
                 </div>
-                <span class="badge bg-primary rounded-pill">
-                    <i class="fas fa-arrows-alt-h"></i>
+                <span class="badge bg-primary rounded-pill drag-handle" title="Arrastrar para reordenar">
+                    <i class="bi bi-grip-vertical"></i>
                 </span>
             </div>
         `;
@@ -1193,6 +1255,12 @@ const AdminView = {
         
         // Actualizar clases
         item.classList.toggle('selected');
+        
+        // Si movemos un campo a la lista de asignados, asegurarse de que Sortable siga funcionando
+        if (listType === 'available' && window.Sortable && this.assignedFieldsSortable) {
+            // Refrescar la instancia de Sortable para reconocer el nuevo elemento
+            this.assignedFieldsSortable.option("disabled", false);
+        }
     },
 
     /**
@@ -1239,6 +1307,25 @@ const AdminView = {
                 entityModalTitle.textContent = "Editar " + newEntityName + " Principal";
             }
         }
+    },
+
+    /**
+     * Actualiza las referencias visibles a "Registro" con el nuevo nombre
+     * @param {string} newRecordName El nuevo nombre para "Registro"
+     */
+    updateRecordNameReferences(newRecordName) {
+        console.log("Actualizando referencias a Registro con:", newRecordName);
+        
+        // Actualizar encabezado "Importación Masiva de Registros"
+        const importHeader = document.querySelector('.card-header h5');
+        if (importHeader && importHeader.textContent.includes("Registros")) {
+            importHeader.textContent = importHeader.textContent.replace("Registros", newRecordName + "s");
+        }
+        
+        // No hay referencias directas a "Registro" en la vista de administración
+        // que necesiten ser actualizadas en tiempo real
+        
+        // Si se implementa vista de registro en esta sección, añadir aquí
     },
 
     /**
@@ -1462,7 +1549,7 @@ const AdminView = {
         }
         console.log('Nombre extraído:', entityName);
 
-        // Recolectar los nuevos IDs de campos asignados desde el DOM
+        // Recolectar los nuevos IDs de campos asignados desde el DOM EN EL ORDEN ACTUAL
         const assignedFieldsList = document.getElementById('assigned-fields-list');
         const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
         const assignedFieldIds = [];
@@ -1472,16 +1559,28 @@ const AdminView = {
                 assignedFieldIds.push(fieldId);
             }
         });
-        console.log('Campos asignados recolectados:', assignedFieldIds);
+        
+        // Registrar el orden de forma clara para depuración
+        console.log('---------------------------------------');
+        console.log('GUARDANDO ORDEN DE CAMPOS:');
+        assignedFieldIds.forEach((id, index) => {
+            const fieldName = FieldModel.getById(id)?.name || 'Desconocido';
+            console.log(`${index + 1}. ${id} (${fieldName})`);
+        });
+        console.log('---------------------------------------');
 
         // Crear un objeto COMPLETAMENTE NUEVO y LIMPIO para la actualización
         // Solo incluir las propiedades que queremos actualizar.
         const updateData = {
-            name: String(entityName),      // Asegurar que el nombre es un string
-            fields: [...assignedFieldIds]  // Asegurar que es un array limpio
+            fields: [...assignedFieldIds]  // Usamos spread operator para crear una copia nueva del array
         };
         
-        console.log('Intentando actualizar entidad con datos limpios:', entityId, updateData);
+        // Si el nombre ha cambiado, también actualizarlo
+        if (originalEntity.name !== entityName) {
+            updateData.name = String(entityName);
+        }
+        
+        console.log('Intentando actualizar entidad con datos y orden nuevo:', entityId, updateData);
         
         // Usar EntityModel.update con el objeto limpio
         const success = EntityModel.update(entityId, updateData);
@@ -1490,30 +1589,36 @@ const AdminView = {
             console.log('Actualización exitosa reportada por EntityModel.update.');
             // Verificar el estado de la entidad DESPUÉS de la actualización
             const updatedEntity = EntityModel.getById(entityId);
-            console.log('Entidad recuperada DESPUÉS de actualizar:', JSON.stringify(updatedEntity));
+            console.log('Entidad recuperada DESPUÉS de actualizar con orden nuevo:', JSON.stringify(updatedEntity));
+            console.log('Campos en orden salvado:', JSON.stringify(updatedEntity.fields));
 
             // Cerrar el modal manualmente
             try {
                 const modalElement = document.getElementById('assignFieldsModal');
-                modalElement.classList.remove('show');
-                modalElement.style.display = 'none';
-                document.body.classList.remove('modal-open');
-                document.body.removeAttribute('style');
-                const backdrop = document.querySelector('.modal-backdrop');
-                if (backdrop) backdrop.remove();
-            } catch (e) {
-                console.warn('Error al cerrar modal manualmente:', e);
-            }
-            
-            // Recargar la lista de entidades y mostrar mensaje
-            setTimeout(() => {
-                this.loadEntities();
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    modalInstance.hide();
+                } else {
+                    // Fallback manual si no podemos obtener la instancia
+                    modalElement.classList.remove('show');
+                    modalElement.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                    const backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) backdrop.remove();
+                }
+                
+                // Mostrar alerta de éxito UNA SOLA VEZ
                 const config = StorageService.getConfig();
                 const entityTypeName = config.entityName || 'Entidad';
                 UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
-            }, 100); 
+                
+            } catch (error) {
+                console.error('Error al cerrar modal o mostrar mensaje:', error);
+                // Intentar mostrar alerta de éxito de todos modos
+                UIUtils.showAlert(`Campos asignados guardados correctamente.`, 'success', document.querySelector('.container'));
+            }
         } else {
-            console.error("Falló EntityModel.update para la entidad:", entityId, updateData);
+            console.error('Error reportado al guardar asignación de campos.');
             UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
         }
     },
