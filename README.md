@@ -173,7 +173,7 @@ Las contribuciones son bienvenidas. Por favor:
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT.
+Este proyecto está bajo la Licencia MIT, hecho exclusivamente para PIGMEA S.L.
 
 ## Contacto
 
