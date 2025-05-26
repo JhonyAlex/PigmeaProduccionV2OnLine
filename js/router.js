@@ -1,46 +1,54 @@
 /**
- * Enrutador simple para navegación entre vistas
+ * Router para manejar la navegación entre vistas
  */
 const Router = {
-    // Ruta actual
-    currentRoute: null,
-    
-    // Rutas disponibles
+    currentRoute: 'register',
     routes: {
-        'register': RegisterView,
-        'reports': ReportsView,
-        'kpis': KPIsView,
-        'admin': AdminView
+        register: RegisterView,
+        reports: ReportsView,
+        admin: AdminView,
+        kpis: KPIsView
     },
-    
+
     /**
-     * Inicializa el enrutador
+     * Inicializa el router
      */
     init() {
         try {
-            // Asegurarse de que el contenedor principal existe
-            const mainContent = DOMUtils.ensureElement('.main-content', 'div', 'main-content mt-4', document.querySelector('.container') || document.body);
+            // CORREGIDO: Usar ensureBasicStructure
+            DOMUtils.ensureBasicStructure();
             
-            // Configurar listener para los links de navegación
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const route = e.target.getAttribute('data-route');
-                    this.navigateTo(route);
-                });
-            });
+            this.setupNavigation();
             
-            // Determinar la ruta inicial
-            const initialRoute = window.location.hash.substring(1) || 'register';
-            
-            // Pequeño retraso para asegurar que el DOM esté listo
-            setTimeout(() => {
-                this.navigateTo(initialRoute);
-            }, 100);
+            // Cargar ruta inicial desde hash o usar 'register' por defecto
+            const initialRoute = window.location.hash.replace('#', '') || 'register';
+            this.navigateTo(initialRoute);
         } catch (error) {
             console.error("Error al inicializar Router:", error);
-            UIUtils.showAlert('Error al inicializar la navegación. Por favor recarga la página.', 'danger');
         }
+    },
+
+    /**
+     * Configura la navegación
+     */
+    setupNavigation() {
+        // Event listener para links de navegación
+        document.querySelectorAll('[data-route]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const route = e.target.getAttribute('data-route');
+                this.navigateTo(route);
+                
+                // Actualizar hash de URL
+                window.location.hash = route;
+            });
+        });
+
+        // Listener para cambios en el hash de la URL
+        window.addEventListener('hashchange', () => {
+            const route = window.location.hash.replace('#', '') || 'register';
+            this.navigateTo(route);
+        });
     },
 
     /**
@@ -117,16 +125,12 @@ const Router = {
             `;
         }
     },
-    
+
     /**
-     * Obtiene el contenedor de la vista activa
-     * @returns {HTMLElement} Contenedor de la vista activa
+     * Obtiene el contenedor activo para renderizar vistas
+     * @returns {Element} Elemento contenedor
      */
     getActiveViewContainer() {
-        if (this.activeViewContainer && document.body.contains(this.activeViewContainer)) {
-            return this.activeViewContainer;
-        }
-        
-        return document.querySelector('.main-content');
+        return document.querySelector('.main-content') || document.querySelector('#main-content');
     }
 };
