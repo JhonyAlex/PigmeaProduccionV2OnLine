@@ -87,32 +87,35 @@ const Router = {
             }
         });
 
-        // Usar timeout más corto para mejor UX
+        // Use a short timeout to allow the browser to process DOM changes from render()
+        // before calling setupEventListeners and init.
         setTimeout(() => {
             try {
-                // Renderizar la vista
-                if (typeof this.routes[route].render === 'function') {
-                    this.routes[route].render();
+                const view = this.routes[route];
+                if (typeof view.render === 'function') {
+                    view.render(); // This should populate .main-content
                 }
 
-                // MEJORA: Usar timeout adicional para setupEventListeners e init
-                setTimeout(() => {
-                    // Configurar event listeners
-                    if (typeof this.routes[route].setupEventListeners === 'function') {
-                        this.routes[route].setupEventListeners();
-                    }
+                // Check if .main-content was populated by render()
+                const mainContentCheck = this.getActiveViewContainer();
+                if (!mainContentCheck || mainContentCheck.innerHTML.trim() === '') {
+                    console.warn(`Router.navigateTo: .main-content is empty after ${route}.render() call. The view's render() method might not have populated the content correctly.`);
+                    // Proceeding, but the view's init() should also be robust.
+                }
 
-                    // Inicializar la vista si tiene método init
-                    if (typeof this.routes[route].init === 'function') {
-                        this.routes[route].init();
-                    }
-                }, 10);
+                if (typeof view.setupEventListeners === 'function') {
+                    view.setupEventListeners();
+                }
+
+                if (typeof view.init === 'function') {
+                    view.init();
+                }
                 
             } catch (error) {
                 console.error(`Error al cargar la ruta ${route}:`, error);
                 this.showErrorView(error);
             }
-        }, 50);
+        }, 50); // 50ms delay, consistent with original outer delay. Can be reduced to 0 or 10 if issues persist with other views.
     },
 
     /**
