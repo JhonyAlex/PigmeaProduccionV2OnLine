@@ -1634,7 +1634,7 @@ const AdminView = {
      * Actualiza la vista cuando hay cambios en los datos
      */
     update() {
-        this.loadEntities();
-        this.loadFields();
+        this.render();
+        this.setupEventListeners();
     }
 };
