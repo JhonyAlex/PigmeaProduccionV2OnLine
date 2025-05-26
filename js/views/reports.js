@@ -1600,6 +1600,31 @@ const ReportsView = {
     },
 
     /**
+     * Configura los event listeners para la vista de reportes (básico)
+     */
+    setupEventListeners() {
+        // Aquí puedes agregar listeners básicos si lo necesitas.
+        // Por ejemplo, para el filtro rápido de búsqueda:
+        const searchInput = document.getElementById('search-records');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                // Si tienes lógica de búsqueda, colócala aquí.
+                // Por ejemplo: this.filterRecordsBySearch(e.target.value);
+            });
+        }
+        // ...agrega otros event listeners según sea necesario...
+    },
+
+    /**
+     * Genera el reporte comparativo (stub para evitar error)
+     */
+    generateReport() {
+        // Implementa aquí la lógica real de generación de reportes.
+        // Por ahora, solo muestra un log para evitar el error.
+        console.log("generateReport() llamado (stub). Implementa la lógica real aquí.");
+    },
+
+    /**
      * Genera automáticamente un informe al cargar la página si hay datos disponibles
      */
     autoGenerateReport() {
