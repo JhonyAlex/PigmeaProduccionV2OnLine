@@ -1104,7 +1104,10 @@ const AdminView = {
         
         // Separar campos disponibles y asignados
         const availableFields = allFields.filter(field => field && !entity.fields.includes(field.id));
-        const assignedFields = allFields.filter(field => field && entity.fields.includes(field.id));
+        // Asegurar el orden correcto de los campos asignados según entity.fields
+        const assignedFields = entity.fields
+            .map(fieldId => allFields.find(field => field && field.id === fieldId))
+            .filter(Boolean);
         
         // Actualizar listas en el modal
         const availableFieldsList = document.getElementById('available-fields-list');
