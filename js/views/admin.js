@@ -5,11 +5,18 @@ const AdminView = {
 
     importData: null,
     /**
-     * Inicializa la vista de administración
+     * Inicializa la vista de administración asegurando que los datos estén sincronizados con Firebase/localStorage.
+     * Se suscribe a los cambios de datos y actualiza la vista automáticamente.
      */
     init() {
-        this.render();
-        this.setupEventListeners();
+        StorageService.initializeStorage().then(() => {
+            // Suscribirse a cambios en los datos
+            StorageService.subscribeToDataChanges(() => {
+                AdminView.update();
+            });
+            // Cargar la vista inicial
+            AdminView.update();
+        });
     },
     
     /**
@@ -1097,7 +1104,10 @@ const AdminView = {
         
         // Separar campos disponibles y asignados
         const availableFields = allFields.filter(field => field && !entity.fields.includes(field.id));
-        const assignedFields = allFields.filter(field => field && entity.fields.includes(field.id));
+        // Asegurar el orden correcto de los campos asignados según entity.fields
+        const assignedFields = entity.fields
+            .map(fieldId => allFields.find(field => field && field.id === fieldId))
+            .filter(Boolean);
         
         // Actualizar listas en el modal
         const availableFieldsList = document.getElementById('available-fields-list');
@@ -1627,7 +1637,7 @@ const AdminView = {
      * Actualiza la vista cuando hay cambios en los datos
      */
     update() {
-        this.loadEntities();
-        this.loadFields();
+        this.render();
+        this.setupEventListeners();
     }
 };

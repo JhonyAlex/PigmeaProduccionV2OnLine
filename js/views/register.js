@@ -20,28 +20,17 @@ const RegisterView = {
     lastEnteredData: {}, // <--- AÑADIDO: Para guardar datos temporalmente
 
     /**
-     * Inicializa la vista de registro
+     * Inicializa la vista de registro asegurando que los datos estén sincronizados con Firebase/localStorage.
+     * Se suscribe a los cambios de datos y actualiza la vista automáticamente.
      */
     init() {
         try {
-            // Obtener nombres personalizados desde la configuración
-            const config = StorageService.getConfig();
-            this.entityName = config.entityName || 'Entidad';
-            this.recordName = config.recordName || 'Registro';
-
-            // Verificar que el elemento principal existe
-            let mainContent = document.querySelector('.main-content');
-            if (!mainContent) {
-                console.warn("Elemento .main-content no encontrado en RegisterView, creándolo...");
-                const container = document.querySelector('.container') || document.body;
-                mainContent = document.createElement('div');
-                mainContent.className = 'main-content mt-4';
-                container.appendChild(mainContent);
-            }
-
-            this.render();
-            this.setupEventListeners();
-            this.loadRecentRecords();
+            StorageService.initializeStorage().then(() => {
+                StorageService.subscribeToDataChanges(() => {
+                    RegisterView.update();
+                });
+                RegisterView.update();
+            });
         } catch (error) {
             console.error("Error al inicializar RegisterView:", error);
             UIUtils.showAlert('Error al inicializar la vista de registros', 'danger');
