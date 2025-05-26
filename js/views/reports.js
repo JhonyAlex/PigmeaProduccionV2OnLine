@@ -32,29 +32,29 @@ const ReportsView = {
             this.entityName = config.entityName || 'Entidad';
             this.recordName = config.recordName || 'Registro';
             
-            // Esperar a que el DOM esté completamente cargado
+            // Reiniciar estado al inicializar. Esto should happen when the view is being set up.
+            this.pagination = { currentPage: 1, itemsPerPage: 20 };
+            this.sorting = { column: 'timestamp', direction: 'desc' };
+            this.selectedColumns = { field1: '', field2: '', field3: '' };
+            this.filteredRecords = null;
+            this.searchedRecords = null;
+
+            // The main render() call is expected to be handled by the Router.
+            // this.render() is removed from here to prevent double rendering.
+
+            // Generar automáticamente el reporte al cargar la página.
+            // This can be part of init, assuming render() has already been called by the router.
+            // A timeout ensures it runs after the current execution stack,
+            // giving DOM a chance to be ready from router's render call.
             setTimeout(() => {
-                // Verificar que el contenedor principal existe
+                // Verify mainContent exists, as autoGenerateReport might depend on it.
                 const mainContent = document.querySelector('.main-content');
-                if (!mainContent) {
-                    console.error("Elemento .main-content no encontrado");
-                    return;
+                if (!mainContent || mainContent.innerHTML.trim() === '') {
+                    console.warn("ReportsView.init: main-content not found or empty. autoGenerateReport might be affected.");
                 }
-
-                // Reiniciar estado al inicializar
-                this.pagination = { currentPage: 1, itemsPerPage: 20 };
-                this.sorting = { column: 'timestamp', direction: 'desc' };
-                this.selectedColumns = { field1: '', field2: '', field3: '' };
-                this.filteredRecords = null;
-                this.searchedRecords = null;
-
-                this.render(); // Renderizar vista principal
-                
-                // La inicialización del módulo de filtros se moverá después del render
-
-                // Generar automáticamente el reporte al cargar la página
                 this.autoGenerateReport();
-            }, 100); // Dar tiempo para que el DOM esté listo
+            }, 100); // Delay to allow router's render and its internal setTimeout(0) to complete.
+
         } catch (error) {
             console.error("Error al inicializar vista de reportes:", error);
             UIUtils.showAlert('Error al inicializar la vista de reportes', 'danger');
@@ -115,7 +115,12 @@ const ReportsView = {
     /**
      * Renderiza el mes actual en el calendario
      */
-    renderCalendarMonth(container) {
+    renderCalendarMonth(container, dateToRender) { // Added dateToRender parameter
+        // Ensure this.currentCalendarDate is updated if dateToRender is provided
+        if (dateToRender) {
+            this.currentCalendarDate = dateToRender;
+        }
+
         console.log("Renderizando calendario para", this.currentCalendarDate);
         
         // Verificar si el contenedor está visible
@@ -318,7 +323,340 @@ const ReportsView = {
         console.log("🔍 Iniciando asignación de event listeners al calendario");
         
         // Limpiar listeners existentes para evitar duplicaciones
-        this.removeCalendarEventListeners(container);
+        // Ensure this.removeCalendarEventListeners is correctly implemented and possibly takes container
+        this.removeCalendarEventListeners(container); 
+        
+        // Usar delegación de eventos para mayor eficiencia y robustez
+        container.addEventListener('click', this.handleCalendarElementClick = (event) => {
+            // Identificar qué elemento fue clickeado
+            const target = event.target;
+            const closestBtn = target.closest('button');
+            
+            // === MANEJO DE BOTONES DE NAVEGACIÓN ===
+            if (closestBtn) {
+                // Botón de mes anterior
+                if (closestBtn.classList.contains('prev-month')) {
+                    console.log("🔄 Click en 'Mes anterior'");
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Asegurar que tenemos fecha actual inicializada
+                    if (!this.currentCalendarDate) {
+                        this.currentCalendarDate = new Date();
+                    }
+                    
+                    // Ir al mes anterior
+                    const date = new Date(this.currentCalendarDate);
+                    date.setMonth(date.getMonth() - 1);
+                    this.currentCalendarDate = date;
+                    
+                    // Renderizar con delay para evitar problemas
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, date);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de mes siguiente
+                if (closestBtn.classList.contains('next-month')) {
+                    console.log("🔄 Click en 'Mes siguiente'");
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Asegurar que tenemos fecha actual inicializada
+                    if (!this.currentCalendarDate) {
+                        this.currentCalendarDate = new Date();
+                    }
+                    
+                    // Ir al mes siguiente
+                    const date = new Date(this.currentCalendarDate);
+                    date.setMonth(date.getMonth() + 1);
+                    this.currentCalendarDate = date;
+                    
+                    // Renderizar con delay para evitar problemas
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, date);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de hoy
+                if (closestBtn.classList.contains('today-btn')) {
+                    console.log("🔄 Click en 'Hoy'");
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Ir al mes actual
+                    this.currentCalendarDate = new Date();
+                    
+                    // Renderizar con delay para evitar problemas
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, this.currentCalendarDate);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de vista mensual
+                if (closestBtn.id === 'month-view-btn') {
+                    console.log("🔄 Click en 'Vista Mensual'");
+                    event.preventDefault();
+                    
+                    // Cambiar clases activas
+                    const weekViewBtn = container.querySelector('#week-view-btn');
+                    if (weekViewBtn) weekViewBtn.classList.remove('active');
+                    closestBtn.classList.add('active');
+                    
+                    // Renderizar vista mensual
+                    setTimeout(() => {
+                        this.renderCalendarMonth(container, this.currentCalendarDate);
+                    }, 10);
+                    return;
+                }
+                
+                // Botón de vista semanal
+                if (closestBtn.id === 'week-view-btn') {
+                    console.log("🔄 Click en 'Vista Semanal'");
+                    event.preventDefault();
+                    
+                    // Cambiar clases activas
+                    const monthViewBtn = container.querySelector('#month-view-btn');
+                    if (monthViewBtn) monthViewBtn.classList.remove('active');
+                    closestBtn.classList.add('active');
+                    
+                    // Mostrar mensaje de feature en desarrollo
+                    container.innerHTML = `
+                        <div class="simple-calendar">
+                            <div class="calendar-header">
+                                <div class="navigation-buttons">
+                                    <button class="btn btn-sm btn-outline-primary today-btn" title="Ir a hoy">
+                                        Hoy
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary prev-week" title="Semana anterior">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary next-week" title="Semana siguiente">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                </div>
+                                <h5 class="month-title mb-0">Vista Semanal</h5>
+                                <div class="view-selectors">
+                                    <button class="btn btn-sm btn-outline-secondary" id="month-view-btn">Mes</button>
+                                    <button class="btn btn-sm btn-outline-secondary active" id="week-view-btn">Semana</button>
+                                </div>
+                            </div>
+                            <div class="p-3 text-center">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle"></i> Vista semanal en desarrollo. Por favor, utilice la vista mensual.
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Volver a añadir listeners al nuevo contenido
+                    setTimeout(() => {
+                        this.addCalendarEventListeners(container);
+                    }, 10);
+                    return;
+                }
+            }
+            
+            // === MANEJO DE DÍAS DEL CALENDARIO ===
+            const day = target.closest('.day');
+            if (day) {
+                const dateStr = day.getAttribute('data-date');
+                if (!dateStr) return;
+                
+                console.log(`🔄 Click en día: ${dateStr}`);
+                
+                // Marcar este día como seleccionado
+                container.querySelectorAll('.day').forEach(d => {
+                    d.classList.remove('selected');
+                });
+                day.classList.add('selected');
+                
+                // Actualizar los inputs de fecha del filtro
+                const fromDateInput = document.getElementById('filter-from-date');
+                const toDateInput = document.getElementById('filter-to-date');
+                
+                if (fromDateInput && toDateInput) {
+                    fromDateInput.value = dateStr;
+                    toDateInput.value = dateStr;
+                    
+                    // Aplicar filtros automáticamente
+                    const filterForm = document.getElementById('filter-form');
+                    if (filterForm) {
+                        console.log("🔄 Aplicando filtros con nueva fecha");
+                        filterForm.dispatchEvent(new Event('submit'));
+                    }
+                }
+            }
+        });
+        
+        // === SOPORTE PARA SELECCIÓN DE RANGO POR ARRASTRE ===
+        let isDragging = false;
+        let dragStartDate = null;
+        let lastHoveredDate = null;
+        
+        // Iniciar arrastre
+        container.addEventListener('mousedown', this.handleCalendarMouseDown = (event) => {
+            const day = event.target.closest('.day');
+            if (!day) return;
+            
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            isDragging = true;
+            dragStartDate = new Date(dateStr);
+            lastHoveredDate = dragStartDate;
+            
+            // Evitar selección de texto durante el arrastre
+            event.preventDefault();
+        });
+        
+        // Durante arrastre
+        container.addEventListener('mouseover', this.handleCalendarMouseOver = (event) => {
+            if (!isDragging || !dragStartDate) return;
+            
+            const day = event.target.closest('.day');
+            if (!day) return;
+            
+            const dateStr = day.getAttribute('data-date');
+            if (!dateStr) return;
+            
+            const currentDate = new Date(dateStr);
+            lastHoveredDate = currentDate;
+            
+            // Actualizar visualización de rango
+            this.updateRangeSelection(container.querySelectorAll('.day'), dragStartDate, currentDate);
+        });
+        
+        // Finalizar arrastre (a nivel de documento para capturar eventos fuera del calendario)
+        this.handleCalendarMouseUp = (event) => {
+            if (!isDragging || !dragStartDate || !lastHoveredDate) return;
+            
+            // Ordenar fechas
+            let startDate, endDate;
+            if (dragStartDate <= lastHoveredDate) {
+                startDate = dragStartDate;
+                endDate = lastHoveredDate;
+            } else {
+                startDate = lastHoveredDate;
+                endDate = dragStartDate;
+            }
+            
+            // Actualizar inputs de fecha
+            const fromDateInput = document.getElementById('filter-from-date');
+            const toDateInput = document.getElementById('filter-to-date');
+            
+            if (fromDateInput && toDateInput) {
+                fromDateInput.value = this.formatDateForInput(startDate);
+                toDateInput.value = this.formatDateForInput(endDate);
+                
+                // Aplicar filtros automáticamente
+                const filterForm = document.getElementById('filter-form');
+                if (filterForm) {
+                    console.log("🔄 Aplicando filtros con rango de fechas");
+                    filterForm.dispatchEvent(new Event('submit'));
+                }
+            }
+            
+            // Resetear estado
+            isDragging = false;
+            dragStartDate = null;
+            lastHoveredDate = null;
+        };
+        document.addEventListener('mouseup', this.handleCalendarMouseUp);
+        
+        console.log("✅ Event listeners del calendario configurados correctamente");
+    },
+    
+    /**
+     * Elimina los event listeners del calendario para evitar fugas de memoria
+     */
+    removeCalendarEventListeners(container) {
+        // If specific handlers are stored on 'this', remove them from the specific container or document
+        if (container && this.handleCalendarElementClick) {
+            container.removeEventListener('click', this.handleCalendarElementClick);
+            // this.handleCalendarElementClick = null; // Optional: nullify if re-created each time
+        }
+        if (container && this.handleCalendarMouseDown) {
+            container.removeEventListener('mousedown', this.handleCalendarMouseDown);
+            // this.handleCalendarMouseDown = null;
+        }
+        if (container && this.handleCalendarMouseOver) {
+            container.removeEventListener('mouseover', this.handleCalendarMouseOver);
+            // this.handleCalendarMouseOver = null;
+        }
+        // mouseup is on document
+        if (this.handleCalendarMouseUp) {
+            document.removeEventListener('mouseup', this.handleCalendarMouseUp);
+            // this.handleCalendarMouseUp = null; 
+        }
+
+        // If using a general container reference like this.currentCalendarContainer
+        const calContainer = container || this.currentCalendarContainer;
+        if (calContainer && calContainer._calendarClickHandler) {
+             calContainer.removeEventListener('click', calContainer._calendarClickHandler);
+             calContainer._calendarClickHandler = null;
+        }
+        // Add similar for mousedown, mouseover if they were attached that way
+
+        console.log("🧹 Listeners del calendario eliminados/preparados para limpieza.");
+    },
+
+    /**
+     * Encuentra el elemento colapsable padre más cercano
+     */
+    findCollapseParent(element) {
+        let current = element;
+        while (current && current !== document.body) {
+            if (current.classList.contains('collapse')) {
+                return current;
+            }
+            current = current.parentElement;
+        }
+        return null;
+    },
+
+    /**
+     * Verifica si una fecha está dentro de un rango
+     */
+    isDateInRange(date, rangeStart, rangeEnd) {
+        if (!rangeStart || !rangeEnd) return false;
+        
+        // Normalizar fechas para comparación
+        const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const start = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+        const end = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
+        
+        return day >= start && day <= end;
+    },
+
+    /**
+     * Obtiene las clases CSS para los puntos de inicio y fin de rango
+     */
+    getRangeClasses(date, rangeStart, rangeEnd) {
+        if (!rangeStart || !rangeEnd) return '';
+        
+        // Normalizar fechas para comparación
+        const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const start = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+        const end = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
+        
+        if (day.getTime() === start.getTime()) return 'range-start';
+        if (day.getTime() === end.getTime()) return 'range-end';
+        return '';
+    },
+
+    /**
+     * Añade los event listeners al calendario
+     */
+    addCalendarEventListeners(container) {
+        console.log("🔍 Iniciando asignación de event listeners al calendario");
+        
+        // Limpiar listeners existentes para evitar duplicaciones
+        // Ensure this.removeCalendarEventListeners is correctly implemented and possibly takes container
+        this.removeCalendarEventListeners(container); 
         
         // Usar delegación de eventos para mayor eficiencia y robustez
         container.addEventListener('click', this.handleCalendarElementClick = (event) => {
@@ -615,7 +953,8 @@ const ReportsView = {
         console.log("🔍 Iniciando asignación de event listeners al calendario");
         
         // Limpiar listeners existentes para evitar duplicaciones
-        this.removeCalendarEventListeners(container);
+        // Ensure this.removeCalendarEventListeners is correctly implemented and posiblemente takes container
+        this.removeCalendarEventListeners(container); 
         
         // Usar delegación de eventos para mayor eficiencia y robustez
         container.addEventListener('click', this.handleCalendarElementClick = (event) => {
@@ -1296,22 +1635,27 @@ const ReportsView = {
             setTimeout(() => {
                 try {
                     // Inicializar el módulo de filtros ahora que el DOM está listo
-                    if (typeof ReportFilters !== 'undefined') {
+                    if (typeof ReportFilters !== 'undefined' && typeof ReportFilters.init === 'function') {
                         // Inicializar con referencia a esta instancia
                         ReportFilters.init(this);
                         console.log("Módulo de filtros inicializado");
                     } else {
-                        console.warn("Módulo ReportFilters no encontrado, usando funcionalidad integrada");
+                        console.warn("Módulo ReportFilters no encontrado o init no es una función, usando funcionalidad integrada de listeners");
                         // Usar la configuración de eventos integrada si el módulo no está disponible
-                        this.setupEventListeners();
+                        if (typeof this.setupEventListeners === 'function') {
+                            this.setupEventListeners();
+                        } else {
+                            console.error("ReportsView.setupEventListeners no es una función.");
+                        }
                     }
                     
-                    this.updateColumnHeaders();
-                    this.applyFilters();
+                    if (typeof this.updateColumnHeaders === 'function') this.updateColumnHeaders();
+                    if (typeof this.applyFilters === 'function') this.applyFilters();
                     // Inicializar el calendario después de renderizar
-                    this.setupCalendar();
+                    if (typeof this.setupCalendar === 'function') this.setupCalendar();
                     // Configurar evento para mostrar/ocultar el selector de opciones de campo select
-                    this.setupHorizontalFieldOptionsSelector();
+                    if (typeof this.setupHorizontalFieldOptionsSelector === 'function') this.setupHorizontalFieldOptionsSelector();
+
                 } catch (error) {
                     console.error("Error al actualizar cabeceras o aplicar filtros iniciales:", error);
                 }
@@ -1577,112 +1921,4 @@ const ReportsView = {
                 setTimeout(() => {
                     loadFieldOptions(fieldId);
                     
-                    // Si ya hay una opción seleccionada, cargar campos adicionales
-                    if (optionsSelect.value && optionsSelect.value !== '') {
-                        loadAdditionalFields();
-                    }
-                }, 50);
-            }
-        }
-    },
-
-    /**
-     * Formatea una fecha JS a string YYYY-MM-DD (para inputs tipo date)
-     * @param {Date} date
-     * @returns {string}
-     */
-    formatDateForInput(date) {
-        if (!(date instanceof Date) || isNaN(date.getTime())) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    },
-
-    /**
-     * Configura los event listeners para la vista de reportes (básico)
-     */
-    setupEventListeners() {
-        // Aquí puedes agregar listeners básicos si lo necesitas.
-        // Por ejemplo, para el filtro rápido de búsqueda:
-        const searchInput = document.getElementById('search-records');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                // Si tienes lógica de búsqueda, colócala aquí.
-                // Por ejemplo: this.filterRecordsBySearch(e.target.value);
-            });
-        }
-        // ...agrega otros event listeners según sea necesario...
-    },
-
-    /**
-     * Genera el reporte comparativo (stub para evitar error)
-     */
-    generateReport() {
-        // Implementa aquí la lógica real de generación de reportes.
-        // Por ahora, solo muestra un log para evitar el error.
-        console.log("generateReport() llamado (stub). Implementa la lógica real aquí.");
-    },
-
-    /**
-     * Aplica los filtros seleccionados a los registros (stub para evitar error)
-     */
-    applyFilters() {
-        // Implementa aquí la lógica real de filtrado de registros.
-        // Por ahora, solo muestra un log para evitar el error.
-        console.log("applyFilters() llamado (stub). Implementa la lógica real aquí.");
-    },
-
-    /**
-     * Genera automáticamente un informe al cargar la página si hay datos disponibles
-     */
-    autoGenerateReport() {
-        try {
-            // Verificar si hay campos disponibles para generar un reporte
-            const allFields = FieldModel.getAll();
-            if (allFields.length === 0) {
-                console.log("No hay campos para generar reporte automático");
-                return; // No hay campos para generar reporte
-            }
-
-            // Esperar a que el DOM esté completamente cargado
-            setTimeout(() => {
-                const reportFieldSelect = document.getElementById('report-field');
-                if (!reportFieldSelect) {
-                    console.warn("Elemento 'report-field' no encontrado en el DOM");
-                    return;
-                }
-
-                // Limpiar selecciones actuales
-                Array.from(reportFieldSelect.options).forEach(option => {
-                    option.selected = false;
-                });
-                
-                // Obtener campos marcados para reportes comparativos
-                const compareField = FieldModel.getAll().find(field => field.isCompareField);
-
-                if (compareField) {
-                    // Si hay un campo marcado para comparar, seleccionarlo
-                    const option = Array.from(reportFieldSelect.options).find(opt => opt.value === compareField.id);
-                    if (option) {
-                        option.selected = true;
-                        console.log("Campo de comparación encontrado y seleccionado:", compareField.name);
-                    } else {
-                        console.warn("Campo de comparación no encontrado en las opciones del select");
-                    }
-                } else {
-                    console.log("No hay campo marcado como campo de comparación");
-                }
-
-                // Forzar actualización del select
-                const event = new Event('change', { bubbles: true });
-                reportFieldSelect.dispatchEvent(event);
-                
-                // Generar el reporte automáticamente
-                this.generateReport();
-            }, 100); // Esperar 100ms para asegurar que el DOM está listo
-        } catch (error) {
-            console.error("Error al generar reporte automático:", error);
-        }
-    },
-};
+                    // Si ya hay
