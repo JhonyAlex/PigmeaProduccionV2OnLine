@@ -1664,4 +1664,25 @@ const ReportsView = {
                 if (compareField) {
                     // Si hay un campo marcado para comparar, seleccionarlo
                     const option = Array.from(reportFieldSelect.options).find(opt => opt.value === compareField.id);
-                    if
+                    if (option) {
+                        option.selected = true;
+                        console.log("Campo de comparación encontrado y seleccionado:", compareField.name);
+                    } else {
+                        console.warn("Campo de comparación no encontrado en las opciones del select");
+                    }
+                } else {
+                    console.log("No hay campo marcado como campo de comparación");
+                }
+
+                // Forzar actualización del select
+                const event = new Event('change', { bubbles: true });
+                reportFieldSelect.dispatchEvent(event);
+                
+                // Generar el reporte automáticamente
+                this.generateReport();
+            }, 100); // Esperar 100ms para asegurar que el DOM está listo
+        } catch (error) {
+            console.error("Error al generar reporte automático:", error);
+        }
+    },
+};
