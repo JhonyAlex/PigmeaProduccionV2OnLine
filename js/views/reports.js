@@ -1625,6 +1625,15 @@ const ReportsView = {
     },
 
     /**
+     * Aplica los filtros seleccionados a los registros (stub para evitar error)
+     */
+    applyFilters() {
+        // Implementa aquí la lógica real de filtrado de registros.
+        // Por ahora, solo muestra un log para evitar el error.
+        console.log("applyFilters() llamado (stub). Implementa la lógica real aquí.");
+    },
+
+    /**
      * Genera automáticamente un informe al cargar la página si hay datos disponibles
      */
     autoGenerateReport() {
@@ -1655,59 +1664,4 @@ const ReportsView = {
                 if (compareField) {
                     // Si hay un campo marcado para comparar, seleccionarlo
                     const option = Array.from(reportFieldSelect.options).find(opt => opt.value === compareField.id);
-                    if (option) option.selected = true;
-                } else {
-                    // Si no hay campo marcado, seleccionar el primer campo disponible
-                    // Preferimos campos numéricos o select para los reportes
-                    const preferredField = allFields.find(field => field.type === 'number' || field.type === 'select');
-                    
-                    if (preferredField) {
-                        const option = Array.from(reportFieldSelect.options).find(opt => opt.value === preferredField.id);
-                        if (option) option.selected = true;
-                    } else if (reportFieldSelect.options.length > 1) {
-                        // Si no hay campos preferidos, seleccionar la primera opción que no sea vacía
-                        const firstOption = Array.from(reportFieldSelect.options).find(opt => opt.value !== '');
-                        if (firstOption) firstOption.selected = true;
-                    }
-                }
-
-                // Generar el reporte usando los valores seleccionados
-                this.generateReport();
-            }, 200); // Dar más tiempo para que el DOM esté listo
-        } catch (error) {
-            console.error("Error en autoGenerateReport:", error);
-        }
-    },
-}; // Fin del objeto ReportsView
-
-/**
- * Evita la duplicación de contenido al actualizar elementos del DOM
- * @param {string|Element} selector - Selector CSS o elemento DOM a actualizar
- * @param {string|Function} content - HTML para insertar o función que devuelve HTML
- * @param {boolean} append - Si es true, añade al final; si es false, reemplaza contenido
- */
-function safeUpdateContent(selector, content, append = false) {
-    // Obtener el elemento, ya sea por selector o directamente
-    const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
-    
-    // Verificar que el elemento existe
-    if (!element) {
-        console.warn(`Elemento no encontrado: ${typeof selector === 'string' ? selector : 'Elemento DOM'}`);
-        return;
-    }
-    
-    // Determinar el contenido a insertar
-    const htmlContent = typeof content === 'function' ? content() : content;
-    
-    // Si no es modo append, limpiar el contenido existente
-    if (!append) {
-        element.innerHTML = '';
-    }
-    
-    // Insertar el nuevo contenido
-    element.insertAdjacentHTML(append ? 'beforeend' : 'afterbegin', htmlContent);
-}
-
-// Ejemplo de uso:
-// safeUpdateContent('#info-message-container', '<div class="alert alert-info">Mensaje de información</div>');
-// safeUpdateContent(document.getElementById('info-message-container'), () => `<div class="alert alert-info">Mensaje generado a las ${new Date().toLocaleTimeString()}</div>`);
+                    if
