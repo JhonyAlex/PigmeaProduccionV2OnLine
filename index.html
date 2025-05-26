@@ -342,6 +342,20 @@
     <script src="js/utils/dom-utils.js"></script>
     <!-- SortableJS para funcionalidad de arrastrar y ordenar -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Detectar la ruta activa (puedes adaptar esto según tu router)
+            const route = window.location.hash.replace('#', '') || 'register';
+            if (route === 'admin') {
+                if (typeof initializeAdminView === 'function') initializeAdminView();
+            } else if (route === 'kpis') {
+                if (typeof initializeKPIsView === 'function') initializeKPIsView();
+            } else {
+                // Por defecto, registro
+                if (typeof initializeRegisterView === 'function') initializeRegisterView();
+            }
+        });
+    </script>
 </body>
 </html>
 

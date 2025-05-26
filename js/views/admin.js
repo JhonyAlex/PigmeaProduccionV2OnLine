@@ -5,11 +5,18 @@ const AdminView = {
 
     importData: null,
     /**
-     * Inicializa la vista de administración
+     * Inicializa la vista de administración asegurando que los datos estén sincronizados con Firebase/localStorage.
+     * Se suscribe a los cambios de datos y actualiza la vista automáticamente.
      */
     init() {
-        this.render();
-        this.setupEventListeners();
+        StorageService.initializeStorage().then(() => {
+            // Suscribirse a cambios en los datos
+            StorageService.subscribeToDataChanges(() => {
+                AdminView.update();
+            });
+            // Cargar la vista inicial
+            AdminView.update();
+        });
     },
     
     /**
