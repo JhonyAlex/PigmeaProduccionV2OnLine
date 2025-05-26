@@ -1531,6 +1531,12 @@ const AdminView = {
         const saveBtn = document.getElementById('saveAssignFieldsBtn');
         const entityId = saveBtn.getAttribute('data-entity-id');
         
+        if (!entityId) {
+            console.error('Error: No se pudo obtener el ID de la entidad');
+            UIUtils.showAlert('Error: ID de entidad no encontrado.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+            return;
+        }
+
         // Obtener la entidad original SOLO para extraer el nombre
         const originalEntity = EntityModel.getById(entityId);
         if (!originalEntity) {
@@ -1559,77 +1565,148 @@ const AdminView = {
         }
         console.log('Nombre extraído:', entityName);
 
-        // Recolectar los nuevos IDs de campos asignados desde el DOM EN EL ORDEN ACTUAL
+        // MEJORA: Recolectar los nuevos IDs de campos asignados desde el DOM EN EL ORDEN ACTUAL
         const assignedFieldsList = document.getElementById('assigned-fields-list');
-        const assignedFieldItems = assignedFieldsList.querySelectorAll('.field-item');
+        if (!assignedFieldsList) {
+            console.error('Error: Lista de campos asignados no encontrada en el DOM');
+            UIUtils.showAlert('Error: No se pudo acceder a la lista de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+            return;
+        }
+
+        // Obtener TODOS los elementos hijo que representen campos, incluso si la estructura HTML ha cambiado
+        const assignedFieldItems = assignedFieldsList.querySelectorAll('[data-field-id]');
         const assignedFieldIds = [];
-        assignedFieldItems.forEach(item => {
+        
+        console.log(`Encontrados ${assignedFieldItems.length} elementos de campo en el DOM`);
+        
+        assignedFieldItems.forEach((item, index) => {
             const fieldId = item.getAttribute('data-field-id');
-            if (fieldId) {
-                assignedFieldIds.push(fieldId);
+            if (fieldId && fieldId.trim()) {
+                assignedFieldIds.push(fieldId.trim());
+                console.log(`${index + 1}. Campo encontrado: ${fieldId} (${FieldModel.getById(fieldId)?.name || 'Nombre no encontrado'})`);
+            } else {
+                console.warn(`Elemento ${index + 1} no tiene data-field-id válido:`, item);
             }
         });
         
+        // Validar que tenemos al menos algunos campos válidos
+        if (assignedFieldIds.length === 0) {
+            console.log('No hay campos asignados, guardando lista vacía');
+        }
+        
         // Registrar el orden de forma clara para depuración
-        console.log('---------------------------------------');
-        console.log('GUARDANDO ORDEN DE CAMPOS:');
+        console.log('=======================================');
+        console.log('GUARDANDO ORDEN DE CAMPOS FINAL:');
         assignedFieldIds.forEach((id, index) => {
             const fieldName = FieldModel.getById(id)?.name || 'Desconocido';
             console.log(`${index + 1}. ${id} (${fieldName})`);
         });
-        console.log('---------------------------------------');
+        console.log('=======================================');
 
-        // Crear un objeto COMPLETAMENTE NUEVO y LIMPIO para la actualización
-        // Solo incluir las propiedades que queremos actualizar.
+        // MEJORA: Crear un objeto COMPLETAMENTE NUEVO y LIMPIO para la actualización
         const updateData = {
-            fields: [...assignedFieldIds]  // Usamos spread operator para crear una copia nueva del array
+            fields: [...assignedFieldIds],  // Crear copia nueva del array
+            // Mantener todas las demás propiedades existentes
+            name: entityName,
+            group: originalEntity.group || '',
+            // Asegurar que se mantenga la estructura correcta
+            lastModified: new Date().toISOString()
         };
         
-        // Si el nombre ha cambiado, también actualizarlo
-        if (originalEntity.name !== entityName) {
-            updateData.name = String(entityName);
-        }
+        console.log('Datos de actualización preparados:', JSON.stringify(updateData, null, 2));
         
-        console.log('Intentando actualizar entidad con datos y orden nuevo:', entityId, updateData);
-        
-        // Usar EntityModel.update con el objeto limpio
-        const success = EntityModel.update(entityId, updateData);
-        
-        if (success) {
-            console.log('Actualización exitosa reportada por EntityModel.update.');
-            // Verificar el estado de la entidad DESPUÉS de la actualización
-            const updatedEntity = EntityModel.getById(entityId);
-            console.log('Entidad recuperada DESPUÉS de actualizar con orden nuevo:', JSON.stringify(updatedEntity));
-            console.log('Campos en orden salvado:', JSON.stringify(updatedEntity.fields));
+        // MEJORA: Usar try-catch para manejar errores de actualización
+        try {
+            console.log('Intentando actualizar entidad con ID:', entityId);
+            const success = EntityModel.update(entityId, updateData);
+            
+            if (success) {
+                console.log('✅ Actualización exitosa reportada por EntityModel.update');
+                
+                // MEJORA: Verificar inmediatamente que los datos se guardaron
+                setTimeout(() => {
+                    const verificationEntity = EntityModel.getById(entityId);
+                    console.log('🔍 Verificación post-guardado:', JSON.stringify(verificationEntity, null, 2));
+                    
+                    if (verificationEntity && verificationEntity.fields) {
+                        console.log('✅ Orden verificado en Firebase:');
+                        verificationEntity.fields.forEach((id, index) => {
+                            const fieldName = FieldModel.getById(id)?.name || 'Desconocido';
+                            console.log(`  ${index + 1}. ${id} (${fieldName})`);
+                        });
+                    } else {
+                        console.warn('⚠️ No se pudo verificar la entidad actualizada');
+                    }
+                }, 500); // Pequeña pausa para asegurar sincronización
 
-            // Cerrar el modal manualmente
-            try {
-                const modalElement = document.getElementById('assignFieldsModal');
-                const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                if (modalInstance) {
-                    modalInstance.hide();
-                } else {
-                    // Fallback manual si no podemos obtener la instancia
-                    modalElement.classList.remove('show');
-                    modalElement.style.display = 'none';
-                    document.body.classList.remove('modal-open');
-                    const backdrop = document.querySelector('.modal-backdrop');
-                    if (backdrop) backdrop.remove();
+                // Cerrar el modal manualmente
+                this.closeAssignFieldsModal(entityName);
+                
+            } else {
+                console.error('❌ Error reportado al guardar asignación de campos');
+                UIUtils.showAlert('Error al guardar la asignación de campos. Por favor, inténtelo de nuevo.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+            }
+        } catch (error) {
+            console.error('❌ Excepción al guardar asignación de campos:', error);
+            UIUtils.showAlert('Error inesperado al guardar. Por favor, inténtelo de nuevo.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+        }
+    },
+
+    /**
+     * NUEVO: Método dedicado para cerrar el modal de asignación de campos
+     * @param {string} entityName Nombre de la entidad para el mensaje de éxito
+     */
+    closeAssignFieldsModal(entityName) {
+        try {
+            const modalElement = document.getElementById('assignFieldsModal');
+            if (!modalElement) {
+                console.warn('Modal assignFieldsModal no encontrado');
+                return;
+            }
+
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            } else {
+                // Fallback manual si no podemos obtener la instancia
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                modalElement.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('modal-open');
+                
+                // Remover backdrop
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
                 }
                 
-                // Mostrar alerta de éxito UNA SOLA VEZ
-                const config = StorageService.getConfig();
-                const entityTypeName = config.entityName || 'Entidad';
-                UIUtils.showAlert(`Campos asignados a la ${entityTypeName.toLowerCase()} "${entityName}" guardados correctamente.`, 'success', document.querySelector('.container'));
-                
-            } catch (error) {
-                console.error('Error al cerrar modal o mostrar mensaje:', error);
-                // Intentar mostrar alerta de éxito de todos modos
-                UIUtils.showAlert(`Campos asignados guardados correctamente.`, 'success', document.querySelector('.container'));
+                // Restaurar estilo del body
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
             }
-        } else {
-            console.error('Error reportado al guardar asignación de campos.');
-            UIUtils.showAlert('Error al guardar la asignación de campos.', 'danger', document.querySelector('#assignFieldsModal .modal-body'));
+            
+            // Limpiar instancia de Sortable si existe
+            if (this.assignedFieldsSortable) {
+                this.assignedFieldsSortable.destroy();
+                this.assignedFieldsSortable = null;
+            }
+            
+            // Recargar la vista de entidades para reflejar cambios
+            this.loadEntities();
+            
+            // Mostrar mensaje de éxito
+            const config = StorageService.getConfig();
+            const entityTypeName = config.entityName || 'Entidad';
+            UIUtils.showAlert(
+                `Orden de campos para "${entityName}" guardado correctamente.`, 
+                'success', 
+                document.querySelector('.container')
+            );
+            
+        } catch (error) {
+            console.error('Error al cerrar modal:', error);
+            // Mostrar mensaje de éxito de todos modos
+            UIUtils.showAlert('Campos guardados correctamente.', 'success', document.querySelector('.container'));
         }
     },
 
