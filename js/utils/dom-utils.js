@@ -1,132 +1,80 @@
 /**
- * Utilidades para manipulación del DOM
+ * Utilidades para operaciones con el DOM
  */
 const DOMUtils = {
     /**
-     * Asegura que existe la estructura básica de contenedores necesaria
+     * Verifica y establece la estructura básica de DOM requerida por la aplicación
+     * @returns {Object} Referencias a los elementos principales del DOM
      */
     ensureBasicStructure() {
-        // MEJORA: Verificación más eficiente y menos verbosa
-        let mainContent = document.getElementById('main-content');
+        // Verificar si existe el contenedor principal
+        let container = document.querySelector('.container');
+        if (!container) {
+            console.warn("Creando contenedor principal...");
+            container = document.createElement('div');
+            container.className = 'container mt-4';
+            document.body.appendChild(container);
+        }
         
+        // Verificar si existe el contenedor de contenido
+        let mainContent = document.querySelector('.main-content');
         if (!mainContent) {
-            console.log('Creando contenedor principal...');
+            console.warn("Creando contenedor de contenido principal...");
             mainContent = document.createElement('div');
-            mainContent.id = 'main-content';
-            mainContent.className = 'container-fluid mt-4';
-            document.body.appendChild(mainContent);
+            mainContent.className = 'main-content mt-3';
+            container.appendChild(mainContent);
         }
-
-        // MEJORA: Solo crear si realmente no existe
-        let viewContainer = mainContent.querySelector('.main-content');
-        if (!viewContainer) {
-            console.log('Creando contenedor de contenido principal...');
-            viewContainer = document.createElement('div');
-            viewContainer.className = 'main-content';
-            mainContent.appendChild(viewContainer);
-        }
-
+        
         return {
-            mainContent,
-            viewContainer
+            container,
+            mainContent
         };
     },
-
+    
     /**
-     * NUEVO: Asegura que un elemento existe, si no lo crea
+     * Verifica si un elemento existe y lo crea si no
      * @param {string} selector Selector CSS del elemento
-     * @param {string} tagName Nombre del tag a crear si no existe
-     * @param {Object} attributes Atributos para el nuevo elemento
-     * @param {Element} parent Elemento padre donde crear el nuevo elemento
-     * @returns {Element} El elemento encontrado o creado
+     * @param {string} tagName Nombre de la etiqueta HTML a crear
+     * @param {string} className Clases CSS a aplicar
+     * @param {HTMLElement} parent Elemento padre donde añadirlo
+     * @returns {HTMLElement} El elemento encontrado o creado
      */
-    ensureElement(selector, tagName = 'div', attributes = {}, parent = document.body) {
+    ensureElement(selector, tagName, className, parent) {
         let element = document.querySelector(selector);
-        
         if (!element) {
+            console.warn(`Elemento ${selector} no encontrado, creándolo...`);
             element = document.createElement(tagName);
-            
-            // Aplicar atributos
-            Object.entries(attributes).forEach(([key, value]) => {
-                if (key === 'className') {
-                    element.className = value;
-                } else if (key === 'innerHTML') {
-                    element.innerHTML = value;
-                } else {
-                    element.setAttribute(key, value);
-                }
-            });
-            
-            parent.appendChild(element);
+            if (className) element.className = className;
+            if (parent) parent.appendChild(element);
         }
-        
         return element;
     },
-
+    
     /**
-     * NUEVO: Limpia event listeners duplicados de un elemento
-     * @param {Element} element Elemento a limpiar
+     * Inserta un mensaje de alerta en el DOM
+     * @param {string} message Mensaje a mostrar
+     * @param {string} type Tipo de alerta (success, danger, warning, info)
+     * @param {HTMLElement} container Contenedor donde insertar la alerta (opcional)
      */
-    cleanupEventListeners(element) {
-        if (!element) return;
+    showAlert(message, type, container = null) {
+        const alertBox = document.createElement('div');
+        alertBox.className = `alert alert-${type} alert-dismissible fade show`;
+        alertBox.role = 'alert';
+        alertBox.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
         
-        // Clonar el elemento para remover todos los listeners
-        const newElement = element.cloneNode(true);
-        element.parentNode.replaceChild(newElement, element);
+        if (!container) {
+            container = document.querySelector('.main-content') || document.querySelector('.container') || document.body;
+        }
         
-        return newElement;
-    },
-
-    /**
-     * NUEVO: Debounce para optimizar llamadas frecuentes
-     * @param {Function} func Función a ejecutar
-     * @param {number} wait Tiempo de espera en ms
-     * @returns {Function} Función con debounce aplicado
-     */
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    },
-
-    /**
-     * NUEVO: Verifica si un elemento está visible en el viewport
-     * @param {Element} element Elemento a verificar
-     * @returns {boolean} true si está visible
-     */
-    isElementVisible(element) {
-        if (!element) return false;
+        container.prepend(alertBox);
         
-        const rect = element.getBoundingClientRect();
-        return (
-            rect.top >= 0 &&
-            rect.left >= 0 &&
-            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-            rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-        );
-    },
-
-    /**
-     * NUEVO: Scroll suave a un elemento
-     * @param {string|Element} target Selector CSS o elemento
-     * @param {Object} options Opciones de scroll
-     */
-    scrollToElement(target, options = {}) {
-        const element = typeof target === 'string' ? document.querySelector(target) : target;
-        if (!element) return;
-
-        const defaultOptions = {
-            behavior: 'smooth',
-            block: 'start',
-            inline: 'nearest'
-        };
-
-        element.scrollIntoView({ ...defaultOptions, ...options });
+        // Auto-cerrar después de 5 segundos
+        setTimeout(() => {
+            alertBox.classList.remove('show');
+            setTimeout(() => alertBox.remove(), 300);
+        }, 5000);
     }
 };

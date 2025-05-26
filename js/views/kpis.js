@@ -2084,16 +2084,3 @@ const KPIsView = {
         });
     }
 };
-
-/**
- * Inicializa la vista de KPIs asegurando que los datos estén sincronizados con Firebase/localStorage.
- * Se suscribe a los cambios de datos y actualiza la vista automáticamente.
- */
-function initializeKPIsView() {
-    StorageService.initializeStorage().then(() => {
-        StorageService.subscribeToDataChanges(() => {
-            KPIsView.update();
-        });
-        KPIsView.update();
-    });
-}

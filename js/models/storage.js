@@ -227,47 +227,27 @@ const StorageService = {
      * @returns {Promise} Promesa que se resuelve cuando los datos se han guardado
      */
     saveData(data) {
-        // MEJORA: Función para normalizar arrays y evitar referencias circulares
-        const normalizeForFirebase = (obj) => {
-            if (Array.isArray(obj)) {
-                // Crear una copia completamente nueva del array
-                return obj.map(item => normalizeForFirebase(item));
-            } else if (obj && typeof obj === 'object') {
-                // Crear una copia del objeto sin referencias
-                const normalized = {};
-                for (const key in obj) {
-                    if (obj.hasOwnProperty(key)) {
-                        normalized[key] = normalizeForFirebase(obj[key]);
-                    }
-                }
-                return normalized;
-            }
-            return obj;
-        };
-
-        // Normalizar todos los datos antes de guardar
-        const normalizedData = normalizeForFirebase(data);
-
-        // MEJORA: Validación adicional para arrays críticos
-        if (normalizedData && normalizedData.entities) {
-            normalizedData.entities.forEach((entity, index) => {
+        // Asegurarse de que los arrays se serialicen correctamente
+        // Especialmente importante para los arrays de campos
+        if (data && data.entities) {
+            data.entities.forEach(entity => {
                 if (entity.fields && Array.isArray(entity.fields)) {
-                    // Forzar recreación del array para asegurar detección de cambios
+                    // Nos aseguramos de que el array sea una copia fresca para evitar
+                    // problemas de referencia y de que Firebase detecte el cambio
                     entity.fields = [...entity.fields];
                     
-                    // Log detallado para depuración
-                    console.log(`StorageService: Entidad ${entity.id} (${entity.name}) - Campos en orden:`, 
-                               JSON.stringify(entity.fields));
+                    // Registrar el estado del array antes de guardar
+                    console.log(`StorageService: Guardando entidad ${entity.id} con campos:`, JSON.stringify(entity.fields));
                 }
             });
         }
         
         // Actualizar caché inmediatamente para operaciones rápidas
-        this._cachedData = normalizedData;
+        this._cachedData = data;
         
         // Si estamos en modo fallback, guardar en localStorage
         if (this._fallbackToLocalStorage) {
-            localStorage.setItem(this.DB_PATH, JSON.stringify(normalizedData));
+            localStorage.setItem(this.DB_PATH, JSON.stringify(data));
             return Promise.resolve();
         }
         
@@ -275,13 +255,13 @@ const StorageService = {
             console.warn("Firebase aún no está inicializado. Los datos se guardarán cuando se complete la inicialización.");
             return this.initializeStorage().then(() => {
                 if (this._fallbackToLocalStorage) {
-                    localStorage.setItem(this.DB_PATH, JSON.stringify(normalizedData));
+                    localStorage.setItem(this.DB_PATH, JSON.stringify(data));
                     return Promise.resolve();
                 } else if (this.dbRef) {
-                    return this.dbRef.set(normalizedData);
+                    return this.dbRef.set(data);
                 } else {
                     this._fallbackToLocalStorage = true;
-                    localStorage.setItem(this.DB_PATH, JSON.stringify(normalizedData));
+                    localStorage.setItem(this.DB_PATH, JSON.stringify(data));
                     return Promise.resolve();
                 }
             });
@@ -289,21 +269,11 @@ const StorageService = {
         
         // Guardar en Firebase si está disponible
         if (this.dbRef) {
-            // MEJORA: Usar update en lugar de set para operaciones más eficientes
-            return this.dbRef.set(normalizedData).then(() => {
-                console.log("✅ Datos guardados exitosamente en Firebase");
-                return normalizedData;
-            }).catch(error => {
-                console.error("❌ Error guardando en Firebase:", error);
-                // Fallback automático a localStorage en caso de error
-                this._fallbackToLocalStorage = true;
-                localStorage.setItem(this.DB_PATH, JSON.stringify(normalizedData));
-                throw error;
-            });
+            return this.dbRef.set(data);
         } else {
             // Si por alguna razón no hay dbRef, usar localStorage
             this._fallbackToLocalStorage = true;
-            localStorage.setItem(this.DB_PATH, JSON.stringify(normalizedData));
+            localStorage.setItem(this.DB_PATH, JSON.stringify(data));
             return Promise.resolve();
         }
     },

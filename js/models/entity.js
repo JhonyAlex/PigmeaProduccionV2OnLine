@@ -51,7 +51,7 @@ const EntityModel = {
     /**
      * Actualiza una entidad existente
      * @param {string} id ID de la entidad
-     * @param {Object} updateData Objeto con las propiedades a actualizar
+     * @param {Object} updateData Objeto con las propiedades a actualizar (ej. { name: 'nuevoNombre', fields: [...], group: 'nuevoGrupo' })
      * @returns {Object|null} Entidad actualizada o null
      */
     update(id, updateData) {
@@ -63,64 +63,35 @@ const EntityModel = {
             return null;
         }
         
-        // MEJORA: Crear una copia profunda de la entidad para evitar mutaciones
-        const entityToUpdate = JSON.parse(JSON.stringify(data.entities[entityIndex]));
+        // Actualizar solo las propiedades proporcionadas en updateData
+        const entityToUpdate = data.entities[entityIndex];
         
-        // MEJORA: Validación de datos de entrada
         if (updateData.hasOwnProperty('name')) {
-            if (typeof updateData.name !== 'string' || updateData.name.trim() === '') {
-                console.error('EntityModel.update: Nombre de entidad inválido');
-                return null;
-            }
-            entityToUpdate.name = String(updateData.name).trim();
+            // Asegurarse de que el nombre sea un string
+            entityToUpdate.name = String(updateData.name); 
         }
-        
         if (updateData.hasOwnProperty('fields')) {
-            if (!Array.isArray(updateData.fields)) {
-                console.error('EntityModel.update: Los campos deben ser un array');
-                return null;
-            }
+            // Asegurarse de que fields sea un array y preservar el orden exacto
+            // Importante: creamos una nueva instancia del array para asegurar que se detecte el cambio
+            entityToUpdate.fields = Array.isArray(updateData.fields) ? [...updateData.fields] : [];
             
-            // MEJORA: Validar que todos los IDs de campos existan
-            const allFields = FieldModel.getAll();
-            const validFieldIds = updateData.fields.filter(fieldId => {
-                const fieldExists = allFields.some(field => field.id === fieldId);
-                if (!fieldExists) {
-                    console.warn(`Campo con ID ${fieldId} no existe, se omitirá`);
-                }
-                return fieldExists;
-            });
-            
-            // Crear array completamente nuevo para forzar detección de cambios
-            entityToUpdate.fields = [...validFieldIds];
-            
-            console.log(`EntityModel.update: Orden final de campos para entidad ${id}:`, 
-                       entityToUpdate.fields.map((fieldId, index) => 
-                           `${index + 1}. ${fieldId} (${allFields.find(f => f.id === fieldId)?.name || 'Desconocido'})`
-                       ));
+            // Registrar el orden para depuración
+            console.log(`EntityModel.update: Nuevo orden de campos para entidad ${id}:`, 
+                         JSON.stringify(entityToUpdate.fields));
         }
-        
         if (updateData.hasOwnProperty('group')) {
-            entityToUpdate.group = String(updateData.group || '').trim();
+            // Asegurarse de que group sea un string
+            entityToUpdate.group = String(updateData.group);
         }
+        // Se podrían añadir más propiedades aquí si fuera necesario en el futuro
         
-        // MEJORA: Añadir timestamp de última modificación
-        entityToUpdate.lastModified = new Date().toISOString();
+        console.log(`EntityModel.update: Actualizando entidad ${id} con:`, JSON.stringify(entityToUpdate, null, 2));
         
-        // Reemplazar la entidad en el array de datos
-        data.entities[entityIndex] = entityToUpdate;
+        // Guardar los datos actualizados
+        StorageService.saveData(data);
         
-        console.log(`EntityModel.update: Actualizando entidad ${id}:`, 
-                   JSON.stringify(entityToUpdate, null, 2));
-        
-        // MEJORA: Guardar datos con manejo de errores
-        return StorageService.saveData(data).then(() => {
-            console.log(`✅ Entidad ${id} actualizada exitosamente`);
-            return { ...entityToUpdate };
-        }).catch(error => {
-            console.error(`❌ Error actualizando entidad ${id}:`, error);
-            return null;
-        });
+        // Devolver una copia para evitar mutaciones accidentales fuera del modelo
+        return { ...entityToUpdate }; 
     },
     
     /**

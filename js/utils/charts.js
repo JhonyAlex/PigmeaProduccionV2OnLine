@@ -19,80 +19,45 @@ const ChartUtils = {
     ],
     
     /**
-     * MEJORA: Formatea números con caché para mejor rendimiento
+     * Formatea números con el formato solicitado:
+     * 10 → 10,00
+     * 100 → 100,00
+     * 1000 → 1.000,00
+     * 100000 → 100.000,00
+     * 1000000 → 1'000.000,00
+     * 1000000000 → 1.000'000.000,00
+     * 
      * @param {number} number Número a formatear
      * @param {number} decimals Cantidad de decimales (default: 2)
      * @returns {string} Número formateado
      */
     formatNumber(number, decimals = 2) {
-        // MEJORA: Cache para evitar recálculos en números repetidos
-        const cacheKey = `${number}_${decimals}`;
-        if (this._formatCache && this._formatCache[cacheKey]) {
-            return this._formatCache[cacheKey];
-        }
-        
-        // Inicializar cache si no existe
-        if (!this._formatCache) {
-            this._formatCache = {};
-        }
-        
-        // MEJORA: Validación de entrada
-        if (typeof number !== 'number' || isNaN(number)) {
-            return '0,00';
-        }
-        
-        // MEJORA: Usar Intl.NumberFormat para mejor soporte internacional
-        let result;
-        try {
-            // Intentar usar formateo nativo del navegador
-            const formatter = new Intl.NumberFormat('es-ES', {
-                minimumFractionDigits: decimals,
-                maximumFractionDigits: decimals
-            });
-            
-            result = formatter.format(number);
-            
-            // Ajustar el formato para cumplir con los requisitos específicos
-            if (number >= 1000000) {
-                // Para millones: usar apóstrofe
-                result = result.replace(/(\d{1,3})\.(\d{3})\.(\d{3})/, "$1'$2.$3");
-            }
-        } catch (e) {
-            // Fallback al método original si Intl no está disponible
-            result = this._formatNumberFallback(number, decimals);
-        }
-        
-        // Guardar en cache (limitamos el cache a 100 entradas para evitar memory leaks)
-        if (Object.keys(this._formatCache).length < 100) {
-            this._formatCache[cacheKey] = result;
-        }
-        
-        return result;
-    },
-    
-    /**
-     * NUEVO: Método fallback para formateo de números
-     * @param {number} number Número a formatear
-     * @param {number} decimals Cantidad de decimales
-     * @returns {string} Número formateado
-     */
-    _formatNumberFallback(number, decimals) {
-        // Método original como fallback
+        // Paso 1: Convertir el número a string con los decimales requeridos
         let numStr = number.toFixed(decimals);
+        
+        // Paso 2: Separar la parte entera y decimal
         const [integerStr, decimalStr] = numStr.split('.');
         
+        // Paso 3: Si el número es menor que 1000, no necesitamos separadores
         if (integerStr.length <= 3) {
             return `${integerStr},${decimalStr || '00'}`;
         }
         
+        // Paso 4: Para números mayores, procesamos la parte entera
         let result = '';
         const len = integerStr.length;
         
+        // Procesamos cada dígito de derecha a izquierda
         for (let i = len - 1; i >= 0; i--) {
+            // Añadimos el dígito al inicio
             result = integerStr[i] + result;
+            
+            // Calculamos la posición desde la derecha (empezando desde 0)
             const posFromRight = len - 1 - i;
             
+            // Si no es el último dígito y estamos en una posición que requiere separador
             if (i > 0 && (posFromRight + 1) % 3 === 0) {
+                // Posición 6 desde la derecha = posición de millones
                 if (posFromRight === 5) {
                     result = "'" + result;
                 } else {
@@ -101,6 +66,7 @@ const ChartUtils = {
             }
         }
         
+        // Paso 5: Unir la parte entera formateada con la parte decimal
         return `${result},${decimalStr || '00'}`;
     },
     
@@ -228,31 +194,32 @@ const ChartUtils = {
     },
     
     /**
-     * MEJORA: Crear tabla resumen optimizada
+     * Genera una tabla resumen para el reporte
      * @param {Object} reportData Datos del reporte
      * @returns {string} HTML de la tabla
      */
     createSummaryTable(reportData) {
-        // MEJORA: Cache para configuración
+        const rows = reportData.entities.map(entity => {
+            const formattedValue = this.formatNumber(entity.value);
+            return `
+                <tr>
+                    <td>${entity.name}</td>
+                    <td class="text-end">${formattedValue}</td>
+                    <td class="text-end">${this.formatNumber(entity.count, 0)}</td>
+                </tr>
+            `;
+        });
+        
+        // Calcular total general
+        const totalValue = reportData.entities.reduce((sum, entity) => sum + entity.value, 0);
+        const totalCount = reportData.entities.reduce((sum, entity) => sum + entity.count, 0);
+        
+        // Determinar el título de la primera columna
+        const entityHeaderTitle = reportData.horizontalField ? reportData.horizontalField : 'Entidad';
+        
+        // Obtener el nombre personalizado para "Registro"
         const config = StorageService.getConfig();
         const recordName = config.recordName || 'Registro';
-        const entityHeaderTitle = reportData.horizontalField || config.entityName || 'Entidad';
-        
-        // MEJORA: Pre-calcular totales una sola vez
-        const totals = reportData.entities.reduce((acc, entity) => {
-            acc.value += entity.value;
-            acc.count += entity.count;
-            return acc;
-        }, { value: 0, count: 0 });
-        
-        // MEJORA: Usar template literals más eficientes
-        const rows = reportData.entities.map(entity => `
-            <tr>
-                <td>${entity.name}</td>
-                <td class="text-end">${this.formatNumber(entity.value)}</td>
-                <td class="text-end">${this.formatNumber(entity.count, 0)}</td>
-            </tr>
-        `).join('');
         
         return `
             <table class="table table-sm table-striped">
@@ -264,13 +231,13 @@ const ChartUtils = {
                     </tr>
                 </thead>
                 <tbody>
-                    ${rows}
+                    ${rows.join('')}
                 </tbody>
                 <tfoot>
                     <tr class="table-primary">
                         <th>TOTAL</th>
-                        <th class="text-end">${this.formatNumber(totals.value)}</th>
-                        <th class="text-end">${this.formatNumber(totals.count, 0)}</th>
+                        <th class="text-end">${this.formatNumber(totalValue)}</th>
+                        <th class="text-end">${this.formatNumber(totalCount, 0)}</th>
                     </tr>
                 </tfoot>
             </table>

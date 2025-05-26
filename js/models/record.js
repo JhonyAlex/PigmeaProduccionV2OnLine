@@ -76,61 +76,42 @@ const RecordModel = {
      * @returns {Array} Registros filtrados
      */
     filterMultiple(filters = {}) {
-        // MEJORA: Cache para evitar recálculos
-        const cacheKey = JSON.stringify(filters);
-        if (this._filterCache && this._filterCache[cacheKey]) {
-            return [...this._filterCache[cacheKey]]; // Devolver copia
-        }
-        
         let records = this.getAll();
         
-        // MEJORA: Filtrar por entidades primero (suele ser el filtro más selectivo)
+        // Filtrar por entidades (múltiples)
         if (filters.entityIds && filters.entityIds.length > 0) {
-            const entitySet = new Set(filters.entityIds); // Set para búsqueda O(1)
-            records = records.filter(record => entitySet.has(record.entityId));
+            records = records.filter(record => filters.entityIds.includes(record.entityId));
         }
         
-        // MEJORA: Pre-calcular fechas para evitar conversiones repetidas
-        let fromDate = null, toDate = null;
+        // Filtrar por fecha
         if (filters.fromDate) {
-            fromDate = new Date(filters.fromDate);
+            const fromDate = new Date(filters.fromDate);
+            records = records.filter(record => new Date(record.timestamp) >= fromDate);
         }
+        
         if (filters.toDate) {
-            toDate = new Date(filters.toDate);
+            const toDate = new Date(filters.toDate);
             toDate.setHours(23, 59, 59); // Final del día
+            records = records.filter(record => new Date(record.timestamp) <= toDate);
         }
         
-        // Filtrar por fechas si están definidas
-        if (fromDate || toDate) {
-            records = records.filter(record => {
-                const recordDate = new Date(record.timestamp);
-                if (fromDate && recordDate < fromDate) return false;
-                if (toDate && recordDate > toDate) return false;
-                return true;
-            });
-        }
-        
-        // Aplicar filtros adicionales
+        // Filtrar por opción específica de campo horizontal (si está presente)
         if (filters.horizontalFieldId && filters.horizontalFieldOption) {
             records = records.filter(record => 
                 record.data[filters.horizontalFieldId] === filters.horizontalFieldOption
             );
         }
         
+        // Filtrar por operario (para análisis detallado)
         if (filters.operarioFieldId && filters.operarioOption) {
             records = records.filter(record => 
                 record.data[filters.operarioFieldId] === filters.operarioOption
             );
         }
         
+        // Aplicar filtro personalizado si existe (para análisis detallado avanzado)
         if (typeof filters.customFilter === 'function') {
             records = records.filter(filters.customFilter);
-        }
-        
-        // MEJORA: Guardar en cache (limitado para evitar memory leaks)
-        if (!this._filterCache) this._filterCache = {};
-        if (Object.keys(this._filterCache).length < 50) {
-            this._filterCache[cacheKey] = [...records];
         }
         
         return records;
@@ -157,146 +138,234 @@ const RecordModel = {
      * @returns {Object} Datos para el reporte
      */
     generateReportMultiple(fieldId, aggregation = 'sum', filters = {}, horizontalFieldId = '') {
-        try {
-            // MEJORA: Validaciones más robustas
-            if (!fieldId) {
-                return { error: 'ID de campo requerido' };
+        // Obtenemos el campo
+        const field = FieldModel.getById(fieldId);
+        if (!field) {
+            return { error: 'El campo seleccionado no existe' };
+        }
+        
+        // Verificar si es un campo soportado (numérico o select)
+        const isNumeric = field.type === 'number';
+        const isSelect = field.type === 'select';
+        
+        if (!isNumeric && !isSelect) {
+            return { error: 'El campo debe ser numérico o de selección para generar reportes' };
+        }
+        
+        // Para campos select, usamos 'count' como agregación
+        const effectiveAggregation = isSelect ? 'count' : aggregation;
+        
+        // Obtenemos las entidades que usan este campo
+        let entities = EntityModel.getAll().filter(entity => 
+            entity.fields.includes(fieldId)
+        );
+        
+        // Si hay un filtro de entidades específicas, filtramos aún más
+        if (filters.entityIds && filters.entityIds.length > 0) {
+            entities = entities.filter(entity => filters.entityIds.includes(entity.id));
+        }
+        
+        // Si no hay entidades, no podemos generar el reporte
+        if (entities.length === 0) {
+            return { error: 'No hay entidades que coincidan con los filtros y usen este campo' };
+        }
+        
+        // Filtramos los registros
+        const filteredRecords = this.filterMultiple(filters);
+        
+        // Si se proporciona un campo para el eje horizontal, lo usamos
+        if (horizontalFieldId) {
+            // Caso especial: cuando horizontalFieldId es una cadena vacía, significa que estamos agrupando por entidad principal
+            if (horizontalFieldId === '') {
+                // Este es el caso de "Entidad Principal" como eje horizontal
+                console.log("Generando reporte con Entidad Principal como eje horizontal");
+                
+                // Si hay una entidad específica seleccionada, usar solo esa
+                if (filters.specificEntityId) {
+                    console.log(`Filtrando por entidad específica: ${filters.specificEntityId}`);
+                    const specificEntity = EntityModel.getById(filters.specificEntityId);
+                    
+                    if (!specificEntity) {
+                        return { error: 'La entidad específica seleccionada no existe' };
+                    }
+                    
+                    // El resto del procesamiento se hará normalmente, ya que ya filtramos por entityIds
+                }
+                
+                // Seguir con la generación normal ya que el eje horizontal será manejado automáticamente en la sección de entidades
+                return this.generateReportByEntities(field, effectiveAggregation, filteredRecords, entities);
             }
             
-            const field = FieldModel.getById(fieldId);
-            if (!field) {
-                return { error: 'El campo seleccionado no existe' };
+            // Caso normal: usar un campo como eje horizontal
+            const horizontalField = FieldModel.getById(horizontalFieldId);
+            if (!horizontalField) {
+                return { error: 'El campo seleccionado para el eje horizontal no existe' };
             }
             
-            const isNumeric = field.type === 'number';
-            const isSelect = field.type === 'select';
+            // Agrupar por el valor del campo horizontal
+            const reportData = {
+                field: field.name,
+                fieldType: field.type,
+                horizontalField: horizontalField.name,
+                aggregation: effectiveAggregation,
+                entities: []
+            };
             
-            if (!isNumeric && !isSelect) {
-                return { error: 'El campo debe ser numérico o de selección para generar reportes' };
-            }
+            // Obtener valores únicos del campo horizontal
+            const uniqueValues = new Set();
             
-            // MEJORA: Cache para entidades válidas
-            const entitiesKey = `entities_${fieldId}_${JSON.stringify(filters.entityIds || [])}`;
-            let entities;
-            
-            if (this._entitiesCache && this._entitiesCache[entitiesKey]) {
-                entities = this._entitiesCache[entitiesKey];
+            // Si hay una opción específica seleccionada, usar solo esa
+            if (filters.horizontalFieldOption) {
+                uniqueValues.add(filters.horizontalFieldOption);
             } else {
-                entities = EntityModel.getAll().filter(entity => 
-                    entity.fields.includes(fieldId)
+                // Si no hay opción específica, obtener todos los valores únicos
+                filteredRecords.forEach(record => {
+                    if (record.data[horizontalFieldId] !== undefined) {
+                        uniqueValues.add(record.data[horizontalFieldId]);
+                    }
+                });
+            }
+            
+            // Para cada valor único, calcular la agregación
+            Array.from(uniqueValues).forEach(value => {
+                // Filtrar registros para este valor
+                const valueRecords = filteredRecords.filter(record => 
+                    record.data[horizontalFieldId] === value && 
+                    record.data[fieldId] !== undefined
                 );
                 
-                if (filters.entityIds && filters.entityIds.length > 0) {
-                    const entitySet = new Set(filters.entityIds);
-                    entities = entities.filter(entity => entitySet.has(entity.id));
+                if (valueRecords.length === 0) {
+                    reportData.entities.push({
+                        id: value,
+                        name: value,
+                        value: 0,
+                        count: 0
+                    });
+                    return;
                 }
                 
-                // Guardar en cache
-                if (!this._entitiesCache) this._entitiesCache = {};
-                if (Object.keys(this._entitiesCache).length < 20) {
-                    this._entitiesCache[entitiesKey] = entities;
+                // Para campos select, agrupar por valores del campo
+                if (isSelect) {
+                    // Para campos de selección, contamos las ocurrencias de cada valor
+                    const optionCounts = {};
+                    valueRecords.forEach(record => {
+                        const optionValue = record.data[fieldId];
+                        optionCounts[optionValue] = (optionCounts[optionValue] || 0) + 1;
+                    });
+                    
+                    reportData.entities.push({
+                        id: value,
+                        name: value,
+                        value: valueRecords.length, // Número total de registros
+                        count: valueRecords.length,
+                        optionCounts // Añadir conteo por opción
+                    });
+                } else {
+                    // Para campos numéricos, calcular agregación como antes
+                    const values = valueRecords.map(record => 
+                        parseFloat(record.data[fieldId]) || 0
+                    );
+                    
+                    // Calcular valor según agregación
+                    let aggregatedValue = 0;
+                    if (effectiveAggregation === 'sum') {
+                        aggregatedValue = values.reduce((sum, val) => sum + val, 0);
+                    } else if (effectiveAggregation === 'average') {
+                        aggregatedValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+                    }
+                    
+                    reportData.entities.push({
+                        id: value,
+                        name: value,
+                        value: aggregatedValue,
+                        count: valueRecords.length
+                    });
                 }
-            }
+            });
             
-            if (entities.length === 0) {
-                return { error: 'No hay entidades que coincidan con los filtros y usen este campo' };
-            }
-            
-            const effectiveAggregation = isSelect ? 'count' : aggregation;
-            const filteredRecords = this.filterMultiple(filters);
-            
-            // MEJORA: Manejo optimizado del eje horizontal
-            if (horizontalFieldId && horizontalFieldId !== '') {
-                return this._generateHorizontalReport(field, effectiveAggregation, filteredRecords, horizontalFieldId, filters);
-            }
-            
-            return this.generateReportByEntities(field, effectiveAggregation, filteredRecords, entities);
-            
-        } catch (error) {
-            console.error('Error generando reporte:', error);
-            return { error: 'Error interno generando el reporte' };
+            return reportData;
         }
+        
+        // Si no hay campo horizontal, usamos las entidades como siempre
+        return this.generateReportByEntities(field, effectiveAggregation, filteredRecords, entities);
     },
     
     /**
-     * NUEVO: Método auxiliar para reportes con eje horizontal
-     * @private
+     * Genera un reporte agrupado por entidades
+     * Función auxiliar para generar reportes cuando se usa la entidad como eje horizontal
+     * @param {Object} field El campo a analizar
+     * @param {string} effectiveAggregation Tipo de agregación ('sum', 'average', 'count')
+     * @param {Array} filteredRecords Registros ya filtrados
+     * @param {Array} entities Entidades a incluir en el reporte
+     * @returns {Object} Datos del reporte
      */
-    _generateHorizontalReport(field, effectiveAggregation, filteredRecords, horizontalFieldId, filters) {
-        const horizontalField = FieldModel.getById(horizontalFieldId);
-        if (!horizontalField) {
-            return { error: 'El campo seleccionado para el eje horizontal no existe' };
-        }
+    generateReportByEntities(field, effectiveAggregation, filteredRecords, entities) {
+        const fieldId = field.id;
+        const isSelect = field.type === 'select';
         
         const reportData = {
             field: field.name,
             fieldType: field.type,
-            horizontalField: horizontalField.name,
             aggregation: effectiveAggregation,
             entities: []
         };
         
-        // MEJORA: Usar Set para valores únicos más eficiente
-        const uniqueValues = filters.horizontalFieldOption 
-            ? new Set([filters.horizontalFieldOption])
-            : new Set(filteredRecords
-                .map(record => record.data[horizontalFieldId])
-                .filter(value => value !== undefined)
-              );
-        
-        // Procesar cada valor único
-        for (const value of uniqueValues) {
-            const valueRecords = filteredRecords.filter(record => 
-                record.data[horizontalFieldId] === value && 
-                record.data[field.id] !== undefined
+        // Para cada entidad (ya filtradas si hay filtro de entidad), calculamos los valores
+        entities.forEach(entity => {
+            // Filtrar registros para esta entidad
+            const entityRecords = filteredRecords.filter(record => 
+                record.entityId === entity.id && 
+                record.data[fieldId] !== undefined
             );
             
-            if (valueRecords.length === 0) {
+            if (entityRecords.length === 0) {
                 reportData.entities.push({
-                    id: value,
-                    name: value,
+                    id: entity.id,
+                    name: entity.name,
                     value: 0,
                     count: 0
                 });
-                continue;
+                return;
             }
             
-            if (field.type === 'select') {
-                // Contar ocurrencias para campos de selección
+            if (isSelect) {
+                // Para campos de selección, contamos las ocurrencias de cada valor
                 const optionCounts = {};
-                valueRecords.forEach(record => {
-                    const optionValue = record.data[field.id];
+                entityRecords.forEach(record => {
+                    const optionValue = record.data[fieldId];
                     optionCounts[optionValue] = (optionCounts[optionValue] || 0) + 1;
                 });
                 
                 reportData.entities.push({
-                    id: value,
-                    name: value,
-                    value: valueRecords.length,
-                    count: valueRecords.length,
-                    optionCounts
+                    id: entity.id,
+                    name: entity.name,
+                    value: entityRecords.length, // Número total de registros
+                    count: entityRecords.length,
+                    optionCounts // Añadir conteo por opción
                 });
             } else {
-                // Cálculos numéricos
-                const values = valueRecords.map(record => 
-                    parseFloat(record.data[field.id]) || 0
+                // Para campos numéricos, como estaba implementado antes
+                // Convertir valores a números
+                const values = entityRecords.map(record => 
+                    parseFloat(record.data[fieldId]) || 0
                 );
                 
-                let aggregatedValue = 0;
+                // Calcular valor según agregación
+                let value = 0;
                 if (effectiveAggregation === 'sum') {
-                    aggregatedValue = values.reduce((sum, val) => sum + val, 0);
+                    value = values.reduce((sum, val) => sum + val, 0);
                 } else if (effectiveAggregation === 'average') {
-                    aggregatedValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+                    value = values.reduce((sum, val) => sum + val, 0) / values.length;
                 }
                 
                 reportData.entities.push({
-                    id: value,
-                    name: value,
-                    value: aggregatedValue,
-                    count: valueRecords.length
+                    id: entity.id,
+                    name: entity.name,
+                    value: value,
+                    count: entityRecords.length
                 });
             }
-        }
+        });
         
         return reportData;
     },
