@@ -56,10 +56,14 @@ const Router = {
      * @param {string} route Nombre de la ruta
      */
     navigateTo(route) {
-        // MEJORA: Evitar navegación si ya estamos en la ruta
+        // MEJORA: Evitar navegación si ya estamos en la ruta Y la vista está renderizada
         if (this.currentRoute === route) {
-            console.log(`Ya estamos en la ruta ${route}, omitiendo navegación`);
-            return;
+            const container = this.getActiveViewContainer();
+            if (container && container.innerHTML.trim() !== '') {
+                console.log(`Ya estamos en la ruta ${route} con vista renderizada, omitiendo navegación`);
+                return;
+            }
+            // Si estamos en la misma ruta pero no está renderizada, continuar
         }
 
         if (!this.routes[route]) {
@@ -67,7 +71,7 @@ const Router = {
             return;
         }
 
-        // MEJORA: Limpiar vista anterior para evitar memory leaks
+        // Limpiar vista anterior para evitar memory leaks
         if (this.currentRoute && this.routes[this.currentRoute] && 
             typeof this.routes[this.currentRoute].cleanup === 'function') {
             this.routes[this.currentRoute].cleanup();
@@ -83,7 +87,7 @@ const Router = {
             }
         });
 
-        // MEJORA: Usar timeout más corto para mejor UX
+        // Usar timeout más corto para mejor UX
         setTimeout(() => {
             try {
                 // Renderizar la vista
@@ -91,20 +95,24 @@ const Router = {
                     this.routes[route].render();
                 }
 
-                // Configurar event listeners
-                if (typeof this.routes[route].setupEventListeners === 'function') {
-                    this.routes[route].setupEventListeners();
-                }
+                // MEJORA: Usar timeout adicional para setupEventListeners e init
+                setTimeout(() => {
+                    // Configurar event listeners
+                    if (typeof this.routes[route].setupEventListeners === 'function') {
+                        this.routes[route].setupEventListeners();
+                    }
 
-                // Inicializar la vista si tiene método init
-                if (typeof this.routes[route].init === 'function') {
-                    this.routes[route].init();
-                }
+                    // Inicializar la vista si tiene método init
+                    if (typeof this.routes[route].init === 'function') {
+                        this.routes[route].init();
+                    }
+                }, 10);
+                
             } catch (error) {
                 console.error(`Error al cargar la ruta ${route}:`, error);
                 this.showErrorView(error);
             }
-        }, 50); // Reducido de 100ms a 50ms
+        }, 50);
     },
 
     /**

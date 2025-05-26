@@ -31,15 +31,22 @@ const RegisterView = {
      */
     init() {
         try {
-            StorageService.initializeStorage().then(() => {
-                StorageService.subscribeToDataChanges(() => {
-                    // MEJORA: Solo actualizar si no estamos ya en proceso de actualización
-                    if (!this._isUpdating) {
-                        RegisterView.update();
-                    }
+            // MEJORA: Solo suscribirse a cambios si no estamos ya suscritos
+            if (!this._isSubscribed) {
+                StorageService.initializeStorage().then(() => {
+                    StorageService.subscribeToDataChanges(() => {
+                        // Solo actualizar si no estamos ya en proceso de actualización
+                        if (!this._isUpdating && Router.currentRoute === 'register') {
+                            RegisterView.update();
+                        }
+                    });
+                    this._isSubscribed = true;
+                    RegisterView.update();
                 });
+            } else {
+                // Si ya estamos suscritos, solo actualizar
                 RegisterView.update();
-            });
+            }
         } catch (error) {
             console.error("Error al inicializar RegisterView:", error);
             UIUtils.showAlert('Error al inicializar la vista de registros', 'danger');
@@ -709,44 +716,47 @@ const RegisterView = {
      * Carga y muestra los registros recientes
      */
     loadRecentRecords() {
-        // MEJORA: Verificación más robusta y evitar recreación innecesaria
+        // MEJORA: Verificar que estamos en la vista correcta antes de proceder
+        if (Router.currentRoute !== 'register') {
+            return;
+        }
+
+        // MEJORA: Verificar que la vista esté renderizada
+        const mainContent = document.querySelector('.main-content');
+        if (!mainContent || !mainContent.querySelector('.col-md-6')) {
+            console.warn('Vista no está completamente renderizada, posponiendo carga de registros recientes');
+            // Reintentar después de un breve delay
+            setTimeout(() => this.loadRecentRecords(), 100);
+            return;
+        }
+
+        // Verificación más robusta de elementos DOM
         const recentRecordsList = document.getElementById('recent-records-list');
         const noRecordsMessage = document.getElementById('no-records-message');
         const recentRecordsTable = document.getElementById('recent-records-table');
 
         // Si no encontramos los elementos básicos
         if (!recentRecordsList || !noRecordsMessage || !recentRecordsTable) {
-            // Solo recrear si estamos en la vista activa
-            if (Router.currentRoute !== 'register') {
-                return; // No hacer nada si no estamos en esta vista
-            }
-            
             console.warn('Elementos DOM no encontrados para mostrar registros recientes, recreando...');
+            
             const container = document.querySelector('.main-content');
             if (!container) {
                 console.error('No se encontró el contenedor principal para recrear la tabla de registros');
                 return;
             }
             
-            let rightColumn = container.querySelector('.col-md-6:last-child');
+            let rightColumn = container.querySelector('.col-md-6:last-child .card-body');
             if (!rightColumn) {
-                // MEJORA: Evitar renderizado completo, solo recrear la sección necesaria
-                const cardBody = container.querySelector('.col-md-6:last-child .card-body');
-                if (cardBody) {
-                    cardBody.innerHTML = this._getRecentRecordsHTML();
-                } else {
-                    console.warn('No se pudo encontrar la columna derecha, renderizando vista completa');
-                    this.render();
-                    return;
-                }
+                console.warn('No se pudo encontrar la columna derecha, renderizando vista completa');
+                this.render();
+                // MEJORA: Usar setTimeout para asegurar que el DOM se actualiza
+                setTimeout(() => {
+                    this.setupEventListeners();
+                    this.loadRecentRecords();
+                }, 50);
+                return;
             } else {
-                const cardBody = rightColumn.querySelector('.card-body');
-                if (cardBody) {
-                    cardBody.innerHTML = this._getRecentRecordsHTML();
-                } else {
-                    console.error('No se encontró el cuerpo de la tarjeta para registros recientes');
-                    return;
-                }
+                rightColumn.innerHTML = this._getRecentRecordsHTML();
             }
         }
 
@@ -1076,13 +1086,20 @@ const RegisterView = {
      */
     update() {
         try {
-            // MEJORA: Prevenir actualizaciones recursivas
+            // Prevenir actualizaciones recursivas
             if (this._isUpdating) {
                 return;
             }
 
             // Solo intentar actualizar si estamos en la vista activa
             if (Router.currentRoute !== 'register') {
+                return;
+            }
+
+            // MEJORA: Verificar que la vista esté renderizada antes de actualizar
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent || mainContent.innerHTML.trim() === '') {
+                console.log('Vista no renderizada, omitiendo actualización');
                 return;
             }
 
@@ -1094,7 +1111,7 @@ const RegisterView = {
             const newEntityName = (config && config.entityName) ? config.entityName : 'Entidad';
             const newRecordName = (config && config.recordName) ? config.recordName : 'Registro';
             
-            // MEJORA: Solo actualizar si realmente cambió
+            // Solo actualizar si realmente cambió
             if (this.entityName !== newEntityName) {
                 this.updateEntityNameReferences(newEntityName);
             }
@@ -1106,7 +1123,7 @@ const RegisterView = {
             const entitySelector = document.querySelector('.d-flex.flex-wrap');
             const entities = EntityModel.getAll() || [];
             if (entitySelector) {
-                // MEJORA: Verificar si realmente necesitamos actualizar los botones
+                // Verificar si realmente necesitamos actualizar los botones
                 const currentButtons = entitySelector.querySelectorAll('.entity-btn');
                 const needsUpdate = currentButtons.length !== entities.length || 
                                   Array.from(currentButtons).some((btn, index) => {
@@ -1121,7 +1138,7 @@ const RegisterView = {
                     ).join('');
                     entitySelector.innerHTML = entityButtons;
                     
-                    // MEJORA: Solo reconfigurar listeners de entidades, no todos
+                    // Solo reconfigurar listeners de entidades, no todos
                     this._setupEntityButtonListeners();
                 }
             }
@@ -1142,13 +1159,15 @@ const RegisterView = {
                 }
             }
 
-            // 4. Recargar registros recientes
-            this.loadRecentRecords();
+            // 4. Recargar registros recientes - MEJORA: usar debounce
+            this._debouncedLoadRecentRecords = this._debouncedLoadRecentRecords || 
+                DOMUtils.debounce(() => this.loadRecentRecords(), 200);
+            this._debouncedLoadRecentRecords();
 
         } catch (error) {
             console.error("Error al actualizar la vista de registros:", error);
         } finally {
-            // MEJORA: Asegurar que el flag se resetee
+            // Asegurar que el flag se resetee
             this._isUpdating = false;
         }
     },
@@ -1208,5 +1227,20 @@ const RegisterView = {
 
             entityButtonContainer.addEventListener('click', entityButtonContainer._entityClickHandler);
         }
+    },
+
+    /**
+     * NUEVO: Método de limpieza para evitar memory leaks
+     */
+    cleanup() {
+        this._isUpdating = false;
+        this._isSubscribed = false;
+        
+        // Limpiar timers si existen
+        if (this._debouncedLoadRecentRecords) {
+            this._debouncedLoadRecentRecords = null;
+        }
+        
+        console.log('RegisterView limpiado');
     }
 };
