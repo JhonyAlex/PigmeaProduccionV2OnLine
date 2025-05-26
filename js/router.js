@@ -44,64 +44,77 @@ const Router = {
     },
 
     /**
-     * Navega a la ruta especificada
+     * Navega a una ruta específica
      * @param {string} route Nombre de la ruta
      */
     navigateTo(route) {
-        try {
-            if (!this.routes[route]) {
-                console.error(`Ruta no encontrada: ${route}`);
-                route = 'register'; // Ruta por defecto
-            }
-            
-            // Verificar que el contenedor principal existe
-            let mainContent = document.querySelector('.main-content');
-            if (!mainContent) {
-                console.warn("Elemento .main-content no encontrado en navigateTo, creándolo...");
-                const container = document.querySelector('.container') || document.body;
-                mainContent = document.createElement('div');
-                mainContent.className = 'main-content mt-4';
-                container.appendChild(mainContent);
-            }
+        // MEJORA: Evitar navegación si ya estamos en la ruta
+        if (this.currentRoute === route) {
+            console.log(`Ya estamos en la ruta ${route}, omitiendo navegación`);
+            return;
+        }
 
-            // IMPORTANTE: Limpiar completamente el contenedor principal antes de cargar la nueva vista
-            mainContent.innerHTML = '';
-            
-            // Eliminar cualquier posible vista residual que pueda estar fuera del contenedor principal
-            document.querySelectorAll('.view-container').forEach(el => {
-                el.remove();
-            });
+        if (!this.routes[route]) {
+            console.error(`Ruta '${route}' no encontrada`);
+            return;
+        }
 
-            // Actualizar estado de la aplicación
-            this.currentRoute = route;
-            window.location.hash = route;
-            
-            // Actualizar estado de navegación
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            
-            const activeLink = document.querySelector(`.nav-link[data-route="${route}"]`);
-            if (activeLink) {
-                activeLink.classList.add('active');
+        // MEJORA: Limpiar vista anterior para evitar memory leaks
+        if (this.currentRoute && this.routes[this.currentRoute] && 
+            typeof this.routes[this.currentRoute].cleanup === 'function') {
+            this.routes[this.currentRoute].cleanup();
+        }
+
+        this.currentRoute = route;
+
+        // Actualizar clases activas en navbar
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-route') === route) {
+                link.classList.add('active');
             }
-            
-            // Crear un nuevo contenedor específico para esta vista
-            const viewContainer = document.createElement('div');
-            viewContainer.className = 'view-container';
-            viewContainer.id = `${route}-view`;
-            mainContent.appendChild(viewContainer);
-            
-            // Establecer este contenedor como el contenedor activo
-            this.activeViewContainer = viewContainer;
-            
-            // Inicializar la vista después de un pequeño retraso
-            setTimeout(() => {
-                this.routes[route].init();
-            }, 10);
-        } catch (error) {
-            console.error(`Error al navegar a ${route}:`, error);
-            UIUtils.showAlert(`Error al cargar la vista ${route}. Por favor intenta nuevamente.`, 'danger');
+        });
+
+        // MEJORA: Usar timeout más corto para mejor UX
+        setTimeout(() => {
+            try {
+                // Renderizar la vista
+                if (typeof this.routes[route].render === 'function') {
+                    this.routes[route].render();
+                }
+
+                // Configurar event listeners
+                if (typeof this.routes[route].setupEventListeners === 'function') {
+                    this.routes[route].setupEventListeners();
+                }
+
+                // Inicializar la vista si tiene método init
+                if (typeof this.routes[route].init === 'function') {
+                    this.routes[route].init();
+                }
+            } catch (error) {
+                console.error(`Error al cargar la ruta ${route}:`, error);
+                this.showErrorView(error);
+            }
+        }, 50); // Reducido de 100ms a 50ms
+    },
+
+    /**
+     * NUEVO: Mostrar vista de error
+     * @param {Error} error Error ocurrido
+     */
+    showErrorView(error) {
+        const container = this.getActiveViewContainer();
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4>Error al cargar la vista</h4>
+                    <p>Ha ocurrido un error inesperado: ${error.message}</p>
+                    <button class="btn btn-outline-danger" onclick="location.reload()">
+                        Recargar página
+                    </button>
+                </div>
+            `;
         }
     },
     

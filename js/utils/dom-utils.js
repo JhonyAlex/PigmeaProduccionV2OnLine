@@ -1,80 +1,66 @@
 /**
- * Utilidades para operaciones con el DOM
+ * Utilidades para manipulación del DOM
  */
 const DOMUtils = {
     /**
-     * Verifica y establece la estructura básica de DOM requerida por la aplicación
-     * @returns {Object} Referencias a los elementos principales del DOM
+     * Asegura que existe la estructura básica de contenedores necesaria
      */
     ensureBasicStructure() {
-        // Verificar si existe el contenedor principal
-        let container = document.querySelector('.container');
-        if (!container) {
-            console.warn("Creando contenedor principal...");
-            container = document.createElement('div');
-            container.className = 'container mt-4';
-            document.body.appendChild(container);
-        }
+        // MEJORA: Verificación más eficiente y menos verbosa
+        let mainContent = document.getElementById('main-content');
         
-        // Verificar si existe el contenedor de contenido
-        let mainContent = document.querySelector('.main-content');
         if (!mainContent) {
-            console.warn("Creando contenedor de contenido principal...");
+            console.log('Creando contenedor principal...');
             mainContent = document.createElement('div');
-            mainContent.className = 'main-content mt-3';
-            container.appendChild(mainContent);
+            mainContent.id = 'main-content';
+            mainContent.className = 'container-fluid mt-4';
+            document.body.appendChild(mainContent);
         }
-        
+
+        // MEJORA: Solo crear si realmente no existe
+        let viewContainer = mainContent.querySelector('.main-content');
+        if (!viewContainer) {
+            console.log('Creando contenedor de contenido principal...');
+            viewContainer = document.createElement('div');
+            viewContainer.className = 'main-content';
+            mainContent.appendChild(viewContainer);
+        }
+
         return {
-            container,
-            mainContent
+            mainContent,
+            viewContainer
         };
     },
-    
+
     /**
-     * Verifica si un elemento existe y lo crea si no
-     * @param {string} selector Selector CSS del elemento
-     * @param {string} tagName Nombre de la etiqueta HTML a crear
-     * @param {string} className Clases CSS a aplicar
-     * @param {HTMLElement} parent Elemento padre donde añadirlo
-     * @returns {HTMLElement} El elemento encontrado o creado
+     * NUEVO: Limpia event listeners duplicados de un elemento
+     * @param {Element} element Elemento a limpiar
      */
-    ensureElement(selector, tagName, className, parent) {
-        let element = document.querySelector(selector);
-        if (!element) {
-            console.warn(`Elemento ${selector} no encontrado, creándolo...`);
-            element = document.createElement(tagName);
-            if (className) element.className = className;
-            if (parent) parent.appendChild(element);
-        }
-        return element;
+    cleanupEventListeners(element) {
+        if (!element) return;
+        
+        // Clonar el elemento para remover todos los listeners
+        const newElement = element.cloneNode(true);
+        element.parentNode.replaceChild(newElement, element);
+        
+        return newElement;
     },
-    
+
     /**
-     * Inserta un mensaje de alerta en el DOM
-     * @param {string} message Mensaje a mostrar
-     * @param {string} type Tipo de alerta (success, danger, warning, info)
-     * @param {HTMLElement} container Contenedor donde insertar la alerta (opcional)
+     * NUEVO: Debounce para optimizar llamadas frecuentes
+     * @param {Function} func Función a ejecutar
+     * @param {number} wait Tiempo de espera en ms
+     * @returns {Function} Función con debounce aplicado
      */
-    showAlert(message, type, container = null) {
-        const alertBox = document.createElement('div');
-        alertBox.className = `alert alert-${type} alert-dismissible fade show`;
-        alertBox.role = 'alert';
-        alertBox.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        if (!container) {
-            container = document.querySelector('.main-content') || document.querySelector('.container') || document.body;
-        }
-        
-        container.prepend(alertBox);
-        
-        // Auto-cerrar después de 5 segundos
-        setTimeout(() => {
-            alertBox.classList.remove('show');
-            setTimeout(() => alertBox.remove(), 300);
-        }, 5000);
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 };

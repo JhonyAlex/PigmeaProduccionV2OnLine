@@ -17,7 +17,13 @@ const RegisterView = {
      * La clave es el entityId, el valor es un objeto con los datos del formulario.
      * @type {Object<string, Object>}
      */
-    lastEnteredData: {}, // <--- AÑADIDO: Para guardar datos temporalmente
+    lastEnteredData: {},
+
+    /**
+     * MEJORA: Flag para prevenir actualizaciones recursivas
+     * @type {boolean}
+     */
+    _isUpdating: false,
 
     /**
      * Inicializa la vista de registro asegurando que los datos estén sincronizados con Firebase/localStorage.
@@ -27,7 +33,10 @@ const RegisterView = {
         try {
             StorageService.initializeStorage().then(() => {
                 StorageService.subscribeToDataChanges(() => {
-                    RegisterView.update();
+                    // MEJORA: Solo actualizar si no estamos ya en proceso de actualización
+                    if (!this._isUpdating) {
+                        RegisterView.update();
+                    }
                 });
                 RegisterView.update();
             });
@@ -700,55 +709,54 @@ const RegisterView = {
      * Carga y muestra los registros recientes
      */
     loadRecentRecords() {
-        // Verificar elementos necesarios del DOM
+        // MEJORA: Verificación más robusta y evitar recreación innecesaria
         const recentRecordsList = document.getElementById('recent-records-list');
         const noRecordsMessage = document.getElementById('no-records-message');
         const recentRecordsTable = document.getElementById('recent-records-table');
 
-        // Si no encontramos los elementos, intentamos recrearlos (código robusto existente)
+        // Si no encontramos los elementos básicos
         if (!recentRecordsList || !noRecordsMessage || !recentRecordsTable) {
+            // Solo recrear si estamos en la vista activa
+            if (Router.currentRoute !== 'register') {
+                return; // No hacer nada si no estamos en esta vista
+            }
+            
             console.warn('Elementos DOM no encontrados para mostrar registros recientes, recreando...');
             const container = document.querySelector('.main-content');
             if (!container) {
                 console.error('No se encontró el contenedor principal para recrear la tabla de registros');
                 return;
             }
+            
             let rightColumn = container.querySelector('.col-md-6:last-child');
             if (!rightColumn) {
-                console.warn('Recreando la estructura completa de registros recientes');
-                this.render(); // Re-renderizar si falta la estructura
-                // Intentar obtener los elementos de nuevo después de re-renderizar
-                this.loadRecentRecords(); // Llamada recursiva simple, cuidado con bucles infinitos
-                return;
-            }
-            const cardBody = rightColumn.querySelector('.card-body');
-            if (cardBody) {
-                cardBody.innerHTML = `
-                    <div id="no-records-message" style="display: none;">
-                        <p class="text-muted">No hay registros recientes.</p>
-                    </div>
-                    <table id="recent-records-table" class="table table-striped table-hover" style="display: none;">
-                        <thead>
-                            <tr>
-                                <th>${this.entityName}</th>
-                                <th>Fecha</th>
-                                <th>Datos</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recent-records-list"></tbody>
-                    </table>
-                `;
+                // MEJORA: Evitar renderizado completo, solo recrear la sección necesaria
+                const cardBody = container.querySelector('.col-md-6:last-child .card-body');
+                if (cardBody) {
+                    cardBody.innerHTML = this._getRecentRecordsHTML();
+                } else {
+                    console.warn('No se pudo encontrar la columna derecha, renderizando vista completa');
+                    this.render();
+                    return;
+                }
+            } else {
+                const cardBody = rightColumn.querySelector('.card-body');
+                if (cardBody) {
+                    cardBody.innerHTML = this._getRecentRecordsHTML();
+                } else {
+                    console.error('No se encontró el cuerpo de la tarjeta para registros recientes');
+                    return;
+                }
             }
         }
 
-        // Intentar obtener los elementos nuevamente
+        // Continuar con la lógica normal después de asegurar que los elementos existen
         const refreshedRecentRecordsList = document.getElementById('recent-records-list');
         const refreshedNoRecordsMessage = document.getElementById('no-records-message');
         const refreshedRecentRecordsTable = document.getElementById('recent-records-table');
 
         if (!refreshedRecentRecordsList || !refreshedNoRecordsMessage || !refreshedRecentRecordsTable) {
-            console.error('No se pudieron recrear los elementos necesarios para mostrar registros recientes');
+            console.error('No se pudieron obtener los elementos después de recrearlos');
             return;
         }
 
@@ -758,7 +766,7 @@ const RegisterView = {
         if (recentRecords.length === 0) {
             refreshedNoRecordsMessage.style.display = 'block';
             refreshedRecentRecordsTable.style.display = 'none';
-            refreshedRecentRecordsList.innerHTML = ''; // Asegurar que esté vacío
+            refreshedRecentRecordsList.innerHTML = '';
             return;
         }
 
@@ -781,12 +789,10 @@ const RegisterView = {
             // Preparar datos para mostrar (limitados a 3 campos)
             const dataFields = [];
             for (const fieldId in record.data) {
-                // Asegurarse de que el campo existe antes de intentar acceder a 'name'
                 const field = fields.find(f => f && f.id === fieldId);
                 if (field) {
                     dataFields.push(`${field.name}: ${record.data[fieldId]}`);
                 } else {
-                     // Si el campo ya no existe, mostrar ID y valor
                      dataFields.push(`${fieldId}: ${record.data[fieldId]}`);
                 }
             }
@@ -816,9 +822,29 @@ const RegisterView = {
 
             refreshedRecentRecordsList.appendChild(row);
         });
+    },
 
-        // Configurar event listeners para ver detalles
-
+    /**
+     * NUEVO: Método auxiliar para generar HTML de registros recientes
+     * @private
+     */
+    _getRecentRecordsHTML() {
+        return `
+            <div id="no-records-message" style="display: none;">
+                <p class="text-muted">No hay ${this.recordName.toLowerCase()}s recientes.</p>
+            </div>
+            <table id="recent-records-table" class="table table-striped table-hover" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>${this.entityName}</th>
+                        <th>Fecha</th>
+                        <th>Datos</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-records-list"></tbody>
+            </table>
+        `;
     },
 
     /**
@@ -1050,33 +1076,57 @@ const RegisterView = {
      */
     update() {
         try {
+            // MEJORA: Prevenir actualizaciones recursivas
+            if (this._isUpdating) {
+                return;
+            }
+
             // Solo intentar actualizar si estamos en la vista activa
             if (Router.currentRoute !== 'register') {
                 return;
             }
 
+            this._isUpdating = true;
             console.log("Actualizando RegisterView...");
 
             // 1. Actualizar el nombre de la entidad si cambió en config
             const config = StorageService.getConfig();
             const newEntityName = (config && config.entityName) ? config.entityName : 'Entidad';
+            const newRecordName = (config && config.recordName) ? config.recordName : 'Registro';
+            
+            // MEJORA: Solo actualizar si realmente cambió
             if (this.entityName !== newEntityName) {
                 this.updateEntityNameReferences(newEntityName);
             }
-
-            // 2. Recargar botones de entidad (por si se añadieron/eliminaron/renombraron entidades)
-            const entitySelector = document.querySelector('.d-flex.flex-wrap'); // Contenedor de botones
-            const entities = EntityModel.getAll() || [];
-            if (entitySelector) {
-                 const entityButtons = entities.map(entity =>
-                    `<button class="btn btn-outline-primary entity-btn mb-2 me-2" data-entity-id="${entity.id}">${entity.name}</button>`
-                 ).join('');
-                 entitySelector.innerHTML = entityButtons;
-                 // Volver a añadir listeners a los nuevos botones
-                 this.setupEventListeners(); // Esto podría ser problemático si añade listeners duplicados al form. Refinar si es necesario.
+            if (this.recordName !== newRecordName) {
+                this.recordName = newRecordName;
             }
 
-            // 3. Limpiar campos dinámicos y estado si la entidad seleccionada ya no existe o cambió
+            // 2. Recargar botones de entidad solo si es necesario
+            const entitySelector = document.querySelector('.d-flex.flex-wrap');
+            const entities = EntityModel.getAll() || [];
+            if (entitySelector) {
+                // MEJORA: Verificar si realmente necesitamos actualizar los botones
+                const currentButtons = entitySelector.querySelectorAll('.entity-btn');
+                const needsUpdate = currentButtons.length !== entities.length || 
+                                  Array.from(currentButtons).some((btn, index) => {
+                                      const entity = entities[index];
+                                      return !entity || btn.getAttribute('data-entity-id') !== entity.id || 
+                                             btn.textContent !== entity.name;
+                                  });
+
+                if (needsUpdate) {
+                    const entityButtons = entities.map(entity =>
+                        `<button class="btn btn-outline-primary entity-btn mb-2 me-2" data-entity-id="${entity.id}">${entity.name}</button>`
+                    ).join('');
+                    entitySelector.innerHTML = entityButtons;
+                    
+                    // MEJORA: Solo reconfigurar listeners de entidades, no todos
+                    this._setupEntityButtonListeners();
+                }
+            }
+
+            // 3. Verificar entidad seleccionada
             const selectedEntityIdInput = document.getElementById('selected-entity-id');
             let currentEntityId = null;
             if (selectedEntityIdInput) {
@@ -1085,9 +1135,7 @@ const RegisterView = {
                 if (currentEntityId && !entityExists) {
                     console.log(`Entidad seleccionada ${currentEntityId} ya no existe. Limpiando.`);
                     selectedEntityIdInput.value = '';
-                    this.loadDynamicFields(''); // Limpiar campos
-                    // Limpiar datos guardados para esa entidad si se desea
-                    // delete this.lastEnteredData[currentEntityId];
+                    this.loadDynamicFields('');
                 } else if (currentEntityId) {
                     // Si la entidad aún existe, recargar sus campos por si cambiaron
                     this.loadDynamicFields(currentEntityId);
@@ -1099,6 +1147,66 @@ const RegisterView = {
 
         } catch (error) {
             console.error("Error al actualizar la vista de registros:", error);
+        } finally {
+            // MEJORA: Asegurar que el flag se resetee
+            this._isUpdating = false;
+        }
+    },
+
+    /**
+     * NUEVO: Configurar solo listeners de botones de entidad
+     * @private
+     */
+    _setupEntityButtonListeners() {
+        const mainContent = Router.getActiveViewContainer() || document.querySelector('.main-content');
+        if (!mainContent) return;
+
+        const entityButtonContainer = mainContent.querySelector('.d-flex.flex-wrap');
+        if (entityButtonContainer) {
+            // Remover listener anterior si existe
+            if (entityButtonContainer._entityClickHandler) {
+                entityButtonContainer.removeEventListener('click', entityButtonContainer._entityClickHandler);
+            }
+
+            // Definir el nuevo handler
+            entityButtonContainer._entityClickHandler = (e) => {
+                if (e.target.matches('.entity-btn')) {
+                    const clickedButton = e.target;
+                    const entityId = clickedButton.getAttribute('data-entity-id');
+
+                    const formElement = clickedButton.closest('form');
+                    const selectedEntityIdInput = formElement ? formElement.querySelector('#selected-entity-id') : mainContent.querySelector('#selected-entity-id');
+                    const dynamicFieldsContainer = formElement ? formElement.querySelector('#dynamic-fields-container') : mainContent.querySelector('#dynamic-fields-container');
+
+                    if (!selectedEntityIdInput || !dynamicFieldsContainer) {
+                        console.error("Elementos necesarios no encontrados.");
+                        return;
+                    }
+
+                    const currentEntityId = selectedEntityIdInput.value;
+                    const isToggle = entityId === currentEntityId && dynamicFieldsContainer.innerHTML.trim() !== '';
+
+                    if (isToggle) {
+                        clickedButton.classList.remove('btn-primary');
+                        clickedButton.classList.add('btn-outline-primary');
+                        selectedEntityIdInput.value = '';
+                        this.loadDynamicFields('');
+                    } else {
+                        entityButtonContainer.querySelectorAll('.entity-btn').forEach(btn => {
+                            btn.classList.remove('btn-primary');
+                            btn.classList.add('btn-outline-primary');
+                        });
+
+                        clickedButton.classList.remove('btn-outline-primary');
+                        clickedButton.classList.add('btn-primary');
+
+                        selectedEntityIdInput.value = entityId;
+                        this.loadDynamicFields(entityId);
+                    }
+                }
+            };
+
+            entityButtonContainer.addEventListener('click', entityButtonContainer._entityClickHandler);
         }
     }
 };
