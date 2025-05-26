@@ -2,41 +2,66 @@
 
 ## Descripción
 
-PigmeaGmaoV2 es una aplicación web de Registro de Datos Genérico y Flexible. Permite a los usuarios definir sus propias estructuras de datos, registrar información según esas estructuras y visualizar reportes estadísticos básicos. La interfaz es moderna, responsiva, e intuitiva, con actualizaciones de UI en tiempo real sin recargar la página. Los datos se persisten en `localStorage`.
+PigmeaProducciónV2 es una aplicación web de Registro de Datos Genérico y Flexible con persistencia en **Firebase Realtime Database**. Permite a los usuarios definir sus propias estructuras de datos, registrar información según esas estructuras y visualizar reportes estadísticos avanzados. La interfaz es moderna, responsiva, e intuitiva, con actualizaciones de UI en tiempo real sin recargar la página.
 
 ## Características
 
 - **Administración de Entidades Principales**: Permite crear, ver, editar y eliminar categorías principales de lo que se registrará (ej., "Máquina de Coser", "Impresora 3D").
 - **Gestión de Campos Personalizados**: Permite crear, ver, editar y eliminar campos que se usarán en los formularios de registro.
-- **Asociación de Campos a Entidades**: Permite asignar/desasignar campos personalizados a cada entidad principal.
+- **Asociación de Campos a Entidades**: Permite asignar/desasignar campos personalizados a cada entidad principal con **funcionalidad de reordenamiento por arrastre**.
 - **Área de Registro**: Permite seleccionar una entidad principal y registrar datos dinámicamente según los campos asociados.
-- **Visualización de Registros Recientes**: Muestra una lista con los últimos registros guardados.
-- **Reportes Comparativos**: Genera gráficos comparativos para campos numéricos compartidos entre diferentes entidades.
-- **Exportación/Importación de Datos**: Permite exportar e importar datos en formato JSON.
-- **Eliminación de Registros**: Permite eliminar registros específicos.
-- **Ordenación de Campos Personalizados**: Permite cambiar el orden de los campos personalizados.
-- **Configuración de Ejes en Gráficos**: Permite cambiar el eje X en los gráficos comparativos.
+- **Visualización de Registros con Tabla Avanzada**: 
+  - Tabla paginada con búsqueda en tiempo real
+  - Ordenación por cualquier columna
+  - Selección de columnas personalizadas para mostrar campos específicos
+  - Filtros por entidad, fecha y grupos
+- **Reportes Comparativos Avanzados**: 
+  - Gráficos comparativos para campos numéricos y de selección
+  - Configuración de ejes horizontal y vertical personalizables
+  - Soporte para múltiples tipos de agregación (suma, promedio, conteo)
+  - Exportación de gráficos y datos
+- **Importación/Exportación Masiva**: 
+  - Descarga de plantillas CSV/Excel personalizadas
+  - Importación masiva con validación y previsualización
+  - Exportación de datos filtrados a CSV
+- **Calendario Interactivo**: Selección visual de rangos de fechas con arrastre
+- **Eliminación y Edición de Registros**: Gestión completa del ciclo de vida de registros
+- **Configuración Personalizable**: Nombres personalizados para entidades y registros en toda la aplicación
+- **Persistencia en Firebase**: Sincronización en tiempo real con fallback a localStorage
 
 ## Tecnologías Utilizadas
 
 - **HTML5**
-- **CSS3**
+- **CSS3** con **Bootstrap 5**
 - **JavaScript (ES6+)**
-- **Bootstrap 5**
+- **Firebase Realtime Database**
+- **Chart.js** para gráficos
+- **SortableJS** para funcionalidad de arrastre
 
 ## Instalación y Uso
 
+### Requisitos Previos
+- Cuenta de Firebase configurada
+- Proyecto Firebase con Realtime Database habilitado
+
+### Configuración
+
 1. Clona el repositorio:
     ```sh
-    git clone https://github.com/JhonyAlex/PigmeaGmaoV2.git
+    git clone https://github.com/tu-usuario/PigmeaProduccionV2.git
     ```
 
 2. Navega al directorio del proyecto:
     ```sh
-    cd PigmeaGmaoV2
+    cd PigmeaProduccionV2
     ```
 
-3. Abre el archivo `index.html` en tu navegador web.
+3. Configura Firebase:
+   - Crea un proyecto en [Firebase Console](https://console.firebase.google.com/)
+   - Habilita Realtime Database
+   - Copia la configuración de Firebase y actualiza `js/config/firebase-config.js`
+
+4. Abre el archivo `index.html` en tu navegador web.
 
 ## Estructura de Archivos
 
@@ -48,8 +73,10 @@ PigmeaGmaoV2 es una aplicación web de Registro de Datos Genérico y Flexible. P
 ├── js/
 │   ├── app.js              # Inicialización y lógica principal
 │   ├── router.js           # Gestión de navegación SPA
+│   ├── config/
+│   │   └── firebase-config.js # Configuración de Firebase
 │   ├── models/
-│   │   ├── storage.js      # Gestión de localStorage
+│   │   ├── storage.js      # Gestión de Firebase/localStorage
 │   │   ├── entity.js       # Modelo para entidades principales
 │   │   ├── field.js        # Modelo para campos personalizados
 │   │   └── record.js       # Modelo para los registros
@@ -61,49 +88,88 @@ PigmeaGmaoV2 es una aplicación web de Registro de Datos Genérico y Flexible. P
 │       ├── validation.js   # Validación de formularios
 │       ├── ui.js           # Utilidades de interfaz
 │       ├── export.js       # Importación/exportación
-│       └── charts.js       # Generación de gráficos
-└── lib/                    # Librería externa (Chart.js)
-    └── chart.min.js
+│       ├── charts.js       # Generación de gráficos
+│       └── mass-import.js  # Utilidades de importación masiva
+└── lib/                    # Librerías externas
+    ├── chart.min.js
+    ├── firebase/
+    └── sortable/
 ```
 
-## Funcionalidades
+## Funcionalidades Detalladas
 
 ### Administración/Configuración
 
 - **Gestión de Entidades Principales**:
-  - Crear, ver, editar y eliminar entidades.
+  - Crear, ver, editar y eliminar entidades con agrupación opcional
+  - Asignación de campos con reordenamiento visual por arrastre
 - **Gestión de Campos Personalizados**:
-  - Crear, ver, editar y eliminar campos.
-  - Definir nombre, tipo, opciones (para selección) y obligatoriedad.
-- **Asociación de Campos a Entidades**:
-  - Asignar/desasignar campos a entidades.
-  - Cambiar el orden de los campos personalizados.
+  - Tipos: texto, número, selección
+  - Configuración para uso en reportes y tablas
+  - Definición de campos como ejes de gráficos
 - **Configuración General**:
-  - Editar título y descripción que se mostrarán en el formulario de registro.
+  - Personalización de nombres de entidades y registros
+  - Configuración de títulos y descripciones
 
 ### Área de Registro
 
 - **Formulario Dinámico**:
-  - Seleccionar una entidad y mostrar campos dinámicamente.
-  - Validar campos obligatorios y numéricos.
-  - Guardar registro en `localStorage`.
-- **Visualización de Registros Recientes**:
-  - Mostrar últimos registros guardados.
-  - Eliminar registros específicos.
+  - Campos generados automáticamente según la entidad seleccionada
+  - Validación en tiempo real
+  - Guardado automático en Firebase
+- **Gestión de Registros**:
+  - Tabla con paginación, búsqueda y ordenación
+  - Edición individual y masiva
+  - Eliminación con confirmación
 
 ### Área de Reportes
 
-- **Filtros**:
-  - Filtrar datos por entidad y rango de fechas.
-- **Visualización Tabular**:
-  - Mostrar registros filtrados en una tabla.
-- **Reportes Comparativos**:
-  - Generar gráficos comparativos para campos numéricos compartidos.
-  - Cambiar el eje X y el tipo de gráfico.
+- **Filtros Avanzados**:
+  - Múltiples entidades simultáneas
+  - Rangos de fechas con calendario interactivo
+  - Filtros por grupos de entidades
+- **Visualización**:
+  - Tabla configurable con columnas personalizables
+  - Gráficos interactivos (barras, líneas, circular)
+  - Resúmenes estadísticos automáticos
+- **Exportación**:
+  - CSV con datos filtrados
+  - Plantillas de importación personalizadas
+
+## Configuración de Firebase
+
+El archivo `js/config/firebase-config.js` debe contener:
+
+```javascript
+const firebaseConfig = {
+    apiKey: "tu-api-key",
+    authDomain: "tu-proyecto.firebaseapp.com",
+    databaseURL: "https://tu-proyecto-default-rtdb.firebaseio.com/",
+    projectId: "tu-proyecto",
+    storageBucket: "tu-proyecto.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "tu-app-id"
+};
+```
+
+## Características Técnicas
+
+- **Arquitectura SPA** con enrutamiento del lado cliente
+- **Patrón MVC** con modelos especializados
+- **Persistencia híbrida** Firebase + localStorage
+- **Responsive Design** compatible con móviles
+- **Validación robusta** en frontend
+- **Gestión de errores** con fallbacks automáticos
 
 ## Contribución
 
-Las contribuciones son bienvenidas. Por favor, crea un fork del repositorio y envía un pull request con tus cambios.
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-caracteristica`)
+3. Commit tus cambios (`git commit -am 'Añade nueva característica'`)
+4. Push a la rama (`git push origin feature/nueva-caracteristica`)
+5. Crea un Pull Request
 
 ## Licencia
 
