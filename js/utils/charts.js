@@ -85,10 +85,14 @@ const ChartUtils = {
             canvas.chart.destroy();
         }
         
-        // Preparar datos del gráfico
-        const labels = reportData.entities.map(entity => entity.name);
-        const values = reportData.entities.map(entity => entity.value);
+        // Ordenar entidades alfabéticamente por nombre para consistencia
+        const sortedEntities = [...reportData.entities].sort((a, b) => a.name.localeCompare(b.name));
         
+        // Preparar datos del gráfico a partir de las entidades ordenadas
+        const labels = sortedEntities.map(entity => entity.name);
+        const values = sortedEntities.map(entity => entity.value);
+        const numBaseColors = this.chartColors.length;
+
         // Título según el tipo de agregación y campos (si no hay configuración personalizada)
         const horizontalFieldName = reportData.horizontalField ? reportData.horizontalField : 'Entidad';
         const title = reportData.aggregation === 'sum' 
@@ -141,16 +145,20 @@ const ChartUtils = {
             }
         }
         
+        // Asignar colores de forma consistente basada en el orden alfabético
+        const backgroundColors = sortedEntities.map((entity, index) => this.chartColors[index % numBaseColors]);
+        const borderColors = backgroundColors.map(bgColor => bgColor.replace('0.7', '1'));
+
         // Crear el gráfico
         const chart = new Chart(canvas, {
             type: type,
             data: {
                 labels: labels,
                 datasets: [{
-                    label: reportData.field,
+                    label: reportData.field || 'Valor', // Usar 'Valor' como fallback si field no está definido
                     data: values,
-                    backgroundColor: this.chartColors.slice(0, labels.length),
-                    borderColor: this.chartColors.map(color => color.replace('0.7', '1')),
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
                     borderWidth: 1
                 }]
             },
@@ -199,7 +207,10 @@ const ChartUtils = {
      * @returns {string} HTML de la tabla
      */
     createSummaryTable(reportData) {
-        const rows = reportData.entities.map(entity => {
+        // Ordenar entidades alfabéticamente por nombre para consistencia con el gráfico
+        const sortedEntities = [...reportData.entities].sort((a, b) => a.name.localeCompare(b.name));
+
+        const rows = sortedEntities.map(entity => {
             const formattedValue = this.formatNumber(entity.value);
             return `
                 <tr>
@@ -211,8 +222,8 @@ const ChartUtils = {
         });
         
         // Calcular total general
-        const totalValue = reportData.entities.reduce((sum, entity) => sum + entity.value, 0);
-        const totalCount = reportData.entities.reduce((sum, entity) => sum + entity.count, 0);
+        const totalValue = sortedEntities.reduce((sum, entity) => sum + entity.value, 0); // Suma sobre las entidades (ordenadas o no, el total es el mismo)
+        const totalCount = sortedEntities.reduce((sum, entity) => sum + entity.count, 0);
         
         // Determinar el título de la primera columna
         const entityHeaderTitle = reportData.horizontalField ? reportData.horizontalField : 'Entidad';
