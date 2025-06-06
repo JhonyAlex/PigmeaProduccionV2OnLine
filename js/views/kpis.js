@@ -9,11 +9,11 @@ const KPIsView = {
       operatorFieldId: null,
       shiftFieldId: null,
       machineFieldId: null,
-      speedFieldId: null,
-      timeFieldId: null,
-      rejectFieldId: null
+      timeFieldId: null
     },
-    filters: {}
+    filters: {},
+    comparison: { period: 'auto' },
+    lineRange: {}
   },
 
   charts: {},
@@ -49,9 +49,7 @@ const KPIsView = {
       this.config.mapping.operatorFieldId = guess('oper');
       this.config.mapping.shiftFieldId = guess('turno');
       this.config.mapping.machineFieldId = guess('maquin');
-      this.config.mapping.speedFieldId = guess('veloc');
       this.config.mapping.timeFieldId = guess('tiempo');
-      this.config.mapping.rejectFieldId = guess('recha');
     }
   },
 
@@ -70,13 +68,14 @@ const KPIsView = {
   render() {
     const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
     if (!container) return;
-
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 86400000);
     const fmt = d => d.toISOString().split('T')[0];
 
     const fromVal = this.config.filters.fromDate || fmt(weekAgo);
     const toVal = this.config.filters.toDate || fmt(today);
+    const lineFrom = this.config.lineRange.fromDate || fromVal;
+    const lineTo = this.config.lineRange.toDate || toVal;
 
     const numericFields = FieldModel.getNumericFields();
     const allFields = FieldModel.getAll();
@@ -108,6 +107,22 @@ const KPIsView = {
               <label class="form-label" for="kpi-machine">Máquina</label>
               <select id="kpi-machine" class="form-select"></select>
             </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label" for="kpi-compare-period">Comparar por</label>
+              <select id="kpi-compare-period" class="form-select form-select-sm">
+                <option value="auto">Auto</option>
+                <option value="day">Día</option>
+                <option value="week">Semana</option>
+                <option value="month">Mes</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="btn-group btn-group-sm" id="kpi-date-shortcuts" role="group">
+                <button type="button" class="btn btn-outline-secondary" data-range="last-week">Semana pasada</button>
+                <button type="button" class="btn btn-outline-secondary" data-range="last-month">Mes pasado</button>
+                <button type="button" class="btn btn-outline-secondary" data-range="year-current">Año actual</button>
+              </div>
+            </div>
             <div class="col-12 col-md-2">
               <button class="btn btn-primary w-100" type="submit">Aplicar</button>
             </div>
@@ -120,10 +135,20 @@ const KPIsView = {
 
         <div id="kpi-cards" class="row gy-3 mb-4"></div>
 
+        <div id="line-range-controls" class="d-flex justify-content-end gap-2 mb-2">
+          <input type="date" id="kpi-line-from" class="form-control form-control-sm" value="${lineFrom}">
+          <input type="date" id="kpi-line-to" class="form-control form-control-sm" value="${lineTo}">
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary line-shortcut" data-range="last-week">Semana pasada</button>
+            <button type="button" class="btn btn-outline-secondary line-shortcut" data-range="last-month">Mes pasado</button>
+            <button type="button" class="btn btn-outline-secondary line-shortcut" data-range="year-current">Año actual</button>
+          </div>
+        </div>
+
         <div id="kpi-charts" class="mb-4">
           <canvas id="kpi-bar-chart" class="mb-4" height="120"></canvas>
           <canvas id="kpi-line-chart" class="mb-4" height="120"></canvas>
-          <canvas id="kpi-pie-chart" height="120"></canvas>
+          <canvas id="kpi-pie-chart" height="120" style="max-width:400px;margin:0 auto;"></canvas>
         </div>
 
         <div id="kpi-comparison" class="table-responsive mb-4">
@@ -165,24 +190,10 @@ const KPIsView = {
               </select>
             </div>
             <div class="col">
-              <label class="form-label" for="cfg-speed">Campo Velocidad (m/h)</label>
-              <select id="cfg-speed" class="form-select">
-                <option value="">-- Sin definir --</option>
-                ${createOptions(numericFields, this.config.mapping.speedFieldId)}
-              </select>
-            </div>
-            <div class="col">
               <label class="form-label" for="cfg-time">Campo Tiempo por Pedido</label>
               <select id="cfg-time" class="form-select">
                 <option value="">-- Sin definir --</option>
                 ${createOptions(numericFields, this.config.mapping.timeFieldId)}
-              </select>
-            </div>
-            <div class="col">
-              <label class="form-label" for="cfg-reject">Campo Rechazo</label>
-              <select id="cfg-reject" class="form-select">
-                <option value="">-- Sin definir --</option>
-                ${createOptions(numericFields, this.config.mapping.rejectFieldId)}
               </select>
             </div>
             <div class="col-12">
@@ -253,9 +264,7 @@ const KPIsView = {
         'operatorFieldId',
         'shiftFieldId',
         'machineFieldId',
-        'speedFieldId',
-        'timeFieldId',
-        'rejectFieldId'
+        'timeFieldId'
       ];
       ids.forEach(id => {
         const input = document.getElementById(`cfg-${id.replace('FieldId','')}`);
@@ -264,6 +273,45 @@ const KPIsView = {
       this.saveConfig();
       this.populateFilterSelects();
       this.refresh();
+    });
+
+    document.getElementById('kpi-compare-period').addEventListener('change', e => {
+      this.config.comparison.period = e.target.value;
+      this.saveConfig();
+      this.refresh();
+    });
+
+    document.querySelectorAll('#kpi-date-shortcuts button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = this.getShortcutRange(btn.dataset.range);
+        document.getElementById('kpi-from').value = r.from;
+        document.getElementById('kpi-to').value = r.to;
+        this.config.filters.fromDate = r.from;
+        this.config.filters.toDate = r.to;
+        this.saveConfig();
+        this.refresh();
+      });
+    });
+
+    document.querySelectorAll('.line-shortcut').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = this.getShortcutRange(btn.dataset.range);
+        document.getElementById('kpi-line-from').value = r.from;
+        document.getElementById('kpi-line-to').value = r.to;
+        this.config.lineRange.fromDate = r.from;
+        this.config.lineRange.toDate = r.to;
+        this.saveConfig();
+        this.refresh();
+      });
+    });
+
+    ['kpi-line-from','kpi-line-to'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('change', () => {
+        this.config.lineRange[id === 'kpi-line-from' ? 'fromDate' : 'toDate'] = el.value;
+        this.saveConfig();
+        this.refresh();
+      });
     });
   },
 
@@ -322,23 +370,21 @@ const KPIsView = {
    */
   computeMetrics(records) {
     const map = this.config.mapping;
-    const sum = (fieldId) => KpiUtils.aggregateField(records, fieldId, 'sum');
-    const avg = (fieldId) => KpiUtils.aggregateField(records, fieldId, 'avg');
+    const sum = fieldId => KpiUtils.aggregateField(records, fieldId, 'sum');
+    const avg = fieldId => KpiUtils.aggregateField(records, fieldId, 'avg');
     const totalMeters = sum(map.metersFieldId);
-    const speedAvg = map.speedFieldId ? avg(map.speedFieldId) : 0;
     const timeAvg = map.timeFieldId ? avg(map.timeFieldId) : 0;
-    const rejects = map.rejectFieldId ? sum(map.rejectFieldId) : 0;
-    const rejectionRate = records.length ? (rejects / records.length) * 100 : 0;
+    const metersByMachine = this.groupByField(records, map.machineFieldId, map.metersFieldId);
+    const machinesUsed = Object.keys(metersByMachine).length;
 
     const metersByDay = KpiUtils.groupByPeriod(records, map.metersFieldId, 'day');
     const metersByShift = this.groupByField(records, map.shiftFieldId, map.metersFieldId);
     const metersByOperator = this.groupByField(records, map.operatorFieldId, map.metersFieldId);
-
     return {
       totalMeters,
-      speedAvg,
       timeAvg,
-      rejectionRate,
+      metersByMachine,
+      machinesUsed,
       metersByDay,
       metersByShift,
       metersByOperator
@@ -361,15 +407,46 @@ const KPIsView = {
   },
 
   /**
+
+   * Devuelve un rango de fechas predefinido.
+   */
+  getShortcutRange(type) {
+    const now = new Date();
+    const fmt = d => d.toISOString().split('T')[0];
+    let from, to;
+    switch (type) {
+      case 'last-week': {
+        const day = now.getDay() || 7;
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+        from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - 6);
+        break;
+      }
+      case 'last-month': {
+        from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        to = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      }
+      case 'year-current': {
+        from = new Date(now.getFullYear(), 0, 1);
+        to = now;
+        break;
+      }
+      default:
+        from = to = now;
+    }
+    return { from: fmt(from), to: fmt(to) };
+  },
+
+  /**
    * Muestra tarjetas con métricas clave.
    */
   renderCards(records) {
     const metrics = this.computeMetrics(records);
     const cardData = [
       { title: 'Total Metros Impresos', value: ChartUtils.formatNumber(metrics.totalMeters) },
-      { title: 'Velocidad Promedio (m/h)', value: ChartUtils.formatNumber(metrics.speedAvg) },
+
       { title: 'Tiempo Promedio por Pedido', value: ChartUtils.formatNumber(metrics.timeAvg) },
-      { title: 'Porcentaje de Rechazo', value: `${metrics.rejectionRate.toFixed(2)}%` }
+      { title: 'Máquinas Registradas', value: metrics.machinesUsed }
     ];
 
     const container = document.getElementById('kpi-cards');
@@ -393,6 +470,12 @@ const KPIsView = {
    */
   renderCharts(records) {
     const m = this.computeMetrics(records);
+
+    const lineRecords = RecordModel.filterMultiple({
+      fromDate: this.config.lineRange.fromDate || this.config.filters.fromDate,
+      toDate: this.config.lineRange.toDate || this.config.filters.toDate
+    });
+    const mLine = this.computeMetrics(lineRecords);
     const destroy = id => { if (this.charts[id]) { this.charts[id].destroy(); delete this.charts[id]; } };
     destroy('bar'); destroy('line'); destroy('pie');
 
@@ -406,9 +489,12 @@ const KPIsView = {
     });
 
     const ctxLine = document.getElementById('kpi-line-chart').getContext('2d');
+
+    const labelsLine = Object.keys(mLine.metersByDay).sort();
+    const dataLine = labelsLine.map(k => mLine.metersByDay[k].sum);
     this.charts.line = new Chart(ctxLine, {
       type: 'line',
-      data: { labels: labelsBar, datasets: [{ label: 'Evolución', data: dataBar, borderColor: 'rgb(75,192,192)', fill: false }] },
+      data: { labels: labelsLine, datasets: [{ label: 'Evolución', data: dataLine, borderColor: 'rgb(75,192,192)', fill: false }] },
       options: { responsive: true }
     });
 
@@ -430,7 +516,7 @@ const KPIsView = {
     const from = this.config.filters.fromDate;
     const to = this.config.filters.toDate;
     if (!from || !to || !map.metersFieldId) return;
-    const prev = KpiUtils.previousRange(from, to);
+    const prev = KpiUtils.previousRange(from, to, this.config.comparison.period);
     const prevRecords = RecordModel.filterMultiple({ fromDate: prev.from, toDate: prev.to });
     const currentVal = KpiUtils.aggregateField(records, map.metersFieldId, 'sum');
     const prevVal = KpiUtils.aggregateField(prevRecords, map.metersFieldId, 'sum');
@@ -456,9 +542,8 @@ const KPIsView = {
     const wsData = [
       ['Métrica', 'Valor'],
       ['Total Metros Impresos', metrics.totalMeters],
-      ['Velocidad Promedio (m/h)', metrics.speedAvg],
       ['Tiempo Promedio por Pedido', metrics.timeAvg],
-      ['Porcentaje de Rechazo', metrics.rejectionRate]
+      ['Máquinas Registradas', metrics.machinesUsed]
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, 'KPIs');
@@ -480,9 +565,8 @@ const KPIsView = {
     const rows = [
       ['Métrica', 'Valor'],
       ['Total Metros Impresos', metrics.totalMeters.toFixed(2)],
-      ['Velocidad Promedio (m/h)', metrics.speedAvg.toFixed(2)],
       ['Tiempo Promedio por Pedido', metrics.timeAvg.toFixed(2)],
-      ['Porcentaje de Rechazo', metrics.rejectionRate.toFixed(2) + '%']
+      ['Máquinas Registradas', metrics.machinesUsed]
     ];
     doc.autoTable({ head: [rows[0]], body: rows.slice(1) });
     doc.save('kpis.pdf');
