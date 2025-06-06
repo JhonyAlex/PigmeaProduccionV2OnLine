@@ -74,14 +74,31 @@ const KpiUtils = {
    * @param {string} to - Fecha final YYYY-MM-DD.
    * @returns {Object} Rango anterior {from, to}.
    */
-  previousRange(from, to) {
+  previousRange(from, to, period = 'auto') {
     const f = new Date(from);
     const t = new Date(to);
-    const duration = t.getTime() - f.getTime();
-    const prevTo = new Date(f.getTime() - 86400000);
-    const prevFrom = new Date(prevTo.getTime() - duration);
-    const format = d => d.toISOString().split('T')[0];
-    return { from: format(prevFrom), to: format(prevTo) };
+    const fmt = d => d.toISOString().split('T')[0];
+    let prevFrom, prevTo;
+    switch (period) {
+      case 'day':
+        prevTo = new Date(f.getTime() - 86400000);
+        prevFrom = new Date(prevTo);
+        break;
+      case 'week':
+        prevTo = new Date(f.getTime() - 86400000);
+        prevFrom = new Date(f.getTime() - 7 * 86400000);
+        break;
+      case 'month':
+        prevFrom = new Date(f);
+        prevFrom.setMonth(prevFrom.getMonth() - 1, 1);
+        prevTo = new Date(prevFrom.getFullYear(), prevFrom.getMonth() + 1, 0);
+        break;
+      default:
+        const duration = t.getTime() - f.getTime();
+        prevTo = new Date(f.getTime() - 86400000);
+        prevFrom = new Date(prevTo.getTime() - duration);
+    }
+    return { from: fmt(prevFrom), to: fmt(prevTo) };
   }
 };
 
