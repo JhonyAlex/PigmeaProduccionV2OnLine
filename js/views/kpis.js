@@ -36,7 +36,16 @@ const KPIsView = {
   loadConfig() {
     const cfg = StorageService.getConfig();
     if (cfg.kpiConfig) {
-      this.config = cfg.kpiConfig;
+      const def = this.config;
+      const saved = cfg.kpiConfig;
+      this.config = {
+        ...def,
+        ...saved,
+        mapping: { ...def.mapping, ...(saved.mapping || {}) },
+        filters: { ...def.filters, ...(saved.filters || {}) },
+        comparison: { ...def.comparison, ...(saved.comparison || {}) },
+        lineRange: { ...def.lineRange, ...(saved.lineRange || {}) }
+      };
     } else {
       // Intentar inferir campos por nombre
       const guess = name => {
