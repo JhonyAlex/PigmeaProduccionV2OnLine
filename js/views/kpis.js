@@ -68,7 +68,6 @@ const KPIsView = {
   render() {
     const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
     if (!container) return;
-
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 86400000);
     const fmt = d => d.toISOString().split('T')[0];
@@ -381,7 +380,6 @@ const KPIsView = {
     const metersByDay = KpiUtils.groupByPeriod(records, map.metersFieldId, 'day');
     const metersByShift = this.groupByField(records, map.shiftFieldId, map.metersFieldId);
     const metersByOperator = this.groupByField(records, map.operatorFieldId, map.metersFieldId);
-
     return {
       totalMeters,
       timeAvg,
@@ -409,6 +407,7 @@ const KPIsView = {
   },
 
   /**
+
    * Devuelve un rango de fechas predefinido.
    */
   getShortcutRange(type) {
@@ -445,6 +444,7 @@ const KPIsView = {
     const metrics = this.computeMetrics(records);
     const cardData = [
       { title: 'Total Metros Impresos', value: ChartUtils.formatNumber(metrics.totalMeters) },
+
       { title: 'Tiempo Promedio por Pedido', value: ChartUtils.formatNumber(metrics.timeAvg) },
       { title: 'Máquinas Registradas', value: metrics.machinesUsed }
     ];
@@ -470,12 +470,12 @@ const KPIsView = {
    */
   renderCharts(records) {
     const m = this.computeMetrics(records);
+
     const lineRecords = RecordModel.filterMultiple({
       fromDate: this.config.lineRange.fromDate || this.config.filters.fromDate,
       toDate: this.config.lineRange.toDate || this.config.filters.toDate
     });
     const mLine = this.computeMetrics(lineRecords);
-
     const destroy = id => { if (this.charts[id]) { this.charts[id].destroy(); delete this.charts[id]; } };
     destroy('bar'); destroy('line'); destroy('pie');
 
@@ -489,6 +489,7 @@ const KPIsView = {
     });
 
     const ctxLine = document.getElementById('kpi-line-chart').getContext('2d');
+
     const labelsLine = Object.keys(mLine.metersByDay).sort();
     const dataLine = labelsLine.map(k => mLine.metersByDay[k].sum);
     this.charts.line = new Chart(ctxLine, {
