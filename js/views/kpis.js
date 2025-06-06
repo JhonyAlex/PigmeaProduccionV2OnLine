@@ -77,7 +77,6 @@ const KPIsView = {
   render() {
     const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
     if (!container) return;
-
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 86400000);
     const fmt = d => d.toISOString().split('T')[0];
@@ -338,6 +337,23 @@ const KPIsView = {
   },
 
   /**
+=======
+  },
+
+  /**
+   * Suscribe a los cambios de datos para refrescar en tiempo real.
+   */
+  setupRealtime() {
+    if (this.dataSubscriber) this.dataSubscriber();
+    this.dataSubscriber = StorageService.subscribeToDataChanges(() => {
+      if (Router.currentRoute === 'kpis') {
+        this.refresh();
+      }
+    });
+  },
+
+  /**
+
    * Obtiene los filtros actuales.
    */
   getFilters() {
@@ -390,7 +406,6 @@ const KPIsView = {
     const metersByDay = KpiUtils.groupByPeriod(records, map.metersFieldId, 'day');
     const metersByShift = this.groupByField(records, map.shiftFieldId, map.metersFieldId);
     const metersByOperator = this.groupByField(records, map.operatorFieldId, map.metersFieldId);
-
     return {
       totalMeters,
       timeAvg,
@@ -418,6 +433,39 @@ const KPIsView = {
   },
 
   /**
+   * Devuelve un rango de fechas predefinido.
+   */
+  getShortcutRange(type) {
+    const now = new Date();
+    const fmt = d => d.toISOString().split('T')[0];
+    let from, to;
+    switch (type) {
+      case 'last-week': {
+        const day = now.getDay() || 7;
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+        from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - 6);
+        break;
+      }
+      case 'last-month': {
+        from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        to = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      }
+      case 'year-current': {
+        from = new Date(now.getFullYear(), 0, 1);
+        to = now;
+        break;
+      }
+      default:
+        from = to = now;
+    }
+    return { from: fmt(from), to: fmt(to) };
+  },
+
+  /**
+
+  /**
+
    * Devuelve un rango de fechas predefinido.
    */
   getShortcutRange(type) {
