@@ -36,7 +36,16 @@ const KPIsView = {
   loadConfig() {
     const cfg = StorageService.getConfig();
     if (cfg.kpiConfig) {
-      this.config = cfg.kpiConfig;
+      const def = this.config;
+      const saved = cfg.kpiConfig;
+      this.config = {
+        ...def,
+        ...saved,
+        mapping: { ...def.mapping, ...(saved.mapping || {}) },
+        filters: { ...def.filters, ...(saved.filters || {}) },
+        comparison: { ...def.comparison, ...(saved.comparison || {}) },
+        lineRange: { ...def.lineRange, ...(saved.lineRange || {}) }
+      };
     } else {
       // Intentar inferir campos por nombre
       const guess = name => {
@@ -328,6 +337,23 @@ const KPIsView = {
   },
 
   /**
+=======
+  },
+
+  /**
+   * Suscribe a los cambios de datos para refrescar en tiempo real.
+   */
+  setupRealtime() {
+    if (this.dataSubscriber) this.dataSubscriber();
+    this.dataSubscriber = StorageService.subscribeToDataChanges(() => {
+      if (Router.currentRoute === 'kpis') {
+        this.refresh();
+      }
+    });
+  },
+
+  /**
+
    * Obtiene los filtros actuales.
    */
   getFilters() {
@@ -407,6 +433,38 @@ const KPIsView = {
   },
 
   /**
+   * Devuelve un rango de fechas predefinido.
+   */
+  getShortcutRange(type) {
+    const now = new Date();
+    const fmt = d => d.toISOString().split('T')[0];
+    let from, to;
+    switch (type) {
+      case 'last-week': {
+        const day = now.getDay() || 7;
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+        from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - 6);
+        break;
+      }
+      case 'last-month': {
+        from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        to = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      }
+      case 'year-current': {
+        from = new Date(now.getFullYear(), 0, 1);
+        to = now;
+        break;
+      }
+      default:
+        from = to = now;
+    }
+    return { from: fmt(from), to: fmt(to) };
+  },
+
+  /**
+
+  /**
 
    * Devuelve un rango de fechas predefinido.
    */
@@ -444,7 +502,6 @@ const KPIsView = {
     const metrics = this.computeMetrics(records);
     const cardData = [
       { title: 'Total Metros Impresos', value: ChartUtils.formatNumber(metrics.totalMeters) },
-
       { title: 'Tiempo Promedio por Pedido', value: ChartUtils.formatNumber(metrics.timeAvg) },
       { title: 'Máquinas Registradas', value: metrics.machinesUsed }
     ];
@@ -470,12 +527,12 @@ const KPIsView = {
    */
   renderCharts(records) {
     const m = this.computeMetrics(records);
-
     const lineRecords = RecordModel.filterMultiple({
       fromDate: this.config.lineRange.fromDate || this.config.filters.fromDate,
       toDate: this.config.lineRange.toDate || this.config.filters.toDate
     });
     const mLine = this.computeMetrics(lineRecords);
+
     const destroy = id => { if (this.charts[id]) { this.charts[id].destroy(); delete this.charts[id]; } };
     destroy('bar'); destroy('line'); destroy('pie');
 
@@ -489,7 +546,6 @@ const KPIsView = {
     });
 
     const ctxLine = document.getElementById('kpi-line-chart').getContext('2d');
-
     const labelsLine = Object.keys(mLine.metersByDay).sort();
     const dataLine = labelsLine.map(k => mLine.metersByDay[k].sum);
     this.charts.line = new Chart(ctxLine, {
