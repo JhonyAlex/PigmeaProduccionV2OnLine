@@ -50,7 +50,8 @@ const FieldModel = {
         
         const newField = {
             id: 'field_' + Date.now(),
-            ...fieldData
+            ...fieldData,
+            dailySum: !!fieldData.dailySum
         };
         
         data.fields.push(newField);
@@ -84,7 +85,8 @@ const FieldModel = {
             isColumn5: !!fieldData.isColumn5,
             useForComparativeReports: !!fieldData.useForComparativeReports,
             isHorizontalAxis: !!fieldData.isHorizontalAxis,
-            isCompareField: !!fieldData.isCompareField
+            isCompareField: !!fieldData.isCompareField,
+            dailySum: !!fieldData.dailySum
         };
         
         StorageService.saveData(data);
@@ -132,9 +134,18 @@ const FieldModel = {
      */
     getNumericFields() {
         const fields = this.getAll() || [];
-        return fields.filter(field => 
-            field && 
+        return fields.filter(field =>
+            field &&
             field.type === 'number'
         );
+    },
+
+    /**
+     * Devuelve el campo marcado para mostrar suma diaria
+     * @returns {Object|null} Campo con dailySum activo
+     */
+    getDailySumField() {
+        const fields = this.getAll() || [];
+        return fields.find(f => f.dailySum) || null;
     }
 };
