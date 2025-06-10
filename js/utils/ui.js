@@ -144,7 +144,8 @@ const UIUtils = {
                 break;
                 
             case 'select':
-                const options = field.options.map(option => 
+                const sortedOptions = [...field.options].sort(UIUtils.sortSelectOptions);
+                const options = sortedOptions.map(option =>
                     `<option value="${option}" ${option === value ? 'selected' : ''}>${option}</option>`
                 ).join('');
                 
@@ -325,6 +326,45 @@ const UIUtils = {
             document.removeEventListener('click', handleOutsideClick);
             searchBox.removeEventListener('click', stopPropagation);
         };
+    },
+
+    /**
+     * Devuelve el HTML de un select con buscador integrado.
+     * @param {string} id ID del select
+     * @param {string} optionsHTML Opciones internas ya formateadas
+     * @param {string} classes Clases CSS adicionales para el select
+     * @param {string} requiredAttr Atributo required si corresponde
+     * @returns {string} HTML del componente
+     */
+    createSearchableSelect(id, optionsHTML, classes = 'form-select', requiredAttr = '') {
+        return `
+            <div class="select-with-search">
+                <select id="${id}" class="${classes} searchable-select" ${requiredAttr}>
+                    ${optionsHTML}
+                </select>
+                <div class="select-search-box d-none">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control select-search-input" placeholder="Buscar...">
+                    </div>
+                    <div class="select-search-options"></div>
+                </div>
+            </div>`;
+    },
+
+    /**
+     * Ordena opciones alfabética o numéricamente según corresponda.
+     * @param {string} a primera opción
+     * @param {string} b segunda opción
+     * @returns {number} Resultado de la comparación
+     */
+    sortSelectOptions(a, b) {
+        const numA = parseFloat(a);
+        const numB = parseFloat(b);
+        const isNumA = !isNaN(numA);
+        const isNumB = !isNaN(numB);
+        if (isNumA && isNumB) return numA - numB;
+        return a.localeCompare(b, 'es', { sensitivity: 'accent' });
     },
     
     getEntityName(lowercase = false, plural = false) {
