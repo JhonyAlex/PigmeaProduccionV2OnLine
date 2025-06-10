@@ -86,7 +86,9 @@ const FieldModel = {
             dailyProgressRef: !!fieldData.dailyProgressRef,
             active: fieldData.hasOwnProperty('active') ? !!fieldData.active : true,
             options: fieldData.type === 'select'
+
                 ? this._normalizeOptions(fieldData.options)
+
                 : []
         };
         
@@ -114,7 +116,9 @@ const FieldModel = {
             type: fieldData.type,
             required: !!fieldData.required,
             options: fieldData.type === 'select'
+
                 ? this._normalizeOptions(fieldData.options)
+
                 : [],
             // Nuevas propiedades
             useForRecordsTable: !!fieldData.useForRecordsTable,
