@@ -114,6 +114,7 @@ const AdminView = {
                                                 <th>Nombre</th>
                                                 <th>Campos Asignados</th>
                                                 <th>Ref. Progreso</th>
+                                                <th>Activo</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -216,9 +217,10 @@ const AdminView = {
                                                 <th>Opciones</th>
                                                 <th>Para Reportes</th>
                                                 <th>Para Tabla</th>
-                                                <th>Suma Diaria</th>
-                                                <th>Ref. Progreso</th>
-                                                <th>Acciones</th>
+                                               <th>Suma Diaria</th>
+                                               <th>Ref. Progreso</th>
+                                                <th>Activo</th>
+                                               <th>Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody id="fields-list">
@@ -367,6 +369,11 @@ const AdminView = {
         const noEntitiesMessage = document.getElementById('no-entities-message');
         const entitiesTableContainer = document.getElementById('entities-table-container');
         const entitiesList = document.getElementById('entities-list');
+
+        // Si la vista aún no está renderizada, salir sin hacer nada
+        if (!entitiesContainer || !noEntitiesMessage || !entitiesTableContainer || !entitiesList) {
+            return;
+        }
         
         // Mostrar mensaje si no hay entidades
         if (entities.length === 0) {
@@ -390,11 +397,13 @@ const AdminView = {
 
             const progressIndicator = entity.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
 
+            const activeIndicator = entity.active !== false ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>';
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${entity.name}</td>
                 <td>${fieldNames}</td>
                 <td class="text-center">${progressIndicator}</td>
+                <td class="text-center">${activeIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-primary assign-fields" data-entity-id="${entity.id}">
                         Asignar Campos
@@ -443,6 +452,10 @@ const AdminView = {
         const noFieldsMessage = document.getElementById('no-fields-message');
         const fieldsTableContainer = document.getElementById('fields-table-container');
         const fieldsList = document.getElementById('fields-list');
+
+        if (!fieldsContainer || !noFieldsMessage || !fieldsTableContainer || !fieldsList) {
+            return;
+        }
         
         // Mostrar mensaje si no hay campos
         if (fields.length === 0) {
@@ -474,7 +487,7 @@ const AdminView = {
             // Formatear opciones (solo para tipo selección)
             let options = '';
             if (field.type === 'select') {
-                options = field.options.join(', ');
+                options = field.options.map(opt => typeof opt === 'string' ? opt : opt.value).join(', ');
             } else {
                 options = '-';
             }
@@ -507,6 +520,7 @@ const AdminView = {
             const dailySumIndicator = field.dailySum ? '<span class="badge bg-primary">Sí</span>' : '-';
             const progressRefIndicator = field.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
 
+            const activeIndicator = field.active !== false ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>';
             row.innerHTML = `
                 <td>${field.name}</td>
                 <td>${fieldType}</td>
@@ -516,6 +530,7 @@ const AdminView = {
                 <td class="text-center">${tableIndicator}</td>
                 <td class="text-center">${dailySumIndicator}</td>
                 <td class="text-center">${progressRefIndicator}</td>
+                <td class="text-center">${activeIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-outline-primary edit-field" data-field-id="${field.id}">
                         Editar
@@ -590,6 +605,7 @@ const AdminView = {
         const entityNameInput = document.getElementById('entity-name');
         const entityGroupInput = document.getElementById('entity-group');
         const dailyProgressRefCheck = document.getElementById('entity-daily-progress-ref');
+        const entityActiveCheck = document.getElementById('entity-active');
         const groupsDatalist = document.getElementById('existing-groups');
         
         // Obtener nombre personalizado
@@ -618,12 +634,14 @@ const AdminView = {
             entityNameInput.value = entity.name;
             entityGroupInput.value = entity.group || '';
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = entity.dailyProgressRef || false;
+            if (entityActiveCheck) entityActiveCheck.checked = entity.active !== false;
         } else {
             // Modo creación
             modalTitle.textContent = `Nueva ${entityName} Principal`;
             entityIdInput.value = '';
             entityGroupInput.value = '';
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
+            if (entityActiveCheck) entityActiveCheck.checked = true;
         }
         
         modal.show();
@@ -671,6 +689,7 @@ const AdminView = {
         const entityName = document.getElementById('entity-name').value;
         const entityGroup = document.getElementById('entity-group').value.trim();
         const dailyProgressRef = document.getElementById('entity-daily-progress-ref').checked;
+        const entityActive = document.getElementById('entity-active').checked;
         
         // Obtener el nombre personalizado para entidad
         const config = StorageService.getConfig();
@@ -682,11 +701,12 @@ const AdminView = {
             result = EntityModel.update(entityId, {
                 name: entityName,
                 group: entityGroup,
-                dailyProgressRef: dailyProgressRef
+                dailyProgressRef: dailyProgressRef,
+                active: entityActive
             });
         } else {
             // Crear nueva entidad con la bandera indicada
-            result = EntityModel.create(entityName, entityGroup, dailyProgressRef);
+            result = EntityModel.create(entityName, entityGroup, dailyProgressRef, entityActive);
         }
 
         if (dailyProgressRef && result) {
@@ -778,12 +798,16 @@ const AdminView = {
         const isCompareFieldCheck = document.getElementById('field-is-compare-field');
         const dailySumCheck = document.getElementById('field-daily-sum');
         const dailyProgressRefCheck = document.getElementById('field-daily-progress-ref');
+        const fieldActiveCheck = document.getElementById('field-active');
         
         // Limpiar formulario
         document.getElementById('fieldForm').reset();
         optionsList.innerHTML = `
-            <div class="input-group mb-2">
-                <input type="text" class="form-control field-option" placeholder="Opción">
+            <div class="input-group mb-2 option-item">
+                <input type="text" class="form-control field-option-value" placeholder="Opción">
+                <div class="input-group-text">
+                    <input class="form-check-input mt-0 option-active" type="checkbox" checked title="Activo">
+                </div>
                 <button type="button" class="btn btn-outline-danger remove-option">×</button>
             </div>
         `;
@@ -850,7 +874,8 @@ const AdminView = {
             // Cargar opciones existentes
             if (field.type === 'select' && field.options.length > 0) {
                 optionsList.innerHTML = '';
-                field.options.forEach(option => {
+                field.options.forEach(opt => {
+                    const option = typeof opt === 'string' ? { value: opt, active: true } : opt;
                     this.addOptionInput(option);
                 });
             }
@@ -878,6 +903,7 @@ const AdminView = {
             if (dailyProgressRefCheck) {
                 dailyProgressRefCheck.checked = field.dailyProgressRef || false;
             }
+            if (fieldActiveCheck) fieldActiveCheck.checked = field.active !== false;
         } else {
             // Modo creación
             modalTitle.textContent = 'Nuevo Campo Personalizado';
@@ -886,6 +912,7 @@ const AdminView = {
             if (dailySumCheck) dailySumCheck.checked = false;
 
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
+            if (fieldActiveCheck) fieldActiveCheck.checked = true;
 
         }
         
@@ -934,12 +961,15 @@ const AdminView = {
      * Agrega un input para una opción en el modal de campo
      * @param {string} value Valor inicial (opcional)
      */
-    addOptionInput(value = '') {
+    addOptionInput(option = { value: '', active: true }) {
         const optionsList = document.getElementById('options-list');
         const optionDiv = document.createElement('div');
-        optionDiv.className = 'input-group mb-2';
+        optionDiv.className = 'input-group mb-2 option-item';
         optionDiv.innerHTML = `
-            <input type="text" class="form-control field-option" placeholder="Opción" value="${value}">
+            <input type="text" class="form-control field-option-value" placeholder="Opción" value="${option.value}">
+            <div class="input-group-text">
+                <input class="form-check-input mt-0 option-active" type="checkbox" ${option.active ? 'checked' : ''} title="Activo">
+            </div>
             <button type="button" class="btn btn-outline-danger remove-option">×</button>
         `;
         
@@ -992,17 +1022,19 @@ const AdminView = {
         const dailySum = document.getElementById('field-daily-sum').checked;
 
         const dailyProgressRef = document.getElementById('field-daily-progress-ref').checked;
+        const fieldActive = document.getElementById('field-active').checked;
 
     
         // Recolectar opciones si es tipo selección
         let options = [];
         if (fieldType === 'select') {
-            const optionInputs = document.querySelectorAll('.field-option');
-            optionInputs.forEach(input => {
-                const value = input.value.trim();
-                if (value) options.push(value);
+            const optionItems = document.querySelectorAll('#options-list .option-item');
+            optionItems.forEach(div => {
+                const value = div.querySelector('.field-option-value').value.trim();
+                const active = div.querySelector('.option-active').checked;
+                if (value) options.push({ value, active });
             });
-    
+
             // Validar que haya al menos una opción
             if (options.length === 0) {
                 UIUtils.showAlert('Debe agregar al menos una opción para el tipo Selección', 'warning', document.querySelector('.modal-body'));
@@ -1084,7 +1116,8 @@ const AdminView = {
             isHorizontalAxis: isHorizontalAxis,
             isCompareField: isCompareField,
             dailySum: dailySum,
-            dailyProgressRef: dailyProgressRef
+            dailyProgressRef: dailyProgressRef,
+            active: fieldActive
 
         };
     

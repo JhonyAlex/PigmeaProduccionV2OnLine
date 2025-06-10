@@ -893,7 +893,7 @@ const ReportsView = {
                 if (formattedDate.includes(searchText)) return true;
 
                 // Verificar en los datos del registro (incluyendo campos de columnas seleccionadas)
-                const fields = FieldModel.getAll(); // Obtener todos para buscar por nombre
+                const fields = FieldModel.getActive(); // Obtener todos para buscar por nombre
 
                 // Comprobar valores de las columnas seleccionadas
                 const col1Value = this.getFieldValue(record, this.selectedColumns.field1, fields);
@@ -953,7 +953,7 @@ const ReportsView = {
         const multiplier = direction === 'asc' ? 1 : -1;
 
         // Obtener todos los campos una vez para optimizar
-        const allFields = FieldModel.getAll();
+        const allFields = FieldModel.getActive();
 
         return [...records].sort((a, b) => {
             let valueA, valueB;
@@ -1200,7 +1200,7 @@ const ReportsView = {
         if (!hasRecords) return;
 
         // Obtener todos los campos una vez para optimizar
-        const allFields = FieldModel.getAll();
+        const allFields = FieldModel.getActive();
 
         // Renderizar cada registro
         records.forEach(record => {
@@ -1278,7 +1278,7 @@ const ReportsView = {
 
         const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
         const fields = FieldModel.getByIds(Object.keys(record.data)); // Campos usados en este registro
-        const allFields = FieldModel.getAll(); // Todos los campos para el selector de tipo
+        const allFields = FieldModel.getActive(); // Todos los campos para el selector de tipo
         // Obtener nombre personalizado de la entidad
         const config = StorageService.getConfig();
         const entityName = config.entityName || 'Entidad';
@@ -1446,7 +1446,7 @@ const ReportsView = {
             if (timestampDisplay) timestampDisplay.style.display = 'none';
             if (timestampEdit) timestampEdit.style.display = 'block';
 
-            const allFields = FieldModel.getAll();
+            const allFields = FieldModel.getActive();
 
             modalElement.querySelectorAll('#record-fields-container tbody tr').forEach(row => {
                 const displayCell = row.querySelector('.field-value-display');
@@ -2673,10 +2673,10 @@ const ReportsView = {
                 return;
             }
 
-            const entities = EntityModel.getAll();
+            const entities = EntityModel.getActive();
             // Mostrar todos los campos, no solo los numéricos
-            const allFields = FieldModel.getAll();
-            const sharedFields = FieldModel.getAll();
+            const allFields = FieldModel.getActive();
+            const sharedFields = FieldModel.getActive();
 
             // Formatear fechas
             const lastMonth = new Date();
@@ -2687,17 +2687,18 @@ const ReportsView = {
             const config = StorageService.getConfig();
             const entityName = config.entityName || 'Entidad';
 
-            const column3Field = FieldModel.getAll().find(field => field.isColumn3);
-            const column4Field = FieldModel.getAll().find(field => field.isColumn4);
-            const column5Field = FieldModel.getAll().find(field => field.isColumn5);
+            const activeFields = FieldModel.getActive();
+            const column3Field = activeFields.find(field => field.isColumn3);
+            const column4Field = activeFields.find(field => field.isColumn4);
+            const column5Field = activeFields.find(field => field.isColumn5);
 
             // Actualiza SelectedColumns al cargar si hay campos marcados
             this.selectedColumns.field1 = column3Field ? column3Field.id : '';
             this.selectedColumns.field2 = column4Field ? column4Field.id : '';
             this.selectedColumns.field3 = column5Field ? column5Field.id : '';
 
-            const horizontalAxisField = FieldModel.getAll().find(field => field.isHorizontalAxis);
-            const compareField = FieldModel.getAll().find(field => field.isCompareField);
+            const horizontalAxisField = activeFields.find(field => field.isHorizontalAxis);
+            const compareField = activeFields.find(field => field.isCompareField);
 
             // --- HTML Template Reorganizado ---
             let filtersHtml = '';
@@ -2783,7 +2784,7 @@ const ReportsView = {
                                                     
                                                     ${(() => {
                                                         // Obtener todos los grupos de entidades
-                                                        const groups = EntityModel.getAllGroups();
+                                                        const groups = EntityModel.getActiveGroups();
                                                         if (groups.length === 0) return ''; // No mostrar sección si no hay grupos
                                                         
                                                         return `
@@ -3101,7 +3102,7 @@ const ReportsView = {
                 optionsSelect.innerHTML = '<option value="">Todas las entidades</option>';
                 
                 // Cargar todas las entidades disponibles
-                const entities = EntityModel.getAll();
+                const entities = EntityModel.getActive();
                 console.log("Entidades disponibles:", entities.length);
                 
                 if (entities && entities.length > 0) {
@@ -3160,9 +3161,11 @@ const ReportsView = {
             
             // Añadir las opciones del campo select
             field.options.forEach(option => {
+                const opt = typeof option === 'object' ? option : { value: option, active: true };
+                if (opt.active === false) return;
                 const optElement = document.createElement('option');
-                optElement.value = option;
-                optElement.textContent = option;
+                optElement.value = opt.value;
+                optElement.textContent = opt.value;
                 optionsSelect.appendChild(optElement);
             });
             
@@ -3180,7 +3183,7 @@ const ReportsView = {
             
             // Obtener todos los campos disponibles excepto el seleccionado en eje horizontal
             const horizontalFieldId = horizontalFieldSelect.value;
-            const allFields = FieldModel.getAll();
+            const allFields = FieldModel.getActive();
             
             // Filtrar campos relevantes para análisis (numéricos, fechas, selects)
             const relevantFields = allFields.filter(field => 
@@ -3335,7 +3338,7 @@ const ReportsView = {
     autoGenerateReport() {
         try {
             // Verificar si hay campos disponibles para generar un reporte
-            const allFields = FieldModel.getAll();
+            const allFields = FieldModel.getActive();
             if (allFields.length === 0) {
                 console.log("No hay campos para generar reporte automático");
                 return; // No hay campos para generar reporte
@@ -3355,7 +3358,7 @@ const ReportsView = {
                 });
                 
                 // Obtener campos marcados para reportes comparativos
-                const compareField = FieldModel.getAll().find(field => field.isCompareField);
+                const compareField = FieldModel.getActive().find(field => field.isCompareField);
 
                 if (compareField) {
                     // Si hay un campo marcado para comparar, seleccionarlo
