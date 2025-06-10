@@ -698,6 +698,7 @@ const RegisterView = {
                 this.loadRecentRecords();
 
                 // Actualizar indicador de suma diaria
+
                 this.showDailySumProgress(useCustomDate ? customDate : new Date(), newRecord);
 
                 // Mostrar mensaje
@@ -840,6 +841,7 @@ const RegisterView = {
      * Muestra el progreso diario del campo configurado
      * @param {Date} date Fecha para calcular la suma
      */
+
     showDailySumProgress(date, record) {
         const indicator = document.getElementById('daily-sum-indicator');
         if (!indicator) return;

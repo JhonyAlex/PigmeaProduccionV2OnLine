@@ -51,6 +51,7 @@ const FieldModel = {
         const newField = {
             id: 'field_' + Date.now(),
             ...fieldData,
+
             dailySum: !!fieldData.dailySum,
             dailyProgressRef: !!fieldData.dailyProgressRef
         };

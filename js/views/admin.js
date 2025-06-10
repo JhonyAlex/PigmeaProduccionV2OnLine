@@ -469,7 +469,6 @@ const AdminView = {
 
             const dailySumIndicator = field.dailySum ? '<span class="badge bg-primary">Sí</span>' : '-';
             const progressRefIndicator = field.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
-
             row.innerHTML = `
                 <td>${field.name}</td>
                 <td>${fieldType}</td>
@@ -853,6 +852,7 @@ const AdminView = {
             if (dailySumCheck) {
                 dailySumCheck.checked = field.dailySum || false;
             }
+
             if (dailyProgressRefCheck) {
                 dailyProgressRefCheck.checked = field.dailyProgressRef || false;
             }
@@ -966,6 +966,7 @@ const AdminView = {
         const isHorizontalAxis = document.getElementById('field-is-horizontal-axis').checked;
         const isCompareField = document.getElementById('field-is-compare-field').checked;
         const dailySum = document.getElementById('field-daily-sum').checked;
+
         const dailyProgressRef = document.getElementById('field-daily-progress-ref').checked;
     
         // Recolectar opciones si es tipo selección
