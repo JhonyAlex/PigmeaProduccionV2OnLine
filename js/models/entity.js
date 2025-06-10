@@ -25,9 +25,10 @@ const EntityModel = {
      * Crea una nueva entidad
      * @param {string} name Nombre de la entidad
      * @param {string} group Nombre del grupo de la entidad (opcional)
+     * @param {boolean} [dailyProgressRef=false] Si la entidad es referencia para el progreso diario
      * @returns {Object} Entidad creada
      */
-    create(name, group = '') {
+    create(name, group = '', dailyProgressRef = false) {
         const data = StorageService.getData();
         
         // Asegurarse de que data.entities existe
@@ -39,7 +40,8 @@ const EntityModel = {
             id: 'entity_' + Date.now(),
             name: name,
             group: group,
-            fields: [] // IDs de campos asignados
+            fields: [], // IDs de campos asignados
+            dailyProgressRef: !!dailyProgressRef
         };
         
         data.entities.push(newEntity);
@@ -82,6 +84,9 @@ const EntityModel = {
         if (updateData.hasOwnProperty('group')) {
             // Asegurarse de que group sea un string
             entityToUpdate.group = String(updateData.group);
+        }
+        if (updateData.hasOwnProperty('dailyProgressRef')) {
+            entityToUpdate.dailyProgressRef = !!updateData.dailyProgressRef;
         }
         // Se podrían añadir más propiedades aquí si fuera necesario en el futuro
         
@@ -150,5 +155,14 @@ const EntityModel = {
     getByGroup(groupName) {
         const entities = this.getAll();
         return entities.filter(entity => entity.group === groupName);
+    },
+
+    /**
+     * Devuelve la entidad marcada como referencia del progreso diario
+     * @returns {Object|null} Entidad con dailyProgressRef activo
+     */
+    getDailyProgressRefEntity() {
+        const entities = this.getAll() || [];
+        return entities.find(e => e.dailyProgressRef) || null;
     }
 };

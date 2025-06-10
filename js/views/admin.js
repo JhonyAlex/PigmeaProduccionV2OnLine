@@ -11,6 +11,31 @@ const AdminView = {
         this.render();
         this.setupEventListeners();
     },
+
+    /**
+     * Desactiva las referencias de progreso diario en todas las entidades y campos
+     * @param {string|null} keepEntity ID de la entidad que se mantiene activa
+     * @param {string|null} keepField ID del campo que se mantiene activo
+     */
+    clearDailyProgressRefs(keepEntity = null, keepField = null) {
+        const data = StorageService.getData();
+        let changed = false;
+        data.entities.forEach(ent => {
+            if (ent.dailyProgressRef && ent.id !== keepEntity) {
+                ent.dailyProgressRef = false;
+                changed = true;
+            }
+        });
+        data.fields.forEach(f => {
+            if (f.dailyProgressRef && f.id !== keepField) {
+                f.dailyProgressRef = false;
+                changed = true;
+            }
+        });
+        if (changed) {
+            StorageService.saveData(data);
+        }
+    },
     
     /**
      * Renderiza el contenido de la vista
@@ -88,6 +113,7 @@ const AdminView = {
                                             <tr>
                                                 <th>Nombre</th>
                                                 <th>Campos Asignados</th>
+                                                <th>Ref. Progreso</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -181,6 +207,8 @@ const AdminView = {
                                                 <th>Opciones</th>
                                                 <th>Para Reportes</th>
                                                 <th>Para Tabla</th>
+                                                <th>Suma Diaria</th>
+                                                <th>Ref. Progreso</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -347,11 +375,14 @@ const AdminView = {
             // Obtener campos asignados
             const fields = FieldModel.getByIds(entity.fields);
             const fieldNames = fields.map(field => field.name).join(', ') || 'Ninguno';
-            
+
+            const progressIndicator = entity.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
+
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${entity.name}</td>
                 <td>${fieldNames}</td>
+                <td class="text-center">${progressIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-primary assign-fields" data-entity-id="${entity.id}">
                         Asignar Campos
@@ -460,7 +491,10 @@ const AdminView = {
                     tableIndicator = '<span class="badge bg-secondary">Sí</span>';
                 }
             }
-            
+
+            const dailySumIndicator = field.dailySum ? '<span class="badge bg-primary">Sí</span>' : '-';
+            const progressRefIndicator = field.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
+
             row.innerHTML = `
                 <td>${field.name}</td>
                 <td>${fieldType}</td>
@@ -468,6 +502,8 @@ const AdminView = {
                 <td class="small">${options}</td>
                 <td class="text-center">${reportIndicator}</td>
                 <td class="text-center">${tableIndicator}</td>
+                <td class="text-center">${dailySumIndicator}</td>
+                <td class="text-center">${progressRefIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-outline-primary edit-field" data-field-id="${field.id}">
                         Editar
@@ -541,6 +577,7 @@ const AdminView = {
         const entityIdInput = document.getElementById('entity-id');
         const entityNameInput = document.getElementById('entity-name');
         const entityGroupInput = document.getElementById('entity-group');
+        const dailyProgressRefCheck = document.getElementById('entity-daily-progress-ref');
         const groupsDatalist = document.getElementById('existing-groups');
         
         // Obtener nombre personalizado
@@ -568,11 +605,13 @@ const AdminView = {
             entityIdInput.value = entity.id;
             entityNameInput.value = entity.name;
             entityGroupInput.value = entity.group || '';
+            if (dailyProgressRefCheck) dailyProgressRefCheck.checked = entity.dailyProgressRef || false;
         } else {
             // Modo creación
             modalTitle.textContent = `Nueva ${entityName} Principal`;
             entityIdInput.value = '';
             entityGroupInput.value = '';
+            if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
         }
         
         modal.show();
@@ -619,6 +658,7 @@ const AdminView = {
         const entityId = document.getElementById('entity-id').value;
         const entityName = document.getElementById('entity-name').value;
         const entityGroup = document.getElementById('entity-group').value.trim();
+        const dailyProgressRef = document.getElementById('entity-daily-progress-ref').checked;
         
         // Obtener el nombre personalizado para entidad
         const config = StorageService.getConfig();
@@ -627,13 +667,18 @@ const AdminView = {
         let result;
         if (entityId) {
             // Actualizar entidad existente
-            result = EntityModel.update(entityId, { 
+            result = EntityModel.update(entityId, {
                 name: entityName,
-                group: entityGroup
-            }); 
+                group: entityGroup,
+                dailyProgressRef: dailyProgressRef
+            });
         } else {
-            // Crear nueva entidad
-            result = EntityModel.create(entityName, entityGroup);
+            // Crear nueva entidad con la bandera indicada
+            result = EntityModel.create(entityName, entityGroup, dailyProgressRef);
+        }
+
+        if (dailyProgressRef && result) {
+            this.clearDailyProgressRefs(result.id, null);
         }
         
         if (result) {
@@ -719,6 +764,8 @@ const AdminView = {
         const useForComparativeReportsCheck = document.getElementById('field-use-for-comparative-reports');
         const isHorizontalAxisCheck = document.getElementById('field-is-horizontal-axis');
         const isCompareFieldCheck = document.getElementById('field-is-compare-field');
+        const dailySumCheck = document.getElementById('field-daily-sum');
+        const dailyProgressRefCheck = document.getElementById('field-daily-progress-ref');
         
         // Limpiar formulario
         document.getElementById('fieldForm').reset();
@@ -760,12 +807,12 @@ const AdminView = {
         });
         
         // Listeners para exclusividad de reportes
-        [isHorizontalAxisCheck, isCompareFieldCheck].forEach(check => {
+        [isHorizontalAxisCheck, isCompareFieldCheck, dailySumCheck, dailyProgressRefCheck].forEach(check => {
             if (check) {
                 check.addEventListener('change', (e) => {
                     if (e.target.checked) {
                         // Deshabilitar otros checks de reporte si se selecciona este
-                        [isHorizontalAxisCheck, isCompareFieldCheck].forEach(otherCheck => {
+                        [isHorizontalAxisCheck, isCompareFieldCheck, dailySumCheck, dailyProgressRefCheck].forEach(otherCheck => {
                             if (otherCheck !== e.target) otherCheck.checked = false;
                         });
                     }
@@ -810,11 +857,20 @@ const AdminView = {
                 isCompareFieldCheck.checked = field.isCompareField || false;
                 this.updateReportChecks();
             }
+
+            if (dailySumCheck) {
+                dailySumCheck.checked = field.dailySum || false;
+            }
+            if (dailyProgressRefCheck) {
+                dailyProgressRefCheck.checked = field.dailyProgressRef || false;
+            }
         } else {
             // Modo creación
             modalTitle.textContent = 'Nuevo Campo Personalizado';
             fieldIdInput.value = '';
             optionsContainer.style.display = 'none';
+            if (dailySumCheck) dailySumCheck.checked = false;
+            if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
         }
         
         modal.show();
@@ -917,6 +973,8 @@ const AdminView = {
         const useForComparativeReports = document.getElementById('field-use-for-comparative-reports').checked;
         const isHorizontalAxis = document.getElementById('field-is-horizontal-axis').checked;
         const isCompareField = document.getElementById('field-is-compare-field').checked;
+        const dailySum = document.getElementById('field-daily-sum').checked;
+        const dailyProgressRef = document.getElementById('field-daily-progress-ref').checked;
     
         // Recolectar opciones si es tipo selección
         let options = [];
@@ -936,7 +994,7 @@ const AdminView = {
     
         // Validar exclusividad en otras entidades si se marca alguna columna o reporte
         // --- IMPORTANTE: Esta lógica de exclusividad debe ejecutarse ANTES de guardar el campo actual ---
-        if (isColumn3 || isColumn4 || isColumn5 || isHorizontalAxis || isCompareField) {
+        if (isColumn3 || isColumn4 || isColumn5 || isHorizontalAxis || isCompareField || dailySum || dailyProgressRef) {
             const fields = FieldModel.getAll();
     
             // Para cada campo existente (excepto el actual)
@@ -967,6 +1025,14 @@ const AdminView = {
                         existingField.isCompareField = false;
                         updated = true;
                     }
+                    if (dailySum && existingField.dailySum) {
+                        existingField.dailySum = false;
+                        updated = true;
+                    }
+                    if (dailyProgressRef && existingField.dailyProgressRef) {
+                        existingField.dailyProgressRef = false;
+                        updated = true;
+                    }
     
                     // Si se modificó algún flag del campo existente, guardarlo
                     if (updated) {
@@ -976,6 +1042,10 @@ const AdminView = {
                     }
                 }
             });
+
+            if (dailyProgressRef) {
+                this.clearDailyProgressRefs(null, fieldId || null);
+            }
         }
     
         const fieldData = {
@@ -990,7 +1060,9 @@ const AdminView = {
             isColumn5: isColumn5,
             useForComparativeReports: useForComparativeReports,
             isHorizontalAxis: isHorizontalAxis,
-            isCompareField: isCompareField
+            isCompareField: isCompareField,
+            dailySum: dailySum,
+            dailyProgressRef: dailyProgressRef
         };
     
         let result;

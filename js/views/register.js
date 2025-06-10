@@ -90,6 +90,7 @@ const RegisterView = {
                                     <div id="dynamic-fields-container">
                                         <!-- Los campos se cargan dinámicamente -->
                                     </div>
+                                    <div id="daily-sum-indicator" class="alert alert-info mt-2" style="display:none;"></div>
 
                                     <div id="submit-container" style="display: none;">
                                         <button type="submit" class="btn btn-primary">Guardar</button>
@@ -696,6 +697,9 @@ const RegisterView = {
                 // Recargar registros recientes
                 this.loadRecentRecords();
 
+                // Actualizar indicador de suma diaria
+                this.showDailySumProgress(useCustomDate ? customDate : new Date(), newRecord);
+
                 // Mostrar mensaje
                 UIUtils.showAlert(`${this.recordName} guardado correctamente`, 'success', document.querySelector('.card-body'));
             } else {
@@ -830,6 +834,38 @@ const RegisterView = {
 
         // Configurar event listeners para ver detalles
 
+    },
+
+    /**
+     * Muestra el progreso diario del campo configurado
+     * @param {Date} date Fecha para calcular la suma
+     * @param {Object} record Registro recién guardado para obtener la referencia
+     */
+    showDailySumProgress(date, record) {
+        const indicator = document.getElementById('daily-sum-indicator');
+        if (!indicator) return;
+        const dailyField = FieldModel.getDailySumField();
+        if (!dailyField || dailyField.type !== 'number') {
+            indicator.style.display = 'none';
+            return;
+        }
+        let ref = null;
+        let refText = '';
+        const entityRef = EntityModel.getDailyProgressRefEntity();
+        const fieldRef = FieldModel.getDailyProgressRefField();
+        if (entityRef) {
+            ref = { type: 'entity', id: record.entityId };
+            refText = ` para ${entityRef.name}`;
+        } else if (fieldRef) {
+            const val = record.data[fieldRef.id];
+            ref = { type: 'field', id: fieldRef.id, value: val };
+            refText = ` para ${fieldRef.name}: ${val}`;
+        }
+
+        const total = RecordModel.getDailySumFor(dailyField.id, date, ref);
+        const dateText = date.toISOString().split('T')[0];
+        indicator.textContent = `Progreso diario de ${dailyField.name}${refText} (${dateText}): ${total}`;
+        indicator.style.display = 'block';
     },
 
     /**
