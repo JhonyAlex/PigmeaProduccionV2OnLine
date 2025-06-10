@@ -51,7 +51,9 @@ const FieldModel = {
         const newField = {
             id: 'field_' + Date.now(),
             ...fieldData,
-            dailySum: !!fieldData.dailySum
+
+            dailySum: !!fieldData.dailySum,
+            dailyProgressRef: !!fieldData.dailyProgressRef
         };
         
         data.fields.push(newField);
@@ -86,7 +88,9 @@ const FieldModel = {
             useForComparativeReports: !!fieldData.useForComparativeReports,
             isHorizontalAxis: !!fieldData.isHorizontalAxis,
             isCompareField: !!fieldData.isCompareField,
-            dailySum: !!fieldData.dailySum
+
+            dailySum: !!fieldData.dailySum,
+            dailyProgressRef: !!fieldData.dailyProgressRef
         };
         
         StorageService.saveData(data);
@@ -147,5 +151,15 @@ const FieldModel = {
     getDailySumField() {
         const fields = this.getAll() || [];
         return fields.find(f => f.dailySum) || null;
+    },
+
+    /**
+     * Devuelve el campo usado como referencia para el progreso diario
+     * @returns {Object|null} Campo con dailyProgressRef activo
+     */
+    getDailyProgressRefField() {
+        const fields = this.getAll() || [];
+        return fields.find(f => f.dailyProgressRef) || null;
+
     }
 };

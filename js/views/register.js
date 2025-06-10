@@ -698,7 +698,7 @@ const RegisterView = {
                 this.loadRecentRecords();
 
                 // Actualizar indicador de suma diaria
-                this.showDailySumProgress(useCustomDate ? customDate : new Date());
+                this.showDailySumProgress(useCustomDate ? customDate : new Date(), newRecord);
 
                 // Mostrar mensaje
                 UIUtils.showAlert(`${this.recordName} guardado correctamente`, 'success', document.querySelector('.card-body'));
@@ -839,8 +839,10 @@ const RegisterView = {
     /**
      * Muestra el progreso diario del campo configurado
      * @param {Date} date Fecha para calcular la suma
+
+     * @param {Object} record Registro recién guardado para obtener la referencia
      */
-    showDailySumProgress(date) {
+    showDailySumProgress(date, record) {
         const indicator = document.getElementById('daily-sum-indicator');
         if (!indicator) return;
         const dailyField = FieldModel.getDailySumField();
@@ -848,9 +850,23 @@ const RegisterView = {
             indicator.style.display = 'none';
             return;
         }
-        const total = RecordModel.getDailySum(dailyField.id, date);
+
+        let ref = null;
+        let refText = '';
+        const entityRef = EntityModel.getDailyProgressRefEntity();
+        const fieldRef = FieldModel.getDailyProgressRefField();
+        if (entityRef) {
+            ref = { type: 'entity', id: entityRef.id };
+            refText = ` para ${entityRef.name}`;
+        } else if (fieldRef) {
+            const val = record.data[fieldRef.id];
+            ref = { type: 'field', id: fieldRef.id, value: val };
+            refText = ` para ${fieldRef.name}: ${val}`;
+        }
+
+        const total = RecordModel.getDailySumFor(dailyField.id, date, ref);
         const dateText = date.toISOString().split('T')[0];
-        indicator.textContent = `Progreso diario de ${dailyField.name} (${dateText}): ${total}`;
+        indicator.textContent = `Progreso diario de ${dailyField.name}${refText} (${dateText}): ${total}`;
         indicator.style.display = 'block';
     },
 

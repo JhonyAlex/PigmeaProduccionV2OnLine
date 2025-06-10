@@ -458,5 +458,32 @@ const RecordModel = {
             }
         });
         return total;
+    },
+
+    /**
+     * Calcula la suma diaria filtrando por referencia
+     * @param {string} fieldId ID del campo numérico
+     * @param {Date} date Fecha a considerar
+     * @param {Object} ref Objeto con tipo y valor de referencia
+     * @returns {number} Suma del día
+     */
+    getDailySumFor(fieldId, date, ref) {
+        const records = this.getAll();
+        const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        let total = 0;
+        records.forEach(rec => {
+            const recDate = new Date(rec.timestamp);
+            if (recDate >= start && recDate <= end) {
+                if (ref) {
+                    if (ref.type === 'entity' && rec.entityId !== ref.id) return;
+                    if (ref.type === 'field' && rec.data[ref.id] !== ref.value) return;
+                }
+                const val = parseFloat(rec.data[fieldId]);
+                if (!isNaN(val)) total += val;
+            }
+        });
+        return total;
     }
 };
