@@ -61,7 +61,9 @@ const FieldModel = {
         return (options || []).map(opt =>
             typeof opt === 'string'
                 ? { value: opt, active: true }
+
                 : { value: opt.value, active: opt.active !== false }
+
         );
     },
     
@@ -114,6 +116,7 @@ const FieldModel = {
             type: fieldData.type,
             required: !!fieldData.required,
             options: fieldData.type === 'select'
+
                 ? this._normalizeOptions(fieldData.options)
                 : [],
             // Nuevas propiedades
