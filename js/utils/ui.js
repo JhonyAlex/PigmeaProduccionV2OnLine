@@ -159,10 +159,7 @@ const UIUtils = {
                                 ${options}
                             </select>
                             <div class="select-search-box d-none">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                    <input type="text" class="form-control select-search-input" placeholder="Buscar...">
-                                </div>
+                                <input type="text" class="form-control select-search-input" placeholder="Buscar">
                                 <div class="select-search-options"></div>
                             </div>
                         </div>
@@ -343,10 +340,7 @@ const UIUtils = {
                     ${optionsHTML}
                 </select>
                 <div class="select-search-box d-none">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control select-search-input" placeholder="Buscar...">
-                    </div>
+                    <input type="text" class="form-control select-search-input" placeholder="Buscar">
                     <div class="select-search-options"></div>
                 </div>
             </div>`;
