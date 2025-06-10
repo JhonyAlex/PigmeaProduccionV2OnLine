@@ -334,9 +334,11 @@ const UIUtils = {
      * @returns {string} HTML del componente
      */
     createSearchableSelect(id, optionsHTML, classes = 'form-select', requiredAttr = '') {
+        // Se incluye el atributo name para que las funciones de validación y
+        // precarga de datos puedan localizar correctamente el valor del campo.
         return `
             <div class="select-with-search">
-                <select id="${id}" class="${classes} searchable-select" ${requiredAttr}>
+                <select id="${id}" name="${id}" class="${classes} searchable-select" ${requiredAttr}>
                     ${optionsHTML}
                 </select>
                 <div class="select-search-box d-none">
