@@ -159,10 +159,7 @@ const UIUtils = {
                                 ${options}
                             </select>
                             <div class="select-search-box d-none">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                    <input type="text" class="form-control select-search-input" placeholder="Buscar...">
-                                </div>
+                                <input type="text" class="form-control select-search-input" placeholder="Buscar">
                                 <div class="select-search-options"></div>
                             </div>
                         </div>
@@ -337,16 +334,15 @@ const UIUtils = {
      * @returns {string} HTML del componente
      */
     createSearchableSelect(id, optionsHTML, classes = 'form-select', requiredAttr = '') {
+        // Se incluye el atributo name para que las funciones de validación y
+        // precarga de datos puedan localizar correctamente el valor del campo.
         return `
             <div class="select-with-search">
-                <select id="${id}" class="${classes} searchable-select" ${requiredAttr}>
+                <select id="${id}" name="${id}" class="${classes} searchable-select" ${requiredAttr}>
                     ${optionsHTML}
                 </select>
                 <div class="select-search-box d-none">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control select-search-input" placeholder="Buscar...">
-                    </div>
+                    <input type="text" class="form-control select-search-input" placeholder="Buscar">
                     <div class="select-search-options"></div>
                 </div>
             </div>`;

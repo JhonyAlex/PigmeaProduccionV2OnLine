@@ -406,19 +406,13 @@ const RegisterView = {
                     break;
 
                 case 'select':
-                    // Para selects, utilizamos la utilidad SearchableSelect
-                    fieldHTML += `<select class="form-select" id="${field.id}"
-                        name="${field.id}" style="visibility: hidden" ${field.required ? 'required' : ''}>
-                        <option value="">Seleccione...</option>`;
+                    // Opciones ordenadas alfabética o numéricamente
+                    const sortedOpts = (field.options || []).slice().sort(UIUtils.sortSelectOptions);
+                    const optionsHTML = [`<option value="">Seleccione...</option>`,
+                        ...sortedOpts.map(opt => `<option value="${opt}">${opt}</option>`)].join('');
 
-                    // Agregar opciones
-                    if (field.options && Array.isArray(field.options)) {
-                        field.options.forEach(option => {
-                            fieldHTML += `<option value="${option}">${option}</option>`;
-                        });
-                    }
-
-                    fieldHTML += `</select>`;
+                    // Utilizar el componente de select con buscador sin ícono
+                    fieldHTML += UIUtils.createSearchableSelect(field.id, optionsHTML, 'form-select', field.required ? 'required' : '');
                     break;
 
                 default: // Incluye checkbox, date, etc. si se añaden en el futuro
