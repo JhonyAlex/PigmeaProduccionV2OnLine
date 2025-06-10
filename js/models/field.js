@@ -10,6 +10,14 @@ const FieldModel = {
         const data = StorageService.getData();
         return data && data.fields ? data.fields : [];
     },
+
+    /**
+     * Obtiene todos los campos activos
+     * @returns {Array} Lista de campos activos
+     */
+    getActive() {
+        return this.getAll().filter(f => f.active !== false);
+    },
     
     /**
      * Obtiene un campo por su ID
@@ -30,9 +38,31 @@ const FieldModel = {
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             return [];
         }
-        
+
         const fields = this.getAll();
         return fields.filter(field => field && ids.includes(field.id));
+    },
+
+    /**
+     * Obtiene varios campos activos por sus IDs
+     * @param {Array} ids Array de IDs de campos
+     * @returns {Array} Lista de campos activos
+     */
+    getActiveByIds(ids) {
+        return this.getByIds(ids).filter(f => f.active !== false);
+    },
+
+    /**
+     * Normaliza la estructura de las opciones de un campo tipo select
+     * @param {Array} options Opciones recibidas
+     * @returns {Array} Opciones normalizadas
+     */
+    _normalizeOptions(options) {
+        return (options || []).map(opt =>
+            typeof opt === 'string'
+                ? { value: opt, active: true }
+                : { value: opt.value, active: opt.active !== false }
+        );
     },
     
     /**
@@ -53,7 +83,11 @@ const FieldModel = {
             ...fieldData,
 
             dailySum: !!fieldData.dailySum,
-            dailyProgressRef: !!fieldData.dailyProgressRef
+            dailyProgressRef: !!fieldData.dailyProgressRef,
+            active: fieldData.hasOwnProperty('active') ? !!fieldData.active : true,
+            options: fieldData.type === 'select'
+                ? this._normalizeOptions(fieldData.options)
+                : []
         };
         
         data.fields.push(newField);
@@ -79,7 +113,9 @@ const FieldModel = {
             name: fieldData.name,
             type: fieldData.type,
             required: !!fieldData.required,
-            options: fieldData.type === 'select' ? (fieldData.options || []) : [],
+            options: fieldData.type === 'select'
+                ? this._normalizeOptions(fieldData.options)
+                : [],
             // Nuevas propiedades
             useForRecordsTable: !!fieldData.useForRecordsTable,
             isColumn3: !!fieldData.isColumn3,
@@ -90,7 +126,8 @@ const FieldModel = {
             isCompareField: !!fieldData.isCompareField,
 
             dailySum: !!fieldData.dailySum,
-            dailyProgressRef: !!fieldData.dailyProgressRef
+            dailyProgressRef: !!fieldData.dailyProgressRef,
+            active: fieldData.hasOwnProperty('active') ? !!fieldData.active : data.fields[fieldIndex].active !== false
         };
         
         StorageService.saveData(data);
@@ -140,7 +177,8 @@ const FieldModel = {
         const fields = this.getAll() || [];
         return fields.filter(field =>
             field &&
-            field.type === 'number'
+            field.type === 'number' &&
+            field.active !== false
         );
     },
 
@@ -150,7 +188,7 @@ const FieldModel = {
      */
     getDailySumField() {
         const fields = this.getAll() || [];
-        return fields.find(f => f.dailySum) || null;
+        return fields.find(f => f.dailySum && f.active !== false) || null;
     },
 
     /**
@@ -159,7 +197,7 @@ const FieldModel = {
      */
     getDailyProgressRefField() {
         const fields = this.getAll() || [];
-        return fields.find(f => f.dailyProgressRef) || null;
+        return fields.find(f => f.dailyProgressRef && f.active !== false) || null;
 
     }
 };

@@ -49,7 +49,7 @@ const KPIsView = {
     } else {
       // Intentar inferir campos por nombre
       const guess = name => {
-        const f = FieldModel.getAll().find(fl =>
+        const f = FieldModel.getActive().find(fl =>
           fl.name.toLowerCase().includes(name)
         );
         return f ? f.id : null;
@@ -87,7 +87,7 @@ const KPIsView = {
     const lineTo = this.config.lineRange.toDate || toVal;
 
     const numericFields = FieldModel.getNumericFields();
-    const allFields = FieldModel.getAll();
+    const allFields = FieldModel.getActive();
 
     const createOptions = (fields, selected) => {
       const sorted = [...fields].sort((a, b) => a.name.localeCompare(b.name, 'es', {sensitivity: 'accent'}));
@@ -219,11 +219,14 @@ const KPIsView = {
       if (!fieldId) return;
       const field = FieldModel.getById(fieldId);
       if (field && Array.isArray(field.options)) {
-        const options = [...field.options].sort(UIUtils.sortSelectOptions);
+        const options = field.options
+          .filter(opt => (typeof opt === 'object' ? opt.active !== false : true))
+          .sort(UIUtils.sortSelectOptions);
         options.forEach(opt => {
+          const val = typeof opt === 'object' ? opt.value : opt;
           const o = document.createElement('option');
-          o.value = opt;
-          o.textContent = opt;
+          o.value = val;
+          o.textContent = val;
           sel.appendChild(o);
         });
       }
