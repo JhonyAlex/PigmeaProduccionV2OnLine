@@ -61,7 +61,7 @@ const FieldModel = {
         return (options || []).map(opt =>
             typeof opt === 'string'
                 ? { value: opt, active: true }
-                : { value: opt.value, active: opt.active !== false }
+                : { value: (opt && typeof opt.value === 'string') ? opt.value : '', active: opt.active !== false }
         );
     },
     
