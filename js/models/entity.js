@@ -34,6 +34,7 @@ const EntityModel = {
      * @param {string} name Nombre de la entidad
      * @param {string} group Nombre del grupo de la entidad (opcional)
      * @param {boolean} [dailyProgressRef=false] Si la entidad es referencia para el progreso diario
+     * @param {boolean} [active=true] Indica si la entidad inicia activa
      * @returns {Object} Entidad creada
      */
     create(name, group = '', dailyProgressRef = false, active = true) {

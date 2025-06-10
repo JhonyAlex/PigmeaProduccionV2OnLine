@@ -51,6 +51,19 @@ const FieldModel = {
     getActiveByIds(ids) {
         return this.getByIds(ids).filter(f => f.active !== false);
     },
+
+    /**
+     * Normaliza la estructura de las opciones de un campo tipo select
+     * @param {Array} options Opciones recibidas
+     * @returns {Array} Opciones normalizadas
+     */
+    _normalizeOptions(options) {
+        return (options || []).map(opt =>
+            typeof opt === 'string'
+                ? { value: opt, active: true }
+                : { value: (opt && typeof opt.value === 'string') ? opt.value : '', active: opt.active !== false }
+        );
+    },
     
     /**
      * Crea un nuevo campo
@@ -73,11 +86,9 @@ const FieldModel = {
             dailyProgressRef: !!fieldData.dailyProgressRef,
             active: fieldData.hasOwnProperty('active') ? !!fieldData.active : true,
             options: fieldData.type === 'select'
-                ? (fieldData.options || []).map(opt =>
-                    typeof opt === 'string' ? { value: opt, active: true } : {
-                        value: opt.value,
-                        active: opt.active !== false
-                    })
+
+                ? this._normalizeOptions(fieldData.options)
+
                 : []
         };
         
@@ -105,11 +116,9 @@ const FieldModel = {
             type: fieldData.type,
             required: !!fieldData.required,
             options: fieldData.type === 'select'
-                ? (fieldData.options || []).map(opt =>
-                    typeof opt === 'string' ? { value: opt, active: true } : {
-                        value: opt.value,
-                        active: opt.active !== false
-                    })
+
+                ? this._normalizeOptions(fieldData.options)
+
                 : [],
             // Nuevas propiedades
             useForRecordsTable: !!fieldData.useForRecordsTable,

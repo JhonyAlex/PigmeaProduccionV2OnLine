@@ -2687,17 +2687,18 @@ const ReportsView = {
             const config = StorageService.getConfig();
             const entityName = config.entityName || 'Entidad';
 
-            const column3Field = FieldModel.getActive().find(field => field.isColumn3);
-            const column4Field = FieldModel.getActive().find(field => field.isColumn4);
-            const column5Field = FieldModel.getActive().find(field => field.isColumn5);
+            const activeFields = FieldModel.getActive();
+            const column3Field = activeFields.find(field => field.isColumn3);
+            const column4Field = activeFields.find(field => field.isColumn4);
+            const column5Field = activeFields.find(field => field.isColumn5);
 
             // Actualiza SelectedColumns al cargar si hay campos marcados
             this.selectedColumns.field1 = column3Field ? column3Field.id : '';
             this.selectedColumns.field2 = column4Field ? column4Field.id : '';
             this.selectedColumns.field3 = column5Field ? column5Field.id : '';
 
-            const horizontalAxisField = FieldModel.getActive().find(field => field.isHorizontalAxis);
-            const compareField = FieldModel.getActive().find(field => field.isCompareField);
+            const horizontalAxisField = activeFields.find(field => field.isHorizontalAxis);
+            const compareField = activeFields.find(field => field.isCompareField);
 
             // --- HTML Template Reorganizado ---
             let filtersHtml = '';

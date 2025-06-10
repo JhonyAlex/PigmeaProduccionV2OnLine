@@ -369,6 +369,11 @@ const AdminView = {
         const noEntitiesMessage = document.getElementById('no-entities-message');
         const entitiesTableContainer = document.getElementById('entities-table-container');
         const entitiesList = document.getElementById('entities-list');
+
+        // Si la vista aún no está renderizada, salir sin hacer nada
+        if (!entitiesContainer || !noEntitiesMessage || !entitiesTableContainer || !entitiesList) {
+            return;
+        }
         
         // Mostrar mensaje si no hay entidades
         if (entities.length === 0) {
@@ -447,6 +452,10 @@ const AdminView = {
         const noFieldsMessage = document.getElementById('no-fields-message');
         const fieldsTableContainer = document.getElementById('fields-table-container');
         const fieldsList = document.getElementById('fields-list');
+
+        if (!fieldsContainer || !noFieldsMessage || !fieldsTableContainer || !fieldsList) {
+            return;
+        }
         
         // Mostrar mensaje si no hay campos
         if (fields.length === 0) {
