@@ -856,7 +856,7 @@ const RegisterView = {
         const entityRef = EntityModel.getDailyProgressRefEntity();
         const fieldRef = FieldModel.getDailyProgressRefField();
         if (entityRef) {
-            ref = { type: 'entity', id: record.entityId };
+            ref = { type: 'entity', id: entityRef.id };
             refText = ` para ${entityRef.name}`;
         } else if (fieldRef) {
             const val = record.data[fieldRef.id];
