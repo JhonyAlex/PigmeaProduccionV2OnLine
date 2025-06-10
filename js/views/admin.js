@@ -181,6 +181,7 @@ const AdminView = {
                                                 <th>Opciones</th>
                                                 <th>Para Reportes</th>
                                                 <th>Para Tabla</th>
+                                                <th>Suma Diaria</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -460,6 +461,8 @@ const AdminView = {
                     tableIndicator = '<span class="badge bg-secondary">Sí</span>';
                 }
             }
+
+            const dailySumIndicator = field.dailySum ? '<span class="badge bg-primary">Sí</span>' : '-';
             
             row.innerHTML = `
                 <td>${field.name}</td>
@@ -468,6 +471,7 @@ const AdminView = {
                 <td class="small">${options}</td>
                 <td class="text-center">${reportIndicator}</td>
                 <td class="text-center">${tableIndicator}</td>
+                <td class="text-center">${dailySumIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-outline-primary edit-field" data-field-id="${field.id}">
                         Editar
@@ -719,6 +723,7 @@ const AdminView = {
         const useForComparativeReportsCheck = document.getElementById('field-use-for-comparative-reports');
         const isHorizontalAxisCheck = document.getElementById('field-is-horizontal-axis');
         const isCompareFieldCheck = document.getElementById('field-is-compare-field');
+        const dailySumCheck = document.getElementById('field-daily-sum');
         
         // Limpiar formulario
         document.getElementById('fieldForm').reset();
@@ -760,12 +765,12 @@ const AdminView = {
         });
         
         // Listeners para exclusividad de reportes
-        [isHorizontalAxisCheck, isCompareFieldCheck].forEach(check => {
+        [isHorizontalAxisCheck, isCompareFieldCheck, dailySumCheck].forEach(check => {
             if (check) {
                 check.addEventListener('change', (e) => {
                     if (e.target.checked) {
                         // Deshabilitar otros checks de reporte si se selecciona este
-                        [isHorizontalAxisCheck, isCompareFieldCheck].forEach(otherCheck => {
+                        [isHorizontalAxisCheck, isCompareFieldCheck, dailySumCheck].forEach(otherCheck => {
                             if (otherCheck !== e.target) otherCheck.checked = false;
                         });
                     }
@@ -810,11 +815,16 @@ const AdminView = {
                 isCompareFieldCheck.checked = field.isCompareField || false;
                 this.updateReportChecks();
             }
+
+            if (dailySumCheck) {
+                dailySumCheck.checked = field.dailySum || false;
+            }
         } else {
             // Modo creación
             modalTitle.textContent = 'Nuevo Campo Personalizado';
             fieldIdInput.value = '';
             optionsContainer.style.display = 'none';
+            if (dailySumCheck) dailySumCheck.checked = false;
         }
         
         modal.show();
@@ -917,6 +927,7 @@ const AdminView = {
         const useForComparativeReports = document.getElementById('field-use-for-comparative-reports').checked;
         const isHorizontalAxis = document.getElementById('field-is-horizontal-axis').checked;
         const isCompareField = document.getElementById('field-is-compare-field').checked;
+        const dailySum = document.getElementById('field-daily-sum').checked;
     
         // Recolectar opciones si es tipo selección
         let options = [];
@@ -936,7 +947,7 @@ const AdminView = {
     
         // Validar exclusividad en otras entidades si se marca alguna columna o reporte
         // --- IMPORTANTE: Esta lógica de exclusividad debe ejecutarse ANTES de guardar el campo actual ---
-        if (isColumn3 || isColumn4 || isColumn5 || isHorizontalAxis || isCompareField) {
+        if (isColumn3 || isColumn4 || isColumn5 || isHorizontalAxis || isCompareField || dailySum) {
             const fields = FieldModel.getAll();
     
             // Para cada campo existente (excepto el actual)
@@ -967,6 +978,10 @@ const AdminView = {
                         existingField.isCompareField = false;
                         updated = true;
                     }
+                    if (dailySum && existingField.dailySum) {
+                        existingField.dailySum = false;
+                        updated = true;
+                    }
     
                     // Si se modificó algún flag del campo existente, guardarlo
                     if (updated) {
@@ -990,7 +1005,8 @@ const AdminView = {
             isColumn5: isColumn5,
             useForComparativeReports: useForComparativeReports,
             isHorizontalAxis: isHorizontalAxis,
-            isCompareField: isCompareField
+            isCompareField: isCompareField,
+            dailySum: dailySum
         };
     
         let result;

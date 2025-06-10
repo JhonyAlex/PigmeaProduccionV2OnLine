@@ -90,6 +90,7 @@ const RegisterView = {
                                     <div id="dynamic-fields-container">
                                         <!-- Los campos se cargan dinámicamente -->
                                     </div>
+                                    <div id="daily-sum-indicator" class="alert alert-info mt-2" style="display:none;"></div>
 
                                     <div id="submit-container" style="display: none;">
                                         <button type="submit" class="btn btn-primary">Guardar</button>
@@ -696,6 +697,9 @@ const RegisterView = {
                 // Recargar registros recientes
                 this.loadRecentRecords();
 
+                // Actualizar indicador de suma diaria
+                this.showDailySumProgress(useCustomDate ? customDate : new Date());
+
                 // Mostrar mensaje
                 UIUtils.showAlert(`${this.recordName} guardado correctamente`, 'success', document.querySelector('.card-body'));
             } else {
@@ -830,6 +834,24 @@ const RegisterView = {
 
         // Configurar event listeners para ver detalles
 
+    },
+
+    /**
+     * Muestra el progreso diario del campo configurado
+     * @param {Date} date Fecha para calcular la suma
+     */
+    showDailySumProgress(date) {
+        const indicator = document.getElementById('daily-sum-indicator');
+        if (!indicator) return;
+        const dailyField = FieldModel.getDailySumField();
+        if (!dailyField || dailyField.type !== 'number') {
+            indicator.style.display = 'none';
+            return;
+        }
+        const total = RecordModel.getDailySum(dailyField.id, date);
+        const dateText = date.toISOString().split('T')[0];
+        indicator.textContent = `Progreso diario de ${dailyField.name} (${dateText}): ${total}`;
+        indicator.style.display = 'block';
     },
 
     /**

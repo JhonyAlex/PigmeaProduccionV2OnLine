@@ -434,7 +434,29 @@ const RecordModel = {
         
         // Guardar los cambios
         StorageService.saveData(data);
-        
+
         return true;
+    },
+
+    /**
+     * Calcula la suma diaria para un campo numérico
+     * @param {string} fieldId ID del campo
+     * @param {Date} date Fecha a considerar
+     * @returns {number} Suma del día
+     */
+    getDailySum(fieldId, date) {
+        const records = this.getAll();
+        const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        let total = 0;
+        records.forEach(rec => {
+            const recDate = new Date(rec.timestamp);
+            if (recDate >= start && recDate <= end) {
+                const val = parseFloat(rec.data[fieldId]);
+                if (!isNaN(val)) total += val;
+            }
+        });
+        return total;
     }
 };
