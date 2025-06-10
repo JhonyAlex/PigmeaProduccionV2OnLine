@@ -51,6 +51,7 @@ const FieldModel = {
         const newField = {
             id: 'field_' + Date.now(),
             ...fieldData,
+
             dailySum: !!fieldData.dailySum,
             dailyProgressRef: !!fieldData.dailyProgressRef
         };
@@ -87,6 +88,7 @@ const FieldModel = {
             useForComparativeReports: !!fieldData.useForComparativeReports,
             isHorizontalAxis: !!fieldData.isHorizontalAxis,
             isCompareField: !!fieldData.isCompareField,
+
             dailySum: !!fieldData.dailySum,
             dailyProgressRef: !!fieldData.dailyProgressRef
         };
@@ -158,5 +160,6 @@ const FieldModel = {
     getDailyProgressRefField() {
         const fields = this.getAll() || [];
         return fields.find(f => f.dailyProgressRef) || null;
+
     }
 };

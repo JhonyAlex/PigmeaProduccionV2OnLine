@@ -839,6 +839,7 @@ const RegisterView = {
     /**
      * Muestra el progreso diario del campo configurado
      * @param {Date} date Fecha para calcular la suma
+
      * @param {Object} record Registro recién guardado para obtener la referencia
      */
     showDailySumProgress(date, record) {
@@ -849,6 +850,7 @@ const RegisterView = {
             indicator.style.display = 'none';
             return;
         }
+
         let ref = null;
         let refText = '';
         const entityRef = EntityModel.getDailyProgressRefEntity();

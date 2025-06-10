@@ -807,6 +807,7 @@ const AdminView = {
         });
         
         // Listeners para exclusividad de reportes
+
         [isHorizontalAxisCheck, isCompareFieldCheck, dailySumCheck, dailyProgressRefCheck].forEach(check => {
             if (check) {
                 check.addEventListener('change', (e) => {
@@ -861,6 +862,7 @@ const AdminView = {
             if (dailySumCheck) {
                 dailySumCheck.checked = field.dailySum || false;
             }
+
             if (dailyProgressRefCheck) {
                 dailyProgressRefCheck.checked = field.dailyProgressRef || false;
             }
@@ -870,7 +872,9 @@ const AdminView = {
             fieldIdInput.value = '';
             optionsContainer.style.display = 'none';
             if (dailySumCheck) dailySumCheck.checked = false;
+
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
+
         }
         
         modal.show();
@@ -974,7 +978,9 @@ const AdminView = {
         const isHorizontalAxis = document.getElementById('field-is-horizontal-axis').checked;
         const isCompareField = document.getElementById('field-is-compare-field').checked;
         const dailySum = document.getElementById('field-daily-sum').checked;
+
         const dailyProgressRef = document.getElementById('field-daily-progress-ref').checked;
+
     
         // Recolectar opciones si es tipo selección
         let options = [];
@@ -994,7 +1000,9 @@ const AdminView = {
     
         // Validar exclusividad en otras entidades si se marca alguna columna o reporte
         // --- IMPORTANTE: Esta lógica de exclusividad debe ejecutarse ANTES de guardar el campo actual ---
+
         if (isColumn3 || isColumn4 || isColumn5 || isHorizontalAxis || isCompareField || dailySum || dailyProgressRef) {
+
             const fields = FieldModel.getAll();
     
             // Para cada campo existente (excepto el actual)
@@ -1029,10 +1037,12 @@ const AdminView = {
                         existingField.dailySum = false;
                         updated = true;
                     }
+
                     if (dailyProgressRef && existingField.dailyProgressRef) {
                         existingField.dailyProgressRef = false;
                         updated = true;
                     }
+
     
                     // Si se modificó algún flag del campo existente, guardarlo
                     if (updated) {
@@ -1063,6 +1073,7 @@ const AdminView = {
             isCompareField: isCompareField,
             dailySum: dailySum,
             dailyProgressRef: dailyProgressRef
+
         };
     
         let result;
