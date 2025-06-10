@@ -219,11 +219,14 @@ const KPIsView = {
       if (!fieldId) return;
       const field = FieldModel.getById(fieldId);
       if (field && Array.isArray(field.options)) {
-        const options = [...field.options].sort(UIUtils.sortSelectOptions);
+        const options = field.options
+          .filter(opt => (typeof opt === 'object' ? opt.active !== false : true))
+          .sort(UIUtils.sortSelectOptions);
         options.forEach(opt => {
+          const val = typeof opt === 'object' ? opt.value : opt;
           const o = document.createElement('option');
-          o.value = opt;
-          o.textContent = opt;
+          o.value = val;
+          o.textContent = val;
           sel.appendChild(o);
         });
       }

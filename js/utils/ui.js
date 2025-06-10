@@ -144,10 +144,13 @@ const UIUtils = {
                 break;
                 
             case 'select':
-                const sortedOptions = [...field.options].sort(UIUtils.sortSelectOptions);
-                const options = sortedOptions.map(option =>
-                    `<option value="${option}" ${option === value ? 'selected' : ''}>${option}</option>`
-                ).join('');
+                const sortedOptions = [...(field.options || [])]
+                    .filter(opt => (typeof opt === 'object' ? opt.active !== false : true))
+                    .sort(UIUtils.sortSelectOptions);
+                const options = sortedOptions.map(opt => {
+                    const val = typeof opt === 'object' ? opt.value : opt;
+                    return `<option value="${val}" ${val === value ? 'selected' : ''}>${val}</option>`;
+                }).join('');
                 
                 // Crear un campo select con capacidad de búsqueda
                 inputHTML = `
@@ -355,12 +358,14 @@ const UIUtils = {
      * @returns {number} Resultado de la comparación
      */
     sortSelectOptions(a, b) {
-        const numA = parseFloat(a);
-        const numB = parseFloat(b);
+        const valA = typeof a === 'object' ? a.value : a;
+        const valB = typeof b === 'object' ? b.value : b;
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
         const isNumA = !isNaN(numA);
         const isNumB = !isNaN(numB);
         if (isNumA && isNumB) return numA - numB;
-        return a.localeCompare(b, 'es', { sensitivity: 'accent' });
+        return valA.localeCompare(valB, 'es', { sensitivity: 'accent' });
     },
     
     getEntityName(lowercase = false, plural = false) {

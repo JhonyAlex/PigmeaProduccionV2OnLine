@@ -80,6 +80,10 @@
                             <input class="form-check-input" type="checkbox" id="entity-daily-progress-ref">
                             <label class="form-check-label" for="entity-daily-progress-ref">Usar como referencia de progreso diario</label>
                         </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="entity-active" checked>
+                            <label class="form-check-label" for="entity-active">Activo</label>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -125,8 +129,11 @@
                         <div class="mb-3" id="options-container" style="display: none;">
                             <label class="form-label">Opciones</label>
                             <div id="options-list">
-                                <div class="input-group mb-2">
-                                    <input type="text" class="form-control field-option" placeholder="Opción">
+                                <div class="input-group mb-2 option-item">
+                                    <input type="text" class="form-control field-option-value" placeholder="Opción">
+                                    <div class="input-group-text">
+                                        <input class="form-check-input mt-0 option-active" type="checkbox" checked title="Activo">
+                                    </div>
                                     <button type="button" class="btn btn-outline-danger remove-option">×</button>
                                 </div>
                             </div>
@@ -183,6 +190,10 @@
             <div class="form-check mt-2">
                 <input class="form-check-input" type="checkbox" id="field-daily-progress-ref">
                 <label class="form-check-label" for="field-daily-progress-ref">Usar como referencia de progreso diario</label>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="field-active" checked>
+                <label class="form-check-label" for="field-active">Activo</label>
             </div>
                         </div>
                     </form>

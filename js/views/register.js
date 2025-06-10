@@ -60,7 +60,7 @@ const RegisterView = {
                 return;
             }
 
-            const entities = EntityModel.getAll() || [];
+            const entities = EntityModel.getActive() || [];
 
             const entityButtons = entities.map(entity =>
                 `<button class="btn btn-outline-primary entity-btn mb-2 me-2" data-entity-id="${entity.id}">${entity.name}</button>`
@@ -279,7 +279,7 @@ const RegisterView = {
             console.warn("Contenedor de botones de entidad (.d-flex.flex-wrap) no encontrado dentro del contenedor principal.");
             // Puedes decidir si esto es un error crítico o no.
             // Si no hay entidades configuradas, este contenedor podría no existir o estar vacío.
-            const entities = EntityModel.getAll() || [];
+            const entities = EntityModel.getActive() || [];
             if (entities.length > 0) {
                 // Si hay entidades pero no se encontró el contenedor, es un problema de renderizado
                 console.error("Error crítico: Hay entidades pero no se encontró su contenedor en el DOM renderizado.");
@@ -346,7 +346,7 @@ const RegisterView = {
         }
 
         // Obtener campos asignados a la entidad
-        const fields = FieldModel.getByIds(entity.fields);
+        const fields = FieldModel.getActiveByIds(entity.fields);
         if (!fields || fields.length === 0) {
             dynamicFieldsContainer.innerHTML = `
                 <div class="alert alert-info">
@@ -407,9 +407,15 @@ const RegisterView = {
 
                 case 'select':
                     // Opciones ordenadas alfabética o numéricamente
-                    const sortedOpts = (field.options || []).slice().sort(UIUtils.sortSelectOptions);
+                    const sortedOpts = (field.options || [])
+                        .filter(opt => (typeof opt === 'object' ? opt.active !== false : true))
+                        .slice()
+                        .sort(UIUtils.sortSelectOptions);
                     const optionsHTML = [`<option value="">Seleccione...</option>`,
-                        ...sortedOpts.map(opt => `<option value="${opt}">${opt}</option>`)].join('');
+                        ...sortedOpts.map(opt => {
+                            const val = typeof opt === 'object' ? opt.value : opt;
+                            return `<option value="${val}">${val}</option>`;
+                        })].join('');
 
                     // Utilizar el componente de select con buscador sin ícono
                     fieldHTML += UIUtils.createSearchableSelect(field.id, optionsHTML, 'form-select', field.required ? 'required' : '');
@@ -598,7 +604,7 @@ const RegisterView = {
                 return;
             }
 
-            const fields = FieldModel.getByIds(entity.fields || []);
+            const fields = FieldModel.getActiveByIds(entity.fields || []);
 
             // Validar el formulario
             const validation = ValidationUtils.validateForm(form, fields);
@@ -1109,7 +1115,7 @@ const RegisterView = {
 
             // 2. Recargar botones de entidad (por si se añadieron/eliminaron/renombraron entidades)
             const entitySelector = document.querySelector('.d-flex.flex-wrap'); // Contenedor de botones
-            const entities = EntityModel.getAll() || [];
+            const entities = EntityModel.getActive() || [];
             if (entitySelector) {
                  const entityButtons = entities.map(entity =>
                     `<button class="btn btn-outline-primary entity-btn mb-2 me-2" data-entity-id="${entity.id}">${entity.name}</button>`

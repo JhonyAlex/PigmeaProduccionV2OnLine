@@ -10,6 +10,14 @@ const EntityModel = {
         const data = StorageService.getData();
         return data && data.entities ? data.entities : [];
     },
+
+    /**
+     * Obtiene todas las entidades activas
+     * @returns {Array} Lista de entidades activas
+     */
+    getActive() {
+        return this.getAll().filter(ent => ent.active !== false);
+    },
     
     /**
      * Obtiene una entidad por su ID
@@ -28,7 +36,7 @@ const EntityModel = {
      * @param {boolean} [dailyProgressRef=false] Si la entidad es referencia para el progreso diario
      * @returns {Object} Entidad creada
      */
-    create(name, group = '', dailyProgressRef = false) {
+    create(name, group = '', dailyProgressRef = false, active = true) {
         const data = StorageService.getData();
         
         // Asegurarse de que data.entities existe
@@ -41,7 +49,8 @@ const EntityModel = {
             name: name,
             group: group,
             fields: [], // IDs de campos asignados
-            dailyProgressRef: !!dailyProgressRef
+            dailyProgressRef: !!dailyProgressRef,
+            active: !!active
         };
         
         data.entities.push(newEntity);
@@ -87,6 +96,9 @@ const EntityModel = {
         }
         if (updateData.hasOwnProperty('dailyProgressRef')) {
             entityToUpdate.dailyProgressRef = !!updateData.dailyProgressRef;
+        }
+        if (updateData.hasOwnProperty('active')) {
+            entityToUpdate.active = !!updateData.active;
         }
         // Se podrían añadir más propiedades aquí si fuera necesario en el futuro
         
@@ -144,6 +156,16 @@ const EntityModel = {
         const entities = this.getAll();
         // Obtener todos los grupos únicos que no estén vacíos
         const uniqueGroups = [...new Set(entities.map(entity => entity.group).filter(group => group))];
+        return uniqueGroups.sort();
+    },
+
+    /**
+     * Obtiene grupos solo de entidades activas
+     * @returns {Array} Lista de grupos
+     */
+    getActiveGroups() {
+        const entities = this.getActive();
+        const uniqueGroups = [...new Set(entities.map(e => e.group).filter(g => g))];
         return uniqueGroups.sort();
     },
     
