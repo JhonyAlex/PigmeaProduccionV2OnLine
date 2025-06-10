@@ -51,7 +51,7 @@ const AdminView = {
             
             const config = StorageService.getConfig();
             const entityName = config.entityName || 'Entidad';
-            const entities = EntityModel.getAll();
+            const entities = EntityModel.getAll().sort((a, b) => a.name.localeCompare(b.name, 'es', {sensitivity: 'accent'}));
             
             const template = `
                 <div class="container mt-4">
@@ -145,12 +145,21 @@ const AdminView = {
     
                                             <div class="mb-3">
                                                 <label for="template-entity" class="form-label">Entidad para plantilla</label>
-                                                <select class="form-select" id="template-entity">
-                                                    <option value="">Todas las entidades</option>
-                                                    ${entities.map(entity =>
-                                                        `<option value="${entity.id}">${entity.name}</option>`
-                                                    ).join('')}
-                                                </select>
+                                                <div class="select-with-search">
+                                                    <select class="form-select searchable-select" id="template-entity">
+                                                        <option value="">Todas las entidades</option>
+                                                        ${entities.map(entity =>
+                                                            `<option value="${entity.id}">${entity.name}</option>`
+                                                        ).join('')}
+                                                    </select>
+                                                    <div class="select-search-box d-none">
+                                                        <div class="input-group">
+                                                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                                            <input type="text" class="form-control select-search-input" placeholder="Buscar...">
+                                                        </div>
+                                                        <div class="select-search-options"></div>
+                                                    </div>
+                                                </div>
                                             </div>
     
                                             <button type="button" class="btn btn-outline-primary" id="download-template-btn">
@@ -251,6 +260,9 @@ const AdminView = {
         const importFileInput = document.getElementById('import-file');
         const processImportBtn = document.getElementById('process-import-btn');
         const confirmImportBtn = document.getElementById('confirmImportBtn');
+
+        UIUtils.setupSearchableSelect('#field-type');
+        UIUtils.setupSearchableSelect('#template-entity');
         
         if (downloadTemplateBtn) {
             downloadTemplateBtn.addEventListener('click', () => {

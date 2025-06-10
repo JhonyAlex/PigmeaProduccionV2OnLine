@@ -89,8 +89,10 @@ const KPIsView = {
     const numericFields = FieldModel.getNumericFields();
     const allFields = FieldModel.getAll();
 
-    const createOptions = (fields, selected) =>
-      fields.map(f => `<option value="${f.id}" ${selected === f.id ? 'selected' : ''}>${f.name}</option>`).join('');
+    const createOptions = (fields, selected) => {
+      const sorted = [...fields].sort((a, b) => a.name.localeCompare(b.name, 'es', {sensitivity: 'accent'}));
+      return sorted.map(f => `<option value="${f.id}" ${selected === f.id ? 'selected' : ''}>${f.name}</option>`).join('');
+    };
 
     container.innerHTML = `
       <div class="container-fluid" id="kpis-view">
@@ -106,24 +108,24 @@ const KPIsView = {
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label" for="kpi-shift">Turno</label>
-              <select id="kpi-shift" class="form-select"></select>
+              ${UIUtils.createSearchableSelect('kpi-shift', '')}
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label" for="kpi-operator">Operario</label>
-              <select id="kpi-operator" class="form-select"></select>
+              ${UIUtils.createSearchableSelect('kpi-operator', '')}
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label" for="kpi-machine">Máquina</label>
-              <select id="kpi-machine" class="form-select"></select>
+              ${UIUtils.createSearchableSelect('kpi-machine', '')}
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label" for="kpi-compare-period">Comparar por</label>
-              <select id="kpi-compare-period" class="form-select form-select-sm">
+              ${UIUtils.createSearchableSelect('kpi-compare-period', `
                 <option value="auto">Auto</option>
                 <option value="day">Día</option>
                 <option value="week">Semana</option>
                 <option value="month">Mes</option>
-              </select>
+              `, 'form-select form-select-sm')}
             </div>
             <div class="col-12">
               <div class="btn-group btn-group-sm" id="kpi-date-shortcuts" role="group">
@@ -172,38 +174,23 @@ const KPIsView = {
           <form id="kpi-config-form" class="row row-cols-1 row-cols-md-3 g-3">
             <div class="col">
               <label class="form-label" for="cfg-meters">Campo Metros Impresos</label>
-              <select id="cfg-meters" class="form-select">
-                <option value="">-- Sin definir --</option>
-                ${createOptions(numericFields, this.config.mapping.metersFieldId)}
-              </select>
+              ${UIUtils.createSearchableSelect('cfg-meters', `<option value="">-- Sin definir --</option>${createOptions(numericFields, this.config.mapping.metersFieldId)}`)}
             </div>
             <div class="col">
               <label class="form-label" for="cfg-operator">Campo Operario</label>
-              <select id="cfg-operator" class="form-select">
-                <option value="">-- Sin definir --</option>
-                ${createOptions(allFields, this.config.mapping.operatorFieldId)}
-              </select>
+              ${UIUtils.createSearchableSelect('cfg-operator', `<option value="">-- Sin definir --</option>${createOptions(allFields, this.config.mapping.operatorFieldId)}`)}
             </div>
             <div class="col">
               <label class="form-label" for="cfg-shift">Campo Turno</label>
-              <select id="cfg-shift" class="form-select">
-                <option value="">-- Sin definir --</option>
-                ${createOptions(allFields, this.config.mapping.shiftFieldId)}
-              </select>
+              ${UIUtils.createSearchableSelect('cfg-shift', `<option value="">-- Sin definir --</option>${createOptions(allFields, this.config.mapping.shiftFieldId)}`)}
             </div>
             <div class="col">
               <label class="form-label" for="cfg-machine">Campo Máquina</label>
-              <select id="cfg-machine" class="form-select">
-                <option value="">-- Sin definir --</option>
-                ${createOptions(allFields, this.config.mapping.machineFieldId)}
-              </select>
+              ${UIUtils.createSearchableSelect('cfg-machine', `<option value="">-- Sin definir --</option>${createOptions(allFields, this.config.mapping.machineFieldId)}`)}
             </div>
             <div class="col">
               <label class="form-label" for="cfg-time">Campo Tiempo por Pedido</label>
-              <select id="cfg-time" class="form-select">
-                <option value="">-- Sin definir --</option>
-                ${createOptions(numericFields, this.config.mapping.timeFieldId)}
-              </select>
+              ${UIUtils.createSearchableSelect('cfg-time', `<option value="">-- Sin definir --</option>${createOptions(numericFields, this.config.mapping.timeFieldId)}`)}
             </div>
             <div class="col-12">
               <button class="btn btn-outline-primary" type="submit">Guardar Configuración</button>
@@ -212,6 +199,10 @@ const KPIsView = {
         </div>
       </div>
     `;
+
+    // Inicializar selects con buscador
+    ['kpi-shift','kpi-operator','kpi-machine','kpi-compare-period','cfg-meters','cfg-operator','cfg-shift','cfg-machine','cfg-time']
+      .forEach(id => UIUtils.setupSearchableSelect(`#${id}`));
 
     // Rellenar selects de filtros con opciones si los campos están definidos
     this.populateFilterSelects();
@@ -228,7 +219,8 @@ const KPIsView = {
       if (!fieldId) return;
       const field = FieldModel.getById(fieldId);
       if (field && Array.isArray(field.options)) {
-        field.options.forEach(opt => {
+        const options = [...field.options].sort(UIUtils.sortSelectOptions);
+        options.forEach(opt => {
           const o = document.createElement('option');
           o.value = opt;
           o.textContent = opt;
@@ -237,6 +229,7 @@ const KPIsView = {
       }
       const current = this.config.filters[selectId.replace('kpi-', '')];
       if (current) sel.value = current;
+      UIUtils.setupSearchableSelect('#' + selectId);
     };
     fill('kpi-shift', this.config.mapping.shiftFieldId);
     fill('kpi-operator', this.config.mapping.operatorFieldId);

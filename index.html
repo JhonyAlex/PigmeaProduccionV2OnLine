@@ -107,11 +107,20 @@
                         </div>
                         <div class="mb-3">
                             <label for="field-type" class="form-label">Tipo de Campo</label>
-                            <select class="form-select" id="field-type" required>
-                                <option value="text">Texto</option>
-                                <option value="number">Número</option>
-                                <option value="select">Selección</option>
-                            </select>
+                            <div class="select-with-search">
+                                <select class="form-select searchable-select" id="field-type" required>
+                                    <option value="text">Texto</option>
+                                    <option value="number">Número</option>
+                                    <option value="select">Selección</option>
+                                </select>
+                                <div class="select-search-box d-none">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                        <input type="text" class="form-control select-search-input" placeholder="Buscar...">
+                                    </div>
+                                    <div class="select-search-options"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3" id="options-container" style="display: none;">
                             <label class="form-label">Opciones</label>
