@@ -181,6 +181,15 @@ const EntityModel = {
     },
 
     /**
+     * Obtiene entidades activas de un grupo
+     * @param {string} groupName Nombre del grupo
+     * @returns {Array} Entidades activas del grupo
+     */
+    getActiveByGroup(groupName) {
+        return this.getByGroup(groupName).filter(e => e.active !== false);
+    },
+
+    /**
      * Devuelve la entidad marcada como referencia del progreso diario
      * @returns {Object|null} Entidad con dailyProgressRef activo
      */

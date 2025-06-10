@@ -49,7 +49,7 @@ const KPIsView = {
     } else {
       // Intentar inferir campos por nombre
       const guess = name => {
-        const f = FieldModel.getAll().find(fl =>
+        const f = FieldModel.getActive().find(fl =>
           fl.name.toLowerCase().includes(name)
         );
         return f ? f.id : null;
@@ -87,7 +87,7 @@ const KPIsView = {
     const lineTo = this.config.lineRange.toDate || toVal;
 
     const numericFields = FieldModel.getNumericFields();
-    const allFields = FieldModel.getAll();
+    const allFields = FieldModel.getActive();
 
     const createOptions = (fields, selected) => {
       const sorted = [...fields].sort((a, b) => a.name.localeCompare(b.name, 'es', {sensitivity: 'accent'}));

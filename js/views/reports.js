@@ -1277,7 +1277,7 @@ const ReportsView = {
         if (!record) return;
 
         const entity = EntityModel.getById(record.entityId) || { name: 'Desconocido' };
-        const fields = FieldModel.getByIds(Object.keys(record.data)); // Campos usados en este registro
+        const fields = FieldModel.getActiveByIds(Object.keys(record.data)); // Campos activos usados en este registro
         const allFields = FieldModel.getActive(); // Todos los campos para el selector de tipo
         // Obtener nombre personalizado de la entidad
         const config = StorageService.getConfig();
@@ -2328,7 +2328,7 @@ const ReportsView = {
         if (!entityFilterSelect) return;
         
         // Obtener las entidades del grupo especificado
-        const entitiesInGroup = EntityModel.getByGroup(groupName);
+        const entitiesInGroup = EntityModel.getActiveByGroup(groupName);
         if (entitiesInGroup.length === 0) return;
         
         // Deseleccionar todas las opciones primero

@@ -61,7 +61,9 @@ const FieldModel = {
         return (options || []).map(opt =>
             typeof opt === 'string'
                 ? { value: opt, active: true }
-                : { value: (opt && typeof opt.value === 'string') ? opt.value : '', active: opt.active !== false }
+
+                : { value: opt.value, active: opt.active !== false }
+
         );
     },
     
@@ -86,9 +88,7 @@ const FieldModel = {
             dailyProgressRef: !!fieldData.dailyProgressRef,
             active: fieldData.hasOwnProperty('active') ? !!fieldData.active : true,
             options: fieldData.type === 'select'
-
                 ? this._normalizeOptions(fieldData.options)
-
                 : []
         };
         
@@ -118,7 +118,6 @@ const FieldModel = {
             options: fieldData.type === 'select'
 
                 ? this._normalizeOptions(fieldData.options)
-
                 : [],
             // Nuevas propiedades
             useForRecordsTable: !!fieldData.useForRecordsTable,
@@ -181,7 +180,8 @@ const FieldModel = {
         const fields = this.getAll() || [];
         return fields.filter(field =>
             field &&
-            field.type === 'number'
+            field.type === 'number' &&
+            field.active !== false
         );
     },
 
