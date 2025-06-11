@@ -389,8 +389,8 @@ const KPIsView = {
         const displayStyle = isVisible ? '' : 'style="display:none;"';
         chartsHTML += `
             <div id="${item.kpi.placeholderId}" class="${item.colClass} mb-4" ${displayStyle}>
-                <div class="kpi-chart-wrapper"> {/* Nueva clase para estilizar el contenedor del gráfico */}
-                    <canvas id="${item.canvasId}"></canvas> {/* Altura se manejará por CSS o Chart.js options */}
+                <div class="kpi-chart-wrapper">
+                    <canvas id="${item.canvasId}"></canvas>
                 </div>
             </div>
         `;
@@ -986,26 +986,27 @@ const KPIsView = {
              const canvas = document.getElementById(barChartCanvasId);
              if(canvas) { // Muestra mensaje en el canvas.
                 const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.font = "16px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(`Campo "${primaryMetricName}" no configurado.`, canvas.width / 2, canvas.height / 2);
+                if (ctx) { // Asegurarse que el contexto existe
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = "16px Arial";
+                    ctx.textAlign = "center";
+                    ctx.fillText(`Campo "${primaryMetricName}" no configurado.`, canvas.width / 2, canvas.height / 2);
+                }
             }
         } else {
             // Prepara los datos para el gráfico de barras usando las métricas del periodo actual.
-            const barChartData = this._prepareBarChartData(currentPeriodMetrics);
-            if (barChartData && barChartData.datasets.length > 0 && barChartData.labels.length > 0) {
+            const dailyBreakdownData = this._prepareBarChartData(currentPeriodMetrics);
+            if (dailyBreakdownData && dailyBreakdownData.datasets && dailyBreakdownData.datasets.length > 0 && dailyBreakdownData.labels && dailyBreakdownData.labels.length > 0) {
                 // Crea el gráfico de barras.
-                this.charts.bar = ChartUtils.createBarChart(
+                this.charts.bar = ChartUtils.createBarChart( // Nombre del chart para this.charts
                     barChartCanvasId,
                     `Desglose Diario (${primaryMetricName})`,
-                    { x: 'Día', y: 'Total' },
-                    barChartData.datasets
+                    { x: 'Día', y: primaryMetricName }, // Usar primaryMetricName para el eje Y
+                    dailyBreakdownData.datasets, // Pasar el array de datasets
+                    dailyBreakdownData.labels    // Pasar el array de etiquetas
                 );
-                if (this.charts.bar) { // Si la creación fue exitosa, actualiza las etiquetas.
-                     this.charts.bar.data.labels = barChartData.labels;
-                     this.charts.bar.update();
-                } else { destroyChartInstance('bar', barChartCanvasId); } // Fallback si createBarChart devuelve null.
+                // createBarChart ya maneja la asignación de this.charts.bar.data.labels y el update no es necesario aquí.
+                if (!this.charts.bar) { destroyChartInstance('bar', barChartCanvasId); } // Fallback si createBarChart devuelve null.
             } else { // Si no hay datos preparados, destruye cualquier gráfico existente.
                 destroyChartInstance('bar', barChartCanvasId);
             }
@@ -1081,12 +1082,17 @@ const KPIsView = {
     const labels = Object.keys(metrics.metersByDay).sort();
     if (labels.length === 0) return null;
     const data = labels.map(k => metrics.metersByDay[k].sum);
+
+    const primaryMetricName = this.config.mapping.metersFieldId
+        ? (FieldModel.getById(this.config.mapping.metersFieldId)?.name || 'Valor')
+        : 'Valor';
+
     return {
       labels: labels,
       datasets: [{
-        label: 'Metros por día',
-        data: data,
-        backgroundColor: 'rgba(54,162,235,0.6)'
+        label: primaryMetricName, // Usar el nombre del campo primario
+        data: data
+        // backgroundColor y borderColor serán manejados por ChartUtils.createBarChart
       }]
     };
   },
@@ -1217,26 +1223,27 @@ const KPIsView = {
     // --- Definición y Cálculo de Métricas para Comparación ---
 
     // Métrica 1: Total de la Métrica Primaria (e.g., Metros Impresos)
+    // Se muestra solo si el campo de metros está mapeado.
     if (map.metersFieldId) {
         const currentVal = currentMetrics.totalMeters;
         const prevVal = previousMetrics.totalMeters;
         const diff = currentVal - prevVal;
-        // Si el valor previo es 0, un aumento se considera 100% (o 0% si el actual también es 0).
+        // Cálculo del porcentaje: si el valor previo es 0, un aumento se considera 100% (o 0% si el actual también es 0).
         const perc = prevVal !== 0 ? (diff / prevVal) * 100 : (currentVal !== 0 ? 100 : 0);
         metricsToCompare.push({
-            name: FieldModel.getById(map.metersFieldId)?.name || 'Total Métrica Primaria',
-            current: ChartUtils.formatNumber(currentVal),
-            previous: ChartUtils.formatNumber(prevVal),
-            diff: ChartUtils.formatNumber(diff),
+            name: FieldModel.getById(map.metersFieldId)?.name || 'Total Métrica Primaria', // Nombre dinámico del campo
+            current: ChartUtils.formatNumber(currentVal), // Valor actual formateado
+            previous: ChartUtils.formatNumber(prevVal), // Valor anterior formateado
+            diff: ChartUtils.formatNumber(diff), // Diferencia absoluta formateada
             perc: perc.toFixed(1) + '%', // Porcentaje con un decimal
-            isPositive: diff >= 0 // Para esta métrica, un aumento es positivo.
+            isPositive: diff >= 0 // Para esta métrica, un aumento (o ninguna diferencia) se considera positivo.
         });
     } else {
-        // Si el campo de metros no está mapeado, se muestra N/A.
+        // Si el campo de metros no está mapeado, se muestra N/A para esta métrica.
         metricsToCompare.push({ name: 'Total Métrica Primaria', current: 'N/A', previous: 'N/A', diff: 'N/A', perc: 'N/A', isPositive: true });
     }
 
-    // Métrica 2: Tiempo Promedio (si está mapeado)
+    // Métrica 2: Tiempo Promedio (si el campo de tiempo está mapeado)
     if (map.timeFieldId) {
         const currentVal = currentMetrics.timeAvg;
         const prevVal = previousMetrics.timeAvg;
@@ -1252,7 +1259,7 @@ const KPIsView = {
         });
     }
 
-    // Métrica 3: Número de Máquinas Únicas Utilizadas (si está mapeado)
+    // Métrica 3: Número de Máquinas Únicas Utilizadas (si el campo de máquina está mapeado)
      if (map.machineFieldId) {
         const currentVal = currentMetrics.machinesUsed;
         const prevVal = previousMetrics.machinesUsed;
@@ -1260,15 +1267,16 @@ const KPIsView = {
         const perc = prevVal !== 0 ? (diff / prevVal) * 100 : (currentVal !== 0 ? 100 : 0);
         metricsToCompare.push({
             name: `Máquinas Únicas (${FieldModel.getById(map.machineFieldId)?.name || 'Máquina'})`,
-            current: currentVal.toString(), // Es un conteo, no necesita formatNumber con decimales.
+            current: currentVal.toString(), // Es un conteo, no necesita formateo numérico con decimales.
             previous: prevVal.toString(),
             diff: diff.toString(),
             perc: perc.toFixed(1) + '%',
-            isPositive: diff >= 0 // Se asume que más máquinas usadas es neutral o positivo. Podría variar según el contexto.
+            isPositive: diff >= 0 // Se asume que más máquinas usadas es neutral o positivo. Podría variar según el contexto del negocio.
         });
     }
 
     // Métrica 4: Total de Registros (Pedidos/Eventos)
+    // Esta métrica siempre se calcula, ya que no depende de un campo mapeado específico más allá de la existencia de registros.
     const currentRecordCount = currentPeriodRecords.length;
     const previousRecordCount = previousPeriodRecords.length;
     const diffRecords = currentRecordCount - previousRecordCount;
@@ -1282,14 +1290,22 @@ const KPIsView = {
         isPositive: diffRecords >= 0 // Más registros generalmente se considera positivo.
     });
 
-    // --- Renderizado de la Tabla ---
+    // --- Renderizado de la Tabla HTML ---
     let tableHTML = '';
-    if (metricsToCompare.filter(m => m.current !== 'N/A').length === 0) { // Si todas las métricas configurables son N/A
+    // Si todas las métricas que podrían tener datos (excluyendo las que son N/A por falta de mapeo)
+    // efectivamente no tienen datos (e.g. current y previous son 0 o N/A), mostrar mensaje.
+    // O, más simple: si `metricsToCompare` está vacío o todas las métricas son N/A.
+    if (metricsToCompare.filter(m => m.current !== 'N/A').length === 0) {
         tableHTML = '<tr><td colspan="5">No hay métricas configuradas o datos disponibles para comparación.</td></tr>';
     } else {
+        // Construir cada fila de la tabla.
         metricsToCompare.forEach(metric => {
+            // Determinar la clase CSS para el color del texto (verde para positivo, rojo para negativo).
+            // Si el porcentaje es "N/A" (por falta de datos previos), no se aplica clase de color.
             const textClass = metric.perc === 'N/A' ? '' : (metric.isPositive ? 'text-success' : 'text-danger');
+            // Determinar el ícono de flecha (arriba para positivo, abajo para negativo).
             const arrowIcon = metric.perc === 'N/A' ? '' : (metric.isPositive ? '<i class="bi bi-arrow-up-short"></i>' : '<i class="bi bi-arrow-down-short"></i>');
+            // Formatear el string del porcentaje con el ícono.
             const displayPerc = metric.perc === 'N/A' ? 'N/A' : `${arrowIcon} ${metric.perc}`;
 
             tableHTML += `
@@ -1303,7 +1319,7 @@ const KPIsView = {
             `;
         });
     }
-    comparisonTbody.innerHTML = tableHTML;
+    comparisonTbody.innerHTML = tableHTML; // Actualizar el contenido del cuerpo de la tabla.
   },
 
   /**

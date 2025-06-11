@@ -1799,7 +1799,27 @@ const ReportsView = {
                 
                 // Crear gráfico para este campo
                 if (ChartUtils) {
-                    ChartUtils.createBarChart(`report-chart-${fieldId}`, reportData);
+                    // Preparar datos para el nuevo formato de createBarChart
+                    const reportEntities = reportData.entities || [];
+                    const labels = reportEntities.map(entity => entity.name);
+                    const datasets = [{
+                        label: reportData.field || 'Valor',
+                        data: reportEntities.map(entity => entity.value),
+                        backgroundColor: reportEntities.map((entity, index) => ChartUtils.chartColors[index % ChartUtils.chartColors.length]),
+                        borderWidth: 1
+                    }];
+
+                    // Determinar título y etiquetas de ejes para createBarChart
+                    const chartTitle = reportData.aggregation === 'sum'
+                        ? `Suma total de ${reportData.field} por ${reportData.horizontalField || this.entityName}`
+                        : `Promedio de ${reportData.field} por ${reportData.horizontalField || this.entityName}`;
+                    const axisLabels = {
+                        x: reportData.horizontalField || this.entityName,
+                        y: reportData.field || 'Valor'
+                    };
+
+                    // Llamar a createBarChart con la nueva firma
+                    ChartUtils.createBarChart(`report-chart-${fieldId}`, chartTitle, axisLabels, datasets, labels);
                     
                     // Crear tabla resumen para este campo
                     const summaryDiv = document.getElementById(`report-summary-${fieldId}`);
@@ -2019,10 +2039,30 @@ const ReportsView = {
                                 };
                                 
                                 // Generar el gráfico
+                                // Preparar datos para el nuevo formato de createBarChart
+                                const detailReportEntities = reportData.entities || [];
+                                const detailLabels = detailReportEntities.map(entity => entity.name);
+                                const detailDatasets = [{
+                                    label: mainField.name || 'Valor',
+                                    data: detailReportEntities.map(entity => entity.value),
+                                    backgroundColor: detailReportEntities.map((entity, index) => ChartUtils.chartColors[index % ChartUtils.chartColors.length]),
+                                    borderWidth: 1
+                                }];
+
+                                // Usar chartConfig.options para el título y etiquetas de ejes si están definidos ahí,
+                                // o construirlos como en el caso principal.
+                                const detailChartTitle = chartConfig.options?.plugins?.title?.text || `${mainField.name} por ${additionalField.name}`;
+                                const detailAxisLabels = {
+                                    x: chartConfig.options?.scales?.x?.title?.text || additionalField.name,
+                                    y: chartConfig.options?.scales?.y?.title?.text || mainField.name
+                                };
+
                                 ChartUtils.createBarChart(
                                     `detail-chart-${fieldId}-${additionalFieldId}`, 
-                                    reportData, 
-                                    chartConfig
+                                    detailChartTitle,
+                                    detailAxisLabels,
+                                    detailDatasets,
+                                    detailLabels
                                 );
                                 
                                 // Crear la tabla de resumen
