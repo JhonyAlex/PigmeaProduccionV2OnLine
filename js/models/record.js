@@ -140,8 +140,13 @@ const RecordModel = {
     generateReportMultiple(fieldId, aggregation = 'sum', filters = {}, horizontalFieldId = '') {
         // Obtenemos el campo
         const field = FieldModel.getById(fieldId);
-        if (!field) {
-            return { error: 'El campo seleccionado no existe' };
+        // if (!field) { // Original check
+        //     return { error: 'El campo seleccionado no existe' };
+        // }
+
+        if (!field || field.active === false) {
+            console.warn(`RecordModel.generateReportMultiple: Main field ${fieldId} is inactive or not found. Skipping.`);
+            return { field: field ? field.name : fieldId, error: 'Field is inactive or not found', entities: [] };
         }
         
         // Verificar si es un campo soportado (numérico o select)
@@ -156,7 +161,8 @@ const RecordModel = {
         const effectiveAggregation = isSelect ? 'count' : aggregation;
         
         // Obtenemos las entidades que usan este campo
-        let entities = EntityModel.getAll().filter(entity => 
+        // let entities = EntityModel.getAll().filter(entity => // Original line
+        let entities = EntityModel.getActive().filter(entity =>
             entity.fields.includes(fieldId)
         );
         
@@ -185,8 +191,13 @@ const RecordModel = {
                     console.log(`Filtrando por entidad específica: ${filters.specificEntityId}`);
                     const specificEntity = EntityModel.getById(filters.specificEntityId);
                     
-                    if (!specificEntity) {
-                        return { error: 'La entidad específica seleccionada no existe' };
+                    // if (!specificEntity) { // Original check
+                    //     return { error: 'La entidad específica seleccionada no existe' };
+                    // }
+
+                    if (!specificEntity || specificEntity.active === false) {
+                        console.warn(`RecordModel.generateReportMultiple: Specified entity ${filters.specificEntityId} is inactive or not found.`);
+                        return { field: field ? field.name : fieldId, aggregation: effectiveAggregation, entities: [] };
                     }
                     
                     // El resto del procesamiento se hará normalmente, ya que ya filtramos por entityIds
@@ -197,31 +208,71 @@ const RecordModel = {
             }
             
             // Caso normal: usar un campo como eje horizontal
-            const horizontalField = FieldModel.getById(horizontalFieldId);
+            let horizontalField = null; // Declare with let to allow modification
+            const foundHorizontalField = FieldModel.getById(horizontalFieldId);
+
+            if (foundHorizontalField && foundHorizontalField.active !== false) {
+                horizontalField = foundHorizontalField;
+            } else if (foundHorizontalField && foundHorizontalField.active === false) {
+                console.warn(`RecordModel.generateReportMultiple: Horizontal field ${foundHorizontalField.name} is inactive. It will not be used for grouping.`);
+                horizontalField = null; // Explicitly set to null, report will not use it for grouping
+            } else {
+                // Field not found by ID, original code would have errored earlier if we didn't catch it.
+                // For safety, ensure it's null if not found.
+                horizontalField = null;
+            }
+
+            // If horizontalField is null (not found or inactive), we might not want to proceed with horizontal grouping.
+            // The original code had a check: if (!horizontalField) return { error: ... }
+            // Now, if it's inactive, we set it to null. The report should then not group by it.
+
             if (!horizontalField) {
-                return { error: 'El campo seleccionado para el eje horizontal no existe' };
+                // If the horizontal field is crucial and not found/inactive, error out.
+                // Or, if the report can be generated without it (e.g. by entities), then proceed differently.
+                // The original logic returned an error. Let's stick to that if it's not found.
+                // If it was found but inactive, we've nulled it, and the reportData.horizontalField will be an issue.
+                // The instructions imply that if inactive, it shouldn't be used for grouping.
+                // This means the report should still be generated, but not grouped horizontally.
+                // This part of the logic might need rethinking based on desired behavior for inactive horizontal field.
+                // For now, if `foundHorizontalField` was null from the start:
+                if (!foundHorizontalField) {
+                     return { error: `El campo seleccionado para el eje horizontal con ID '${horizontalFieldId}' no existe.` };
+                }
+                // If it was found but inactive, horizontalField is now null.
+                // The reportData below will try to access horizontalField.name which will error.
             }
             
             // Agrupar por el valor del campo horizontal
             const reportData = {
                 field: field.name,
                 fieldType: field.type,
-                horizontalField: horizontalField.name,
+                // horizontalField: horizontalField ? horizontalField.name : null, // Adjust here
+                horizontalField: horizontalField ? horizontalField.name : undefined, // Use undefined or handle in UI
                 aggregation: effectiveAggregation,
                 entities: []
             };
             
+            // If horizontalField is null (because it's inactive or not found), skip horizontal grouping
+            if (!horizontalField) {
+                // If no active horizontal field, fall back to generating report by entities
+                console.log("Horizontal field is inactive or not found, generating report by entities instead.");
+                return this.generateReportByEntities(field, effectiveAggregation, filteredRecords, entities);
+            }
+
             // Obtener valores únicos del campo horizontal
             const uniqueValues = new Set();
             
+            // This block only runs if horizontalField is active and valid.
             // Si hay una opción específica seleccionada, usar solo esa
             if (filters.horizontalFieldOption) {
                 uniqueValues.add(filters.horizontalFieldOption);
             } else {
                 // Si no hay opción específica, obtener todos los valores únicos
                 filteredRecords.forEach(record => {
-                    if (record.data[horizontalFieldId] !== undefined) {
-                        uniqueValues.add(record.data[horizontalFieldId]);
+                    // Use horizontalField.id here because horizontalFieldId is the string ID,
+                    // and horizontalField is the actual field object.
+                    if (record.data[horizontalField.id] !== undefined) {
+                        uniqueValues.add(record.data[horizontalField.id]);
                     }
                 });
             }
@@ -230,7 +281,7 @@ const RecordModel = {
             Array.from(uniqueValues).forEach(value => {
                 // Filtrar registros para este valor
                 const valueRecords = filteredRecords.filter(record => 
-                    record.data[horizontalFieldId] === value && 
+                    record.data[horizontalField.id] === value &&
                     record.data[fieldId] !== undefined
                 );
                 

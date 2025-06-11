@@ -3135,11 +3135,21 @@ const ReportsView = {
             const field = FieldModel.getById(fieldId);
             console.log("Campo seleccionado:", field);
             
-            if (!field) {
-                console.warn("No se encontró el campo con ID:", fieldId);
+            // ADD THIS CHECK
+            if (!field || field.active === false) { // Check if field is null OR inactive
+                console.warn("No se encontró el campo con ID:", fieldId, "o está inactivo.");
                 optionsContainer.style.display = 'none';
+                if (additionalFieldsContainer) additionalFieldsContainer.style.display = 'none'; // Also hide additional fields
                 return;
             }
+            // END OF ADDED CHECK
+
+            // Existing checks (can be slightly simplified now)
+            // if (!field) { // This part of the condition is now covered above
+            //     console.warn("No se encontró el campo con ID:", fieldId);
+            //     optionsContainer.style.display = 'none';
+            //     return;
+            // }
             
             if (field.type !== 'select') {
                 console.log("El campo no es de tipo select:", field.type);
