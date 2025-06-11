@@ -611,12 +611,6 @@ const KPIsView = {
     }
 
     document.querySelectorAll('#kpi-date-shortcuts button').forEach(btn => {
-      this.config.comparison.period = e.target.value;
-      this.saveConfig();
-      this.refresh();
-    });
-
-    document.querySelectorAll('#kpi-date-shortcuts button').forEach(btn => {
       btn.addEventListener('click', () => {
         const r = this.getShortcutRange(btn.dataset.range);
         document.getElementById('kpi-from').value = r.from;
@@ -647,34 +641,6 @@ const KPIsView = {
         this.saveConfig();
         this.refresh();
       });
-    });
-  },
-
-  /**
-   * Suscribe a los cambios de datos para refrescar en tiempo real.
-   */
-  setupRealtime() {
-    if (this.dataSubscriber) this.dataSubscriber();
-    this.dataSubscriber = StorageService.subscribeToDataChanges(() => {
-      if (Router.currentRoute === 'kpis') {
-        this.refresh();
-      }
-    });
-  },
-
-  /**
-=======
-  },
-
-  /**
-   * Suscribe a los cambios de datos para refrescar en tiempo real.
-   */
-  setupRealtime() {
-    if (this.dataSubscriber) this.dataSubscriber();
-    this.dataSubscriber = StorageService.subscribeToDataChanges(() => {
-      if (Router.currentRoute === 'kpis') {
-        this.refresh();
-      }
     });
   },
 
