@@ -77,97 +77,222 @@ const ChartUtils = {
      * @param {Object} customConfig Configuración personalizada (opcional)
      * @returns {Chart} Instancia del gráfico
      */
-    createBarChart(canvasId, reportData, customConfig = null) {
+    createBarChart(canvasId, chartTitle, axisLabels, datasets) {
         const canvas = document.getElementById(canvasId);
-        
+        if (!canvas) {
+            console.error(`Canvas element with ID '${canvasId}' not found.`);
+            return null;
+        }
+
         // Destruir gráfico anterior si existe
         if (canvas.chart) {
             canvas.chart.destroy();
         }
-        
-        // Ordenar entidades alfabéticamente por nombre para consistencia
-        const sortedEntities = [...reportData.entities].sort((a, b) => a.name.localeCompare(b.name));
-        
-        // Preparar datos del gráfico a partir de las entidades ordenadas
-        const labels = sortedEntities.map(entity => entity.name);
-        const values = sortedEntities.map(entity => entity.value);
-        const numBaseColors = this.chartColors.length;
 
-        // Título según el tipo de agregación y campos (si no hay configuración personalizada)
-        const horizontalFieldName = reportData.horizontalField ? reportData.horizontalField : 'Entidad';
-        const title = reportData.aggregation === 'sum' 
-            ? `Suma total de ${reportData.field} por ${horizontalFieldName}`
-            : `Promedio de ${reportData.field} por ${horizontalFieldName}`;
-        
-        // Verificar si se proporciona configuración personalizada
-        let type = 'bar';
-        let options = {
+        // Asignar colores si no están definidos en los datasets
+        datasets.forEach((dataset, index) => {
+            if (!dataset.backgroundColor) {
+                dataset.backgroundColor = this.chartColors[index % this.chartColors.length];
+            }
+            if (!dataset.borderColor) {
+                // Generar borderColor a partir de backgroundColor si no se provee
+                const bgColor = dataset.backgroundColor;
+                if (typeof bgColor === 'string' && bgColor.startsWith('rgba')) {
+                    dataset.borderColor = bgColor.replace(/, ?0\.\d+\)$/, ', 1)');
+                } else { // fallback para colores no rgba o arrays de colores
+                    dataset.borderColor = this.chartColors[(index + this.chartColors.length / 2) % this.chartColors.length].replace('0.7', '1');
+                }
+            }
+            dataset.borderWidth = dataset.borderWidth || 1;
+        });
+
+        const options = {
             responsive: true,
             plugins: {
                 legend: {
                     position: 'top',
                 },
                 title: {
-                    display: true,
-                    text: title
+                    display: !!chartTitle,
+                    text: chartTitle
                 },
                 tooltip: {
                     callbacks: {
                         label: (context) => {
                             const value = this.formatNumber(context.raw);
-                            return `${context.dataset.label}: ${value}`;
+                            return `${context.dataset.label || ''}: ${value}`;
                         }
                     }
                 }
             },
             scales: {
+                x: {
+                    title: {
+                        display: !!(axisLabels && axisLabels.x),
+                        text: (axisLabels && axisLabels.x) || ''
+                    }
+                },
                 y: {
                     beginAtZero: true,
+                    title: {
+                        display: !!(axisLabels && axisLabels.y),
+                        text: (axisLabels && axisLabels.y) || ''
+                    },
                     ticks: {
                         callback: (value) => {
-                            return this.formatNumber(value);
+                            // Asegurarse de que 'this' se refiere a ChartUtils
+                            return ChartUtils.formatNumber(value);
                         }
                     }
                 }
             }
         };
-        
-        // Si hay configuración personalizada, combinarla con la configuración por defecto
-        if (customConfig) {
-            // Usar el tipo personalizado si está definido
-            if (customConfig.type) {
-                type = customConfig.type;
-            }
-            
-            // Fusionar opciones personalizadas con las predeterminadas
-            if (customConfig.options) {
-                options = this.mergeDeep(options, customConfig.options);
-            }
-        }
-        
-        // Asignar colores de forma consistente basada en el orden alfabético
-        const backgroundColors = sortedEntities.map((entity, index) => this.chartColors[index % numBaseColors]);
-        const borderColors = backgroundColors.map(bgColor => bgColor.replace('0.7', '1'));
 
-        // Crear el gráfico
         const chart = new Chart(canvas, {
-            type: type,
+            type: 'bar',
             data: {
-                labels: labels,
-                datasets: [{
-                    label: reportData.field || 'Valor', // Usar 'Valor' como fallback si field no está definido
-                    data: values,
-                    backgroundColor: backgroundColors,
-                    borderColor: borderColors,
-                    borderWidth: 1
-                }]
+                // Asumimos que los datasets ya contienen las etiquetas (labels) correctas para el eje X si son específicas del dataset
+                // o que las etiquetas globales se pasan en el primer dataset o se manejan antes.
+                // Para ser más genérico, las etiquetas del eje X deben ser parte de la estructura de 'datasets' o un parámetro separado.
+                // Por ahora, asumimos que el primer dataset tiene las 'labels' o que son gestionadas por el que llama.
+                labels: datasets.length > 0 && datasets[0].labels ? datasets[0].labels : (datasets.labels || []), // datasets.labels es una adición para compatibilidad
+                datasets: datasets
             },
             options: options
         });
-        
-        // Guardar referencia al gráfico en el canvas
+
         canvas.chart = chart;
-        
+        return chart;
+    },
+
+    /**
+     * Crea o actualiza un gráfico de líneas.
+     * @param {string} canvasId ID del elemento canvas.
+     * @param {string} chartTitle Título del gráfico.
+     * @param {object} axisLabels Etiquetas para los ejes (e.g., {x: 'X-axis Label', y: 'Y-axis Label'}).
+     * @param {Array<object>} datasets Array de objetos de dataset de Chart.js.
+     * @returns {Chart|null} Instancia del gráfico o null si falla.
+     */
+    createLineChart(canvasId, chartTitle, axisLabels, datasets) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error(`Canvas element with ID '${canvasId}' not found.`);
+            return null;
+        }
+
+        if (canvas.chart) {
+            canvas.chart.destroy();
+        }
+
+        datasets.forEach((dataset, index) => {
+            dataset.borderColor = dataset.borderColor || this.chartColors[index % this.chartColors.length];
+            dataset.fill = dataset.fill !== undefined ? dataset.fill : false; // Default fill to false for line charts
+            dataset.tension = dataset.tension || 0.1; // Slight curve
+        });
+
+        const options = {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: !!chartTitle, text: chartTitle },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label || ''}: ${this.formatNumber(context.raw)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: !!(axisLabels && axisLabels.x),
+                        text: (axisLabels && axisLabels.x) || ''
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: !!(axisLabels && axisLabels.y),
+                        text: (axisLabels && axisLabels.y) || ''
+                    },
+                    ticks: { callback: (value) => ChartUtils.formatNumber(value) }
+                }
+            }
+        };
+
+        const chart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                 labels: datasets.length > 0 && datasets[0].labels ? datasets[0].labels : (datasets.labels || []),
+                 datasets: datasets
+            },
+            options: options
+        });
+
+        canvas.chart = chart;
+        return chart;
+    },
+
+    /**
+     * Crea o actualiza un gráfico de pastel (pie) o dona (doughnut).
+     * @param {string} canvasId ID del elemento canvas.
+     * @param {string} chartTitle Título del gráfico.
+     * @param {Array<string>} labels Etiquetas para cada segmento del pastel.
+     * @param {object} seriesData Objeto de dataset de Chart.js para pie/doughnut.
+     * @returns {Chart|null} Instancia del gráfico o null si falla.
+     */
+    createPieChart(canvasId, chartTitle, labels, seriesData) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error(`Canvas element with ID '${canvasId}' not found.`);
+            return null;
+        }
+
+        if (canvas.chart) {
+            canvas.chart.destroy();
+        }
+
+        // Asignar colores si no están definidos en seriesData
+        if (!seriesData.backgroundColor) {
+            seriesData.backgroundColor = labels.map((_, index) => this.chartColors[index % this.chartColors.length]);
+        }
+        // Asegurar que borderColor también se genere si es necesario o se defina
+        if (!seriesData.borderColor) {
+           seriesData.borderColor = seriesData.backgroundColor.map(bgColor =>
+             (typeof bgColor === 'string' && bgColor.startsWith('rgba')) ? bgColor.replace(/, ?0\.\d+\)$/, ', 1)') : '#fff'
+           );
+        }
+        seriesData.borderWidth = seriesData.borderWidth || 1;
+
+
+        const options = {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: !!chartTitle, text: chartTitle },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.label || '';
+                            const value = this.formatNumber(context.raw);
+                            const percentage = context.chart.data.datasets[0].data.length > 0 ?
+                                (context.raw / context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0) * 100).toFixed(2) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        };
+
+        const chart = new Chart(canvas, {
+            type: 'pie', // o 'doughnut'
+            data: {
+                labels: labels,
+                datasets: [seriesData] // Pie/Doughnut charts typically have one dataset object
+            },
+            options: options
+        });
+
+        canvas.chart = chart;
         return chart;
     },
     
