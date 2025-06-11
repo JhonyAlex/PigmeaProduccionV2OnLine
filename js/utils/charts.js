@@ -77,7 +77,7 @@ const ChartUtils = {
      * @param {Object} customConfig Configuración personalizada (opcional)
      * @returns {Chart} Instancia del gráfico
      */
-    createBarChart(canvasId, chartTitle, axisLabels, datasets) {
+    createBarChart(canvasId, chartTitle, axisLabels, datasets, labels) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) {
             console.error(`Canvas element with ID '${canvasId}' not found.`);
@@ -92,22 +92,32 @@ const ChartUtils = {
         // Asignar colores si no están definidos en los datasets
         datasets.forEach((dataset, index) => {
             if (!dataset.backgroundColor) {
-                dataset.backgroundColor = this.chartColors[index % this.chartColors.length];
+                // Si backgroundColor es un array (para barras individuales), no lo sobrescribas.
+                if (!Array.isArray(dataset.data) || !Array.isArray(dataset.backgroundColor) || dataset.backgroundColor.length !== dataset.data.length) {
+                    dataset.backgroundColor = this.chartColors[index % this.chartColors.length];
+                }
             }
             if (!dataset.borderColor) {
-                // Generar borderColor a partir de backgroundColor si no se provee
-                const bgColor = dataset.backgroundColor;
-                if (typeof bgColor === 'string' && bgColor.startsWith('rgba')) {
-                    dataset.borderColor = bgColor.replace(/, ?0\.\d+\)$/, ', 1)');
-                } else { // fallback para colores no rgba o arrays de colores
-                    dataset.borderColor = this.chartColors[(index + this.chartColors.length / 2) % this.chartColors.length].replace('0.7', '1');
-                }
+                 if (!Array.isArray(dataset.data) || !Array.isArray(dataset.borderColor) || dataset.borderColor.length !== dataset.data.length) {
+                    const bgColor = dataset.backgroundColor; // Puede ser un array si se asignó arriba o vino así
+                    if (typeof bgColor === 'string' && bgColor.startsWith('rgba')) {
+                        dataset.borderColor = bgColor.replace(/, ?0\.\d+\)$/, ', 1)');
+                    } else if (Array.isArray(bgColor)) {
+                         // Si backgroundColor es un array, borderColor también debería serlo o un color único.
+                         // Por simplicidad, si bgColor es un array, borderColor también lo será, con cada color aclarado.
+                         // Esto puede no ser ideal si se quiere un borde único para todas las barras.
+                         dataset.borderColor = bgColor.map(color => typeof color === 'string' && color.startsWith('rgba') ? color.replace(/, ?0\.\d+\)$/, ', 1)') : color);
+                    } else {
+                        dataset.borderColor = this.chartColors[(index + Math.floor(this.chartColors.length / 2)) % this.chartColors.length].replace('0.7', '1');
+                    }
+                 }
             }
             dataset.borderWidth = dataset.borderWidth || 1;
         });
 
         const options = {
             responsive: true,
+            maintainAspectRatio: false, // Permitir que la altura se ajuste mejor
             plugins: {
                 legend: {
                     position: 'top',
@@ -140,7 +150,6 @@ const ChartUtils = {
                     },
                     ticks: {
                         callback: (value) => {
-                            // Asegurarse de que 'this' se refiere a ChartUtils
                             return ChartUtils.formatNumber(value);
                         }
                     }
@@ -151,11 +160,7 @@ const ChartUtils = {
         const chart = new Chart(canvas, {
             type: 'bar',
             data: {
-                // Asumimos que los datasets ya contienen las etiquetas (labels) correctas para el eje X si son específicas del dataset
-                // o que las etiquetas globales se pasan en el primer dataset o se manejan antes.
-                // Para ser más genérico, las etiquetas del eje X deben ser parte de la estructura de 'datasets' o un parámetro separado.
-                // Por ahora, asumimos que el primer dataset tiene las 'labels' o que son gestionadas por el que llama.
-                labels: datasets.length > 0 && datasets[0].labels ? datasets[0].labels : (datasets.labels || []), // datasets.labels es una adición para compatibilidad
+                labels: labels, // Usar el parámetro labels_array aquí
                 datasets: datasets
             },
             options: options
