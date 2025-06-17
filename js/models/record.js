@@ -29,10 +29,12 @@ const RecordModel = {
      */
     create(entityId, formData) {
         const data = StorageService.getData();
+        const nowIso = new Date().toISOString();
         const newRecord = {
             id: 'record_' + Date.now(),
             entityId: entityId,
-            timestamp: new Date().toISOString(),
+            timestamp: nowIso,              // Fecha del registro (puede modificarse)
+            createdAt: nowIso,               // Fecha real de creación
             data: { ...formData }
         };
         
@@ -125,7 +127,11 @@ const RecordModel = {
     getRecent(limit = 10) {
         const records = this.getAll();
         return records
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .sort((a, b) => {
+                const dateB = b.createdAt ? new Date(b.createdAt) : new Date(b.timestamp);
+                const dateA = a.createdAt ? new Date(a.createdAt) : new Date(a.timestamp);
+                return dateB - dateA;
+            })
             .slice(0, limit);
     },
     
@@ -435,6 +441,7 @@ const RecordModel = {
             return null;
         }
         
+        // Solo actualizamos la fecha del registro sin modificar la de creación
         data.records[recordIndex].timestamp = newDate;
         StorageService.saveData(data);
         
