@@ -288,6 +288,27 @@ const RegisterView = {
     },
 
     /**
+     * Valida y prepara los campos de una entidad.
+     * Remueve de la entidad los IDs que ya no existen.
+     * @param {Object} entity Entidad a procesar
+     * @returns {Object} Datos de campos procesados
+     */
+    _processEntityFields(entity) {
+        const allFields = FieldModel.getByIds(entity.fields);
+        const activeFields = allFields.filter(f => f && f.active !== false);
+        const missingFieldIds = entity.fields.filter(id => !allFields.some(f => f && f.id === id));
+        const inactiveFieldNames = allFields.filter(f => f && f.active === false).map(f => f.name);
+
+        if (missingFieldIds.length) {
+            const cleaned = entity.fields.filter(id => !missingFieldIds.includes(id));
+            EntityModel.update(entity.id, { fields: cleaned });
+            entity.fields = cleaned;
+        }
+
+        return { activeFields, missingFieldIds, inactiveFieldNames };
+    },
+
+    /**
      * Carga los campos dinámicos basados en la entidad seleccionada
      * @param {string} entityId ID de la entidad seleccionada
      */
@@ -348,17 +369,36 @@ const RegisterView = {
             entity.fields = [];
         }
 
-        // Obtener campos asignados a la entidad
-        const fields = FieldModel.getActiveByIds(entity.fields);
-        if (!fields || fields.length === 0) {
+        // Validar los campos de la entidad y limpiarlos si es necesario
+        const { activeFields, missingFieldIds, inactiveFieldNames } = this._processEntityFields(entity);
+
+        // Si no hay campos activos, mostrar mensaje de ayuda
+        if (!activeFields || activeFields.length === 0) {
             dynamicFieldsContainer.innerHTML = `
                 <div class="alert alert-info">
                     No hay campos configurados para esta ${this.entityName.toLowerCase()}.
                     Configure algunos en la sección de Administración.
                 </div>
             `;
-            submitContainer.style.display = 'none'; // Ocultar si no hay campos
+            submitContainer.style.display = 'none';
             return;
+        }
+
+        // Mostrar advertencias si hay campos faltantes o inactivos
+        if (missingFieldIds.length || inactiveFieldNames.length) {
+            const warnings = [];
+            if (missingFieldIds.length) {
+                warnings.push(`IDs no encontrados: ${missingFieldIds.join(', ')}`);
+            }
+            if (inactiveFieldNames.length) {
+                warnings.push(`Campos inactivos: ${inactiveFieldNames.join(', ')}`);
+            }
+            console.warn('Advertencia en campos asignados:', warnings.join(' | '));
+
+            const warnDiv = document.createElement('div');
+            warnDiv.className = 'alert alert-warning';
+            warnDiv.textContent = `Algunos campos no se pueden mostrar: ${warnings.join(' | ')}`;
+            dynamicFieldsContainer.appendChild(warnDiv);
         }
 
         // Array para guardar funciones de limpieza (para selects buscables)
@@ -369,10 +409,10 @@ const RegisterView = {
         
         // Añadir más información de registro para depuración
         console.log('Entity fields order:', JSON.stringify(entity.fields));
-        console.log('Available fields:', fields.map(f => f ? `${f.id}:${f.name}` : 'undefined').join(', '));
+        console.log('Available fields:', activeFields.map(f => f ? `${f.id}:${f.name}` : 'undefined').join(', '));
         
         entity.fields.forEach(fieldId => {
-            const field = fields.find(f => f && f.id === fieldId);
+            const field = activeFields.find(f => f && f.id === fieldId);
             if (field) {
                 orderedFields.push(field);
             } else {
@@ -548,7 +588,7 @@ const RegisterView = {
                     }
                 }
                 
-                fields.forEach(field => {
+                orderedFields.forEach(field => {
                     const fieldElement = document.getElementById(field.id);
                     if (fieldElement && lastData[field.id] !== undefined) {
                         // Manejar diferentes tipos de input
