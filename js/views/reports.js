@@ -1259,6 +1259,15 @@ const ReportsView = {
             return;
         }
     },
+    /**
+     * Devuelve el nombre de un campo dado su ID
+     * @param {string} fieldId - Identificador del campo
+     * @returns {string} Nombre del campo o cadena vacía si no existe
+     */
+    getFieldName(fieldId) {
+        const field = FieldModel.getById(fieldId);
+        return field ? field.name : '';
+    },
     getFieldValue(record, fieldId, fields) {
         // Si no hay fieldId, o no hay datos, o el campo específico no existe en los datos, devolver vacío
         if (!fieldId || !record.data || record.data[fieldId] === undefined || record.data[fieldId] === null) {
@@ -3116,7 +3125,23 @@ const ReportsView = {
      * Actualiza los encabezados de columna en la tabla según los campos seleccionados
      */
     updateColumnHeaders() {
-        // ... (código para actualizar encabezados de columna) ...
+        const columns = [
+            { key: 'field1', selector: '#records-table th.column-1', defaultLabel: 'Columna 3' },
+            { key: 'field2', selector: '#records-table th.column-2', defaultLabel: 'Columna 4' },
+            { key: 'field3', selector: '#records-table th.column-3', defaultLabel: 'Columna 5' }
+        ];
+
+        columns.forEach(({ key, selector, defaultLabel }) => {
+            const th = document.querySelector(selector);
+            if (!th) return;
+
+            // Conservar el icono de ordenamiento si existe
+            const icon = th.querySelector('i');
+            const name = this.getFieldName(this.selectedColumns[key]) || defaultLabel;
+
+            th.textContent = `${name} `;
+            if (icon) th.appendChild(icon);
+        });
     },
 
     /**
