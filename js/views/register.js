@@ -299,7 +299,10 @@ const RegisterView = {
             return;
         }
 
-        // Limpiar contenedor
+        // Limpiar contenedor y ejecutar limpieza previa si existe
+        if (typeof dynamicFieldsContainer._eventCleanupFn === 'function') {
+            dynamicFieldsContainer._eventCleanupFn();
+        }
         dynamicFieldsContainer.innerHTML = '';
 
         // Eliminar evento keydown previo si existe
@@ -447,25 +450,18 @@ const RegisterView = {
 
         // Agregar una función de limpieza al contenedor para eliminar listeners
         if (cleanupFunctions.length > 0) {
-            // Limpiar listeners anteriores
-            if (dynamicFieldsContainer._eventCleanupFn) {
-                dynamicFieldsContainer.removeEventListener('DOMNodeRemovedFromDocument', dynamicFieldsContainer._eventCleanupFn);
-            }
-            
-            // Crear una nueva función de limpieza
+            // Crear o reemplazar la función de limpieza
             dynamicFieldsContainer._eventCleanupFn = function() {
                 cleanupFunctions.forEach(cleanup => cleanup());
-                
+
                 // Limpiar también el evento keydown
                 if (dynamicFieldsContainer._keydownHandler) {
                     dynamicFieldsContainer.removeEventListener('keydown', dynamicFieldsContainer._keydownHandler);
                     dynamicFieldsContainer._keydownHandler = null;
                 }
-                
+
                 console.log("Limpiando listeners de selects y keydown para:", entityId);
             };
-            
-            dynamicFieldsContainer.addEventListener('DOMNodeRemovedFromDocument', dynamicFieldsContainer._eventCleanupFn);
         }
 
         // Añadir campo de fecha/hora personalizada
@@ -671,8 +667,9 @@ const RegisterView = {
                 // Limpiar el contenedor de campos dinámicos
                 const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
                 if (dynamicFieldsContainer) {
-                    // Disparar evento para que los listeners puedan limpiarse
-                    dynamicFieldsContainer.dispatchEvent(new Event('DOMNodeRemovedFromDocument', { bubbles: true }));
+                    if (typeof dynamicFieldsContainer._eventCleanupFn === 'function') {
+                        dynamicFieldsContainer._eventCleanupFn();
+                    }
                     dynamicFieldsContainer.innerHTML = '';
                 }
 
@@ -824,7 +821,8 @@ const RegisterView = {
             `;
 
             // Aplicar efecto de highlight si es un nuevo registro
-            const isNew = Date.now() - new Date(record.timestamp).getTime() < 10000; // 10 segundos
+            const referenceDate = record.createdAt ? new Date(record.createdAt) : new Date(record.timestamp);
+            const isNew = Date.now() - referenceDate.getTime() < 10000; // 10 segundos
             if (isNew) {
                 UIUtils.highlightNewElement(row);
             }
