@@ -1326,10 +1326,13 @@ const ReportsView = {
                             return fieldA.name.localeCompare(fieldB.name);
                         }).map(([fieldId, value]) => {
                             const field = fields.find(f => f.id === fieldId) || { name: fieldId, type: 'text' }; // Default a text si no se encuentra
+                            const displayValue = typeof value === 'object'
+                                ? (value.value ?? JSON.stringify(value))
+                                : value;
                             return `
                                 <tr data-field-id="${fieldId}" data-field-type="${field.type || 'text'}">
                                     <td>${field.name}</td>
-                                    <td class="field-value-display">${value}</td>
+                                    <td class="field-value-display">${displayValue}</td>
                                     <td class="field-value-edit" style="display: none;">
                                         <!-- Input se generará dinámicamente al editar -->
                                     </td>
@@ -1478,10 +1481,13 @@ const ReportsView = {
                 return `<input type="number" step="any" class="form-control form-control-sm edit-field" data-field-id="${fieldId}" value="${currentValue}">`;
             case 'select':
                 if (fieldDefinition?.options?.length > 0) {
-                    const optionsHTML = fieldDefinition.options.map(option =>
-                        // Comparar como strings por seguridad
-                        `<option value="${option}" ${String(currentValue) === String(option) ? 'selected' : ''}>${option}</option>`
-                    ).join('');
+                    const optionsHTML = fieldDefinition.options
+                        .filter(opt => (typeof opt === 'object' ? opt.active !== false : true))
+                        .map(opt => {
+                            const val = typeof opt === 'object' ? opt.value : opt;
+                            const selected = String(currentValue) === String(val) ? 'selected' : '';
+                            return `<option value="${val}" ${selected}>${val}</option>`;
+                        }).join('');
                     return `<select class="form-select form-select-sm edit-field" data-field-id="${fieldId}">${optionsHTML}</select>`;
                 }
                 // Fallback a texto si no hay opciones
