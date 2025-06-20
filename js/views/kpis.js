@@ -8,7 +8,8 @@ const KPIsView = {
     { id: 'performanceTrendChart', name: 'Gráfico de Tendencia (Líneas)', defaultVisible: true, placeholderId: 'kpi-line-chart-container' }, // Usará kpi-line-chart
     { id: 'dailyBreakdownChart', name: 'Gráfico de Desglose Diario (Barras)', defaultVisible: true, placeholderId: 'kpi-bar-chart-container' }, // Usará kpi-bar-chart
     { id: 'operatorBreakdownChart', name: 'Gráfico de Desglose por Operario (Pastel)', defaultVisible: true, placeholderId: 'kpi-pie-chart-container' }, // Usará kpi-pie-chart
-    { id: 'entityPrevMonthChart', name: 'Entidades Mes Anterior', defaultVisible: false, placeholderId: 'kpi-entity-prev-chart-container' },
+    { id: 'entityPrevMonthChart', name: 'Entidades Mes Anterior', defaultVisible: true, placeholderId: 'kpi-entity-prev-chart-container' },
+
     { id: 'comparisonTable', name: 'Tabla Comparativa de Periodos', defaultVisible: true, placeholderId: 'kpi-comparison-container' }
   ],
 
@@ -104,6 +105,12 @@ const KPIsView = {
         // Esto previene errores si visibleKPIs es null o undefined en la config guardada.
         visibleKPIs: Array.isArray(saved.visibleKPIs) ? saved.visibleKPIs : defaultConfigValues.visibleKPIs
       };
+      // Asegurar que los KPIs nuevos con defaultVisible=true se incluyan
+      this.availableKPIs.forEach(kpi => {
+        if (kpi.defaultVisible && !this.config.visibleKPIs.includes(kpi.id)) {
+          this.config.visibleKPIs.push(kpi.id);
+        }
+      });
     } else {
       // No hay kpiConfig guardada, usar defaultConfigValues completo
       this.config = { ...defaultConfigValues };
@@ -219,7 +226,7 @@ const KPIsView = {
     // Row 4: Charts
     // The _renderChartsRowHTML method handles visibility of individual charts.
     // The section title "Gráficos" should be displayed if any chart is potentially visible.
-    const chartKPIs = ['performanceTrendChart', 'dailyBreakdownChart', 'operatorBreakdownChart'];
+    const chartKPIs = ['performanceTrendChart', 'dailyBreakdownChart', 'operatorBreakdownChart', 'entityPrevMonthChart'];
     const anyChartVisibleOrConfigured = chartKPIs.some(kpiId => {
         const kpiDef = this.availableKPIs.find(k => k.id === kpiId);
         return kpiDef && this.config.visibleKPIs.includes(kpiId); // Check if configured to be visible
