@@ -9,7 +9,6 @@ const KPIsView = {
     { id: 'dailyBreakdownChart', name: 'Gráfico de Desglose Diario (Barras)', defaultVisible: true, placeholderId: 'kpi-bar-chart-container' }, // Usará kpi-bar-chart
     { id: 'operatorBreakdownChart', name: 'Gráfico de Desglose por Operario (Pastel)', defaultVisible: true, placeholderId: 'kpi-pie-chart-container' }, // Usará kpi-pie-chart
     { id: 'entityPrevMonthChart', name: 'Entidades Mes Anterior', defaultVisible: true, placeholderId: 'kpi-entity-prev-chart-container' },
-
     { id: 'comparisonTable', name: 'Tabla Comparativa de Periodos', defaultVisible: true, placeholderId: 'kpi-comparison-container' }
   ],
 
@@ -1060,18 +1059,38 @@ const KPIsView = {
     const prevEntityContainer = document.getElementById(prevEntityKPI.placeholderId);
 
     if (prevEntityVisible && prevEntityContainer && prevEntityContainer.style.display !== 'none') {
-        const prevChartData = this._preparePrevMonthEntityChartData();
-        if (prevChartData) {
-            this.charts.entityPrev = ChartUtils.createBarChart(
-                prevEntityCanvasId,
-                'Mes Anterior por Entidad',
-                { x: 'Entidad', y: primaryMetricName },
-                prevChartData.datasets,
-                prevChartData.labels
-            );
-            if (!this.charts.entityPrev) { destroyChartInstance('entityPrev', prevEntityCanvasId); }
-        } else {
+        if (!metersFieldId) {
             destroyChartInstance('entityPrev', prevEntityCanvasId);
+            const canvas = document.getElementById(prevEntityCanvasId);
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = "16px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(`Campo \"${primaryMetricName}\" no configurado.`, canvas.width / 2, canvas.height / 2);
+            }
+        } else {
+            const prevChartData = this._preparePrevMonthEntityChartData();
+            if (prevChartData) {
+                this.charts.entityPrev = ChartUtils.createBarChart(
+                    prevEntityCanvasId,
+                    'Mes Anterior por Entidad',
+                    { x: 'Entidad', y: primaryMetricName },
+                    prevChartData.datasets,
+                    prevChartData.labels
+                );
+                if (!this.charts.entityPrev) { destroyChartInstance('entityPrev', prevEntityCanvasId); }
+            } else {
+                destroyChartInstance('entityPrev', prevEntityCanvasId);
+                const canvas = document.getElementById(prevEntityCanvasId);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = "16px Arial";
+                    ctx.textAlign = "center";
+                    ctx.fillText('Sin datos para el mes anterior', canvas.width / 2, canvas.height / 2);
+                }
+            }
         }
     } else {
         destroyChartInstance('entityPrev', prevEntityCanvasId);
