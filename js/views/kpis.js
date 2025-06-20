@@ -8,6 +8,7 @@ const KPIsView = {
     { id: 'performanceTrendChart', name: 'Gráfico de Tendencia (Líneas)', defaultVisible: true, placeholderId: 'kpi-line-chart-container' }, // Usará kpi-line-chart
     { id: 'dailyBreakdownChart', name: 'Gráfico de Desglose Diario (Barras)', defaultVisible: true, placeholderId: 'kpi-bar-chart-container' }, // Usará kpi-bar-chart
     { id: 'operatorBreakdownChart', name: 'Gráfico de Desglose por Operario (Pastel)', defaultVisible: true, placeholderId: 'kpi-pie-chart-container' }, // Usará kpi-pie-chart
+    { id: 'entityPrevMonthChart', name: 'Entidades Mes Anterior', defaultVisible: true, placeholderId: 'kpi-entity-prev-chart-container' },
     { id: 'comparisonTable', name: 'Tabla Comparativa de Periodos', defaultVisible: true, placeholderId: 'kpi-comparison-container' }
   ],
 
@@ -29,7 +30,7 @@ const KPIsView = {
     visibleKPIs: [] // Se llenará en loadConfig a partir de availableKPIs y StorageService
   },
 
-  charts: {}, // Almacena instancias de Chart.js { bar: Chart, line: Chart, pie: Chart }
+  charts: {}, // Almacena instancias de Chart.js { bar: Chart, line: Chart, pie: Chart, entityPrev: Chart }
   dataSubscriber: null,
 
   /**
@@ -103,6 +104,12 @@ const KPIsView = {
         // Esto previene errores si visibleKPIs es null o undefined en la config guardada.
         visibleKPIs: Array.isArray(saved.visibleKPIs) ? saved.visibleKPIs : defaultConfigValues.visibleKPIs
       };
+      // Asegurar que los KPIs nuevos con defaultVisible=true se incluyan
+      this.availableKPIs.forEach(kpi => {
+        if (kpi.defaultVisible && !this.config.visibleKPIs.includes(kpi.id)) {
+          this.config.visibleKPIs.push(kpi.id);
+        }
+      });
     } else {
       // No hay kpiConfig guardada, usar defaultConfigValues completo
       this.config = { ...defaultConfigValues };
@@ -218,7 +225,7 @@ const KPIsView = {
     // Row 4: Charts
     // The _renderChartsRowHTML method handles visibility of individual charts.
     // The section title "Gráficos" should be displayed if any chart is potentially visible.
-    const chartKPIs = ['performanceTrendChart', 'dailyBreakdownChart', 'operatorBreakdownChart'];
+    const chartKPIs = ['performanceTrendChart', 'dailyBreakdownChart', 'operatorBreakdownChart', 'entityPrevMonthChart'];
     const anyChartVisibleOrConfigured = chartKPIs.some(kpiId => {
         const kpiDef = this.availableKPIs.find(k => k.id === kpiId);
         return kpiDef && this.config.visibleKPIs.includes(kpiId); // Check if configured to be visible
@@ -375,13 +382,15 @@ const KPIsView = {
     const dailyBreakdownKPI = this.availableKPIs.find(k => k.id === 'dailyBreakdownChart');
     const performanceTrendKPI = this.availableKPIs.find(k => k.id === 'performanceTrendChart');
     const operatorBreakdownKPI = this.availableKPIs.find(k => k.id === 'operatorBreakdownChart');
+    const prevEntityKPI = this.availableKPIs.find(k => k.id === 'entityPrevMonthChart');
 
     // Configuración de layout para gráficos: [KPI_ID, colClass]
     // Esto podría ser más dinámico o configurable en el futuro.
     const chartLayout = [
         { kpi: performanceTrendKPI, colClass: 'col-lg-6 col-md-12', canvasId: 'kpi-line-chart' },
         { kpi: dailyBreakdownKPI, colClass: 'col-lg-6 col-md-12', canvasId: 'kpi-bar-chart' },
-        { kpi: operatorBreakdownKPI, colClass: 'col-lg-6 col-md-12', canvasId: 'kpi-pie-chart' } // Podría ser col-lg-12 si es el único en una sub-fila o si se quiere más grande.
+        { kpi: operatorBreakdownKPI, colClass: 'col-lg-6 col-md-12', canvasId: 'kpi-pie-chart' },
+        { kpi: prevEntityKPI, colClass: 'col-lg-6 col-md-12', canvasId: 'kpi-entity-prev-chart' } // Gráfico nuevo
     ];
 
     chartLayout.forEach(item => {
@@ -752,6 +761,24 @@ const KPIsView = {
   },
 
   /**
+   * Agrupa registros por entidad principal y suma un campo numérico.
+   * @param {Array} records - Registros a procesar.
+   * @param {string} sumFieldId - Campo numérico a sumar.
+   * @returns {Object} Mapa de nombre de entidad a suma.
+   */
+  groupByEntity(records, sumFieldId) {
+    const result = {};
+    if (!sumFieldId) return result;
+    records.forEach(rec => {
+      const entityName = EntityModel.getById(rec.entityId)?.name || 'N/D';
+      const val = parseFloat(rec.data[sumFieldId]) || 0;
+      if (!result[entityName]) result[entityName] = 0;
+      result[entityName] += val;
+    });
+    return result;
+  },
+
+  /**
    * Devuelve un rango de fechas predefinido.
    */
   getShortcutRange(type) {
@@ -1024,17 +1051,29 @@ const KPIsView = {
     } else { // Si el KPI no está visible, destruye.
         destroyChartInstance('pie', pieChartCanvasId);
     }
-  },
 
-  /**
+    // --- Previous Month Entity Chart ---
+    const prevEntityKPI = this.availableKPIs.find(k => k.id === 'entityPrevMonthChart');
+    const prevEntityCanvasId = 'kpi-entity-prev-chart';
+    const prevEntityVisible = this.config.visibleKPIs.includes(prevEntityKPI.id);
+    const prevEntityContainer = document.getElementById(prevEntityKPI.placeholderId);
+
+    if (prevEntityVisible && prevEntityContainer && prevEntityContainer.style.display !== 'none') {
+        const prevChartData = this._preparePrevMonthEntityChartData();
+        if (prevChartData) {
+            this.charts.entityPrev = ChartUtils.createBarChart(
+                prevEntityCanvasId,
+                'Mes Anterior por Entidad',
+                { x: 'Entidad', y: primaryMetricName },
+                prevChartData.datasets,
+                prevChartData.labels
             );
-            // No se necesita update explícito de labels para pie chart si se pasan directamente a createPieChart
-             if (!this.charts.pie) { destroyChartInstance('pie', pieChartCanvasId); }
+            if (!this.charts.entityPrev) { destroyChartInstance('entityPrev', prevEntityCanvasId); }
         } else {
-            destroyChartInstance('pie', pieChartCanvasId);
+            destroyChartInstance('entityPrev', prevEntityCanvasId);
         }
     } else {
-        destroyChartInstance('pie', pieChartCanvasId);
+        destroyChartInstance('entityPrev', prevEntityCanvasId);
     }
   },
 
@@ -1130,6 +1169,36 @@ const KPIsView = {
         data: data,
         backgroundColor: ChartUtils.chartColors
       }]
+    };
+  },
+
+  /**
+   * Prepara los datos para el gráfico de barras por entidad del mes anterior.
+   * Cada barra representa la suma del campo configurado para cada entidad.
+   * @returns {object|null} Objeto de datos para Chart.js o null si no hay datos.
+   */
+  _preparePrevMonthEntityChartData() {
+    const fieldId = this.config.mapping.metersFieldId;
+    if (!fieldId) return null;
+    const filters = this.getFilters();
+    const prevRange = KpiUtils.previousRange(filters.fromDate, filters.toDate, 'month');
+    let records = RecordModel.filterMultiple({ fromDate: prevRange.from, toDate: prevRange.to });
+    const map = this.config.mapping;
+    records = records.filter(rec => {
+      const data = rec.data || {};
+      if (map.shiftFieldId && filters.shift && data[map.shiftFieldId] !== filters.shift) return false;
+      if (map.operatorFieldId && filters.operator && data[map.operatorFieldId] !== filters.operator) return false;
+      if (map.machineFieldId && filters.machine && data[map.machineFieldId] !== filters.machine) return false;
+      return true;
+    });
+    const grouped = this.groupByEntity(records, fieldId);
+    const labels = Object.keys(grouped);
+    if (labels.length === 0) return null;
+    const data = labels.map(k => grouped[k]);
+    const labelText = `${prevRange.from} a ${prevRange.to}`;
+    return {
+      labels,
+      datasets: [{ label: labelText, data }]
     };
   },
 
