@@ -36,6 +36,31 @@ const AdminView = {
             StorageService.saveData(data);
         }
     },
+
+    /**
+     * Desactiva los indicadores de cambio masivo en entidades y campos
+     * @param {string|null} keepEntity ID de la entidad que se mantiene activa
+     * @param {string|null} keepField ID del campo que se mantiene activo
+     */
+    clearMassEditRefs(keepEntity = null, keepField = null) {
+        const data = StorageService.getData();
+        let changed = false;
+        data.entities.forEach(ent => {
+            if (ent.massEdit && ent.id !== keepEntity) {
+                ent.massEdit = false;
+                changed = true;
+            }
+        });
+        data.fields.forEach(f => {
+            if (f.massEdit && f.id !== keepField) {
+                f.massEdit = false;
+                changed = true;
+            }
+        });
+        if (changed) {
+            StorageService.saveData(data);
+        }
+    },
     
     /**
      * Renderiza el contenido de la vista
@@ -114,6 +139,7 @@ const AdminView = {
                                                 <th>Nombre</th>
                                                 <th>Campos Asignados</th>
                                                 <th>Ref. Progreso</th>
+                                                <th>Cambio Masivo</th>
                                                 <th>Activo</th>
                                                 <th>Acciones</th>
                                             </tr>
@@ -216,10 +242,11 @@ const AdminView = {
                                                 <th>Requerido</th>
                                                 <th>Opciones</th>
                                                 <th>Para Reportes</th>
-                                                <th>Para Tabla</th>
+                                               <th>Para Tabla</th>
                                                <th>Suma Diaria</th>
                                                <th>Ref. Progreso</th>
-                                                <th>Activo</th>
+                                               <th>Cambio Masivo</th>
+                                               <th>Activo</th>
                                                <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -396,6 +423,7 @@ const AdminView = {
             const fieldNames = fields.map(field => field.name).join(', ') || 'Ninguno';
 
             const progressIndicator = entity.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
+            const massEditIndicator = entity.massEdit ? '<span class="badge bg-primary">Sí</span>' : '-';
 
             const activeIndicator = entity.active !== false ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>';
             const row = document.createElement('tr');
@@ -403,6 +431,7 @@ const AdminView = {
                 <td>${entity.name}</td>
                 <td>${fieldNames}</td>
                 <td class="text-center">${progressIndicator}</td>
+                <td class="text-center">${massEditIndicator}</td>
                 <td class="text-center">${activeIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-primary assign-fields" data-entity-id="${entity.id}">
@@ -519,6 +548,7 @@ const AdminView = {
 
             const dailySumIndicator = field.dailySum ? '<span class="badge bg-primary">Sí</span>' : '-';
             const progressRefIndicator = field.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
+            const massEditIndicator = field.massEdit ? '<span class="badge bg-primary">Sí</span>' : '-';
 
             const activeIndicator = field.active !== false ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>';
             row.innerHTML = `
@@ -530,6 +560,7 @@ const AdminView = {
                 <td class="text-center">${tableIndicator}</td>
                 <td class="text-center">${dailySumIndicator}</td>
                 <td class="text-center">${progressRefIndicator}</td>
+                <td class="text-center">${massEditIndicator}</td>
                 <td class="text-center">${activeIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-outline-primary edit-field" data-field-id="${field.id}">
@@ -605,6 +636,7 @@ const AdminView = {
         const entityNameInput = document.getElementById('entity-name');
         const entityGroupInput = document.getElementById('entity-group');
         const dailyProgressRefCheck = document.getElementById('entity-daily-progress-ref');
+        const entityMassEditCheck = document.getElementById('entity-mass-edit');
         const entityActiveCheck = document.getElementById('entity-active');
         const groupsDatalist = document.getElementById('existing-groups');
         
@@ -634,6 +666,7 @@ const AdminView = {
             entityNameInput.value = entity.name;
             entityGroupInput.value = entity.group || '';
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = entity.dailyProgressRef || false;
+            if (entityMassEditCheck) entityMassEditCheck.checked = entity.massEdit || false;
             if (entityActiveCheck) entityActiveCheck.checked = entity.active !== false;
         } else {
             // Modo creación
@@ -641,6 +674,7 @@ const AdminView = {
             entityIdInput.value = '';
             entityGroupInput.value = '';
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
+            if (entityMassEditCheck) entityMassEditCheck.checked = false;
             if (entityActiveCheck) entityActiveCheck.checked = true;
         }
         
@@ -689,6 +723,7 @@ const AdminView = {
         const entityName = document.getElementById('entity-name').value;
         const entityGroup = document.getElementById('entity-group').value.trim();
         const dailyProgressRef = document.getElementById('entity-daily-progress-ref').checked;
+        const massEdit = document.getElementById('entity-mass-edit').checked;
         const entityActive = document.getElementById('entity-active').checked;
         
         // Obtener el nombre personalizado para entidad
@@ -702,15 +737,19 @@ const AdminView = {
                 name: entityName,
                 group: entityGroup,
                 dailyProgressRef: dailyProgressRef,
+                massEdit: massEdit,
                 active: entityActive
             });
         } else {
             // Crear nueva entidad con la bandera indicada
-            result = EntityModel.create(entityName, entityGroup, dailyProgressRef, entityActive);
+            result = EntityModel.create(entityName, entityGroup, dailyProgressRef, entityActive, massEdit);
         }
 
         if (dailyProgressRef && result) {
             this.clearDailyProgressRefs(result.id, null);
+        }
+        if (massEdit && result) {
+            this.clearMassEditRefs(result.id, null);
         }
         
         if (result) {
@@ -797,7 +836,8 @@ const AdminView = {
         const isHorizontalAxisCheck = document.getElementById('field-is-horizontal-axis');
         const isCompareFieldCheck = document.getElementById('field-is-compare-field');
         const dailySumCheck = document.getElementById('field-daily-sum');
-        const dailyProgressRefCheck = document.getElementById('field-daily-progress-ref');
+       const dailyProgressRefCheck = document.getElementById('field-daily-progress-ref');
+        const fieldMassEditCheck = document.getElementById('field-mass-edit');
         const fieldActiveCheck = document.getElementById('field-active');
         
         // Limpiar formulario
@@ -903,6 +943,7 @@ const AdminView = {
             if (dailyProgressRefCheck) {
                 dailyProgressRefCheck.checked = field.dailyProgressRef || false;
             }
+            if (fieldMassEditCheck) fieldMassEditCheck.checked = field.massEdit || false;
             if (fieldActiveCheck) fieldActiveCheck.checked = field.active !== false;
         } else {
             // Modo creación
@@ -912,6 +953,7 @@ const AdminView = {
             if (dailySumCheck) dailySumCheck.checked = false;
 
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
+            if (fieldMassEditCheck) fieldMassEditCheck.checked = false;
             if (fieldActiveCheck) fieldActiveCheck.checked = true;
 
         }
@@ -1022,6 +1064,7 @@ const AdminView = {
         const dailySum = document.getElementById('field-daily-sum').checked;
 
         const dailyProgressRef = document.getElementById('field-daily-progress-ref').checked;
+        const fieldMassEdit = document.getElementById('field-mass-edit').checked;
         const fieldActive = document.getElementById('field-active').checked;
 
     
@@ -1100,6 +1143,9 @@ const AdminView = {
             if (dailyProgressRef) {
                 this.clearDailyProgressRefs(null, fieldId || null);
             }
+            if (fieldMassEdit) {
+                this.clearMassEditRefs(null, fieldId || null);
+            }
         }
     
         const fieldData = {
@@ -1117,6 +1163,7 @@ const AdminView = {
             isCompareField: isCompareField,
             dailySum: dailySum,
             dailyProgressRef: dailyProgressRef,
+            massEdit: fieldMassEdit,
             active: fieldActive
 
         };

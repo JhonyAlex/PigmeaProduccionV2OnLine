@@ -37,7 +37,7 @@ const EntityModel = {
      * @param {boolean} [active=true] Indica si la entidad inicia activa
      * @returns {Object} Entidad creada
      */
-    create(name, group = '', dailyProgressRef = false, active = true) {
+    create(name, group = '', dailyProgressRef = false, active = true, massEdit = false) {
         const data = StorageService.getData();
         
         // Asegurarse de que data.entities existe
@@ -51,6 +51,7 @@ const EntityModel = {
             group: group,
             fields: [], // IDs de campos asignados
             dailyProgressRef: !!dailyProgressRef,
+            massEdit: !!massEdit,
             active: !!active
         };
         
@@ -97,6 +98,9 @@ const EntityModel = {
         }
         if (updateData.hasOwnProperty('dailyProgressRef')) {
             entityToUpdate.dailyProgressRef = !!updateData.dailyProgressRef;
+        }
+        if (updateData.hasOwnProperty('massEdit')) {
+            entityToUpdate.massEdit = !!updateData.massEdit;
         }
         if (updateData.hasOwnProperty('active')) {
             entityToUpdate.active = !!updateData.active;
@@ -196,5 +200,15 @@ const EntityModel = {
     getDailyProgressRefEntity() {
         const entities = this.getAll() || [];
         return entities.find(e => e.dailyProgressRef) || null;
+    },
+
+    /**
+     * Devuelve la entidad habilitada para cambios masivos
+     * @returns {Object|null} Entidad con massEdit activo
+     */
+    getMassEditEntity() {
+        const entities = this.getAll() || [];
+        return entities.find(e => e.massEdit) || null;
+
     }
 };

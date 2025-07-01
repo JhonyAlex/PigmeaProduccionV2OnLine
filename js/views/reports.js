@@ -636,9 +636,14 @@ const ReportsView = {
                         checkbox.checked = isChecked;
                     });
                     // Actualizar visibilidad del botón de edición masiva
-                    const bulkEditBtn = document.getElementById('bulk-edit-btn');
-                    if (bulkEditBtn) {
-                        bulkEditBtn.style.display = isChecked ? 'inline-block' : 'none';
+                   const bulkEditBtn = document.getElementById('bulk-edit-btn');
+                   if (bulkEditBtn) {
+                       bulkEditBtn.style.display = isChecked ? 'inline-block' : 'none';
+                   }
+                    const bulkFieldBtn = document.getElementById('bulk-field-edit-btn');
+                    if (bulkFieldBtn) {
+                        const hasField = FieldModel.getMassEditField() || EntityModel.getMassEditEntity();
+                        bulkFieldBtn.style.display = isChecked && hasField ? 'inline-block' : 'none';
                     }
                 });
             }
@@ -740,6 +745,12 @@ const ReportsView = {
             if (bulkEditBtn) {
                 bulkEditBtn.addEventListener('click', () => {
                     this.showBulkEditModal();
+                });
+            }
+            const bulkFieldBtn = document.getElementById('bulk-field-edit-btn');
+            if (bulkFieldBtn) {
+                bulkFieldBtn.addEventListener('click', () => {
+                    this.showBulkFieldEditModal();
                 });
             }
 
@@ -1160,6 +1171,7 @@ const ReportsView = {
         const recordsList = document.getElementById('records-list');
         const noFilteredRecordsDiv = document.getElementById('no-filtered-records');
         const recordsTable = document.getElementById('records-table');
+        this.updateBulkFieldButton();
         const paginationControls = document.getElementById('pagination-controls')?.closest('.d-flex');
         const itemsPerPageSelector = document.getElementById('items-per-page')?.closest('.d-flex');
 
@@ -1178,6 +1190,10 @@ const ReportsView = {
         const bulkEditBtn = document.getElementById('bulk-edit-btn');
         if (bulkEditBtn) {
             bulkEditBtn.style.display = 'none';
+        }
+        const bulkFieldBtn = document.getElementById('bulk-field-edit-btn');
+        if (bulkFieldBtn) {
+            bulkFieldBtn.style.display = 'none';
         }
 
         // Mostrar/ocultar elementos según si hay registros
@@ -1241,6 +1257,11 @@ const ReportsView = {
                 const bulkEditBtn = document.getElementById('bulk-edit-btn');
                 if (bulkEditBtn) {
                     bulkEditBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
+                }
+                const bulkFieldBtn = document.getElementById('bulk-field-edit-btn');
+                if (bulkFieldBtn) {
+                    const hasField = FieldModel.getMassEditField() || EntityModel.getMassEditEntity();
+                    bulkFieldBtn.style.display = (selectedCount > 0 && hasField) ? 'inline-block' : 'none';
                 }
             });
         });
@@ -2366,6 +2387,99 @@ const ReportsView = {
     },
 
     /**
+     * Muestra el modal para editar el campo habilitado
+     */
+    showBulkFieldEditModal() {
+        const modal = UIUtils.initModal('bulkFieldEditModal');
+        if (!modal) return;
+        const field = FieldModel.getMassEditField();
+        const entity = EntityModel.getMassEditEntity();
+        const modalTitle = document.getElementById('bulkFieldEditModalLabel');
+        const container = document.getElementById('bulk-field-edit-input');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (field) {
+            modalTitle.textContent = `Editar ${field.name} de ${this.recordName}s Seleccionados`;
+            let inputHTML = '';
+            if (field.type === 'select') {
+                const options = (field.options || []).map(opt => {
+                    const val = typeof opt === 'object' ? opt.value : opt;
+                    return `<option value="${val}">${val}</option>`;
+                }).join('');
+                inputHTML = `<select id="bulk-field-new-value" class="form-select">${options}</select>`;
+            } else {
+                const type = field.type === 'number' ? 'number' : 'text';
+                inputHTML = `<input id="bulk-field-new-value" type="${type}" class="form-control">`;
+            }
+            container.innerHTML = inputHTML;
+        } else if (entity) {
+            modalTitle.textContent = `Cambiar ${this.entityName} de ${this.recordName}s Seleccionados`;
+            const entities = EntityModel.getActive();
+            const options = entities.map(ent => `<option value="${ent.id}">${ent.name}</option>`).join('');
+            container.innerHTML = `<select id="bulk-field-new-value" class="form-select">${options}</select>`;
+        } else {
+            modalTitle.textContent = 'Sin campo habilitado';
+            container.innerHTML = '<p class="text-muted">No hay campo habilitado para cambios masivos.</p>';
+        }
+
+        const saveBtn = document.getElementById('saveBulkFieldEdit');
+        if (saveBtn) {
+            const newBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+            newBtn.addEventListener('click', () => this.saveBulkFieldEdit());
+        }
+
+        modal.show();
+    },
+
+    /**
+     * Guarda el cambio masivo del campo seleccionado
+     */
+    saveBulkFieldEdit() {
+        const selectedRecords = Array.from(document.querySelectorAll('.record-checkbox:checked')).map(cb => cb.value);
+        if (selectedRecords.length === 0) {
+            UIUtils.showAlert(`No hay ${this.recordName.toLowerCase()}s seleccionados`, 'warning');
+            return;
+        }
+        const input = document.getElementById('bulk-field-new-value');
+        if (!input) return;
+        const newValue = input.value;
+
+        const field = FieldModel.getMassEditField();
+        const entity = EntityModel.getMassEditEntity();
+
+        let success = true;
+        let failed = 0;
+        selectedRecords.forEach(id => {
+            let ok = false;
+            if (field) {
+                const data = { [field.id]: newValue };
+                ok = RecordModel.update(id, data);
+            } else if (entity) {
+                ok = RecordModel.update(id, {}, undefined, newValue);
+            }
+            if (!ok) {
+                success = false;
+                failed++;
+            }
+        });
+
+        const modalElement = document.getElementById('bulkFieldEditModal');
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+        }
+
+        if (success) {
+            UIUtils.showAlert('Registros actualizados correctamente', 'success', document.querySelector('.container.mt-4'));
+        } else {
+            UIUtils.showAlert(`Hubo errores al actualizar ${failed} registros`, 'warning', document.querySelector('.container.mt-4'));
+        }
+        this.applyFilters();
+    },
+
+    /**
      * Filtra las entidades por grupo
      * @param {string} groupName Nombre del grupo a filtrar
      */
@@ -2994,6 +3108,9 @@ const ReportsView = {
                                 <button id="bulk-edit-btn" class="btn btn-outline-light btn-sm me-2">
                                     <i class="bi bi-calendar-event"></i> Editar Fechas Seleccionadas
                                 </button>
+                                <button id="bulk-field-edit-btn" class="btn btn-outline-light btn-sm me-2" style="display:none;">
+                                    <i class="bi bi-pencil-square"></i> Cambio Masivo
+                                </button>
                                 <span id="records-count" class="badge bg-light text-dark">0 ${this.recordName.toLowerCase()}s</span>
                             </div>
                         </div>
@@ -3142,6 +3259,26 @@ const ReportsView = {
             th.textContent = `${name} `;
             if (icon) th.appendChild(icon);
         });
+        this.updateBulkFieldButton();
+    },
+
+    /**
+     * Actualiza el texto y visibilidad del botón de cambio masivo
+     */
+    updateBulkFieldButton() {
+        const btn = document.getElementById('bulk-field-edit-btn');
+        if (!btn) return;
+        const field = FieldModel.getMassEditField();
+        const entity = EntityModel.getMassEditEntity();
+        if (field) {
+            btn.textContent = `Editar ${field.name} Seleccionado`;
+            btn.style.display = 'none';
+        } else if (entity) {
+            btn.textContent = `Cambiar ${this.entityName} Seleccionado`;
+            btn.style.display = 'none';
+        } else {
+            btn.style.display = 'none';
+        }
     },
 
     /**
