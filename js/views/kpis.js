@@ -9,7 +9,8 @@ const KPIsView = {
     { id: 'dailyBreakdownChart', name: 'Gráfico de Desglose Diario (Barras)', defaultVisible: true, placeholderId: 'kpi-bar-chart-container' }, // Usará kpi-bar-chart
     { id: 'operatorBreakdownChart', name: 'Gráfico de Desglose por Operario (Pastel)', defaultVisible: true, placeholderId: 'kpi-pie-chart-container' }, // Usará kpi-pie-chart
     { id: 'entityPrevMonthChart', name: 'Entidades Mes Anterior', defaultVisible: true, placeholderId: 'kpi-entity-prev-chart-container' },
-    { id: 'comparisonTable', name: 'Tabla Comparativa de Periodos', defaultVisible: true, placeholderId: 'kpi-comparison-container' }
+    { id: 'comparisonTable', name: 'Tabla Comparativa de Periodos', defaultVisible: true, placeholderId: 'kpi-comparison-container' },
+    { id: 'insightsTable', name: 'Datos Interesantes', defaultVisible: true, placeholderId: 'kpi-insights-container' }
   ],
 
   /**
@@ -183,12 +184,16 @@ const KPIsView = {
 
     // Main dashboard structure
     let html = `<div class="container-fluid" id="kpis-view" style="padding-top: 1rem; padding-bottom: 1rem;">`;
+    html += this._renderAdminModalHTML();
 
-    // Row 1: Filters
+    // Row 1: Filters and admin button
     html += `
       <div class="row">
         <div class="col-12 kpi-section" id="kpi-filters-section">
-          <h5 class="kpi-section-title">Filtros</h5>
+          <div class="d-flex justify-content-between align-items-end">
+            <h5 class="kpi-section-title mb-0">Filtros</h5>
+            <button id="open-kpi-admin" class="btn btn-sm btn-outline-secondary"><i class="bi bi-gear"></i> Configurar KPIs</button>
+          </div>
           ${this._renderFiltersHTML(fromVal, toVal)}
         </div>
       </div>`;
@@ -266,15 +271,24 @@ const KPIsView = {
         }
     }
 
+    // Row 6: Datos Interesantes
+    const insightsDef = this.availableKPIs.find(k => k.id === 'insightsTable');
+    if (insightsDef) {
+        const insightsContent = this._renderInsightsPlaceholderHTML();
+        if (insightsContent && !insightsContent.includes('style="display:none;"')) {
+            html += `
+              <div class="row">
+                <div class="col-12 kpi-section" id="kpi-insights-section">
+                  <h5 class="kpi-section-title">Datos Interesantes</h5>
+                  ${insightsContent}
+                </div>
+              </div>`;
+        } else if (insightsContent) {
+            html += insightsContent;
+        }
+    }
 
-    // Row 6: Configuration Form
-    html += `
-      <div class="row">
-        <div class="col-12 kpi-section" id="kpi-config-section">
-          <h5 class="kpi-section-title">Configuración General</h5>
-          ${this._renderConfigFormHTML()}
-        </div>
-      </div>`;
+    // El formulario de configuración se muestra en un modal
 
     html += `</div>`; // close .container-fluid
     return html;
@@ -447,6 +461,38 @@ const KPIsView = {
   },
 
   /**
+   * Genera el HTML para la sección de Datos Interesantes.
+   * @returns {string} HTML del contenedor para las tablas de insights.
+   */
+  _renderInsightsPlaceholderHTML() {
+    const kpi = this.availableKPIs.find(k => k.id === 'insightsTable');
+    const display = this.config.visibleKPIs.includes(kpi.id) ? '' : 'style="display:none;"';
+    return `<div id="${kpi.placeholderId}" ${display}><div id="kpi-insights" class="mb-4"></div></div>`;
+  },
+
+  /**
+   * Genera el HTML del modal de administración de KPIs.
+   * Dentro se incluye el formulario de configuración existente.
+   * @returns {string} HTML del modal.
+   */
+  _renderAdminModalHTML() {
+    return `
+      <div class="modal fade" id="kpiAdminModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Configuración de KPIs</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+              ${this._renderConfigFormHTML()}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  /**
    * Genera el HTML para el formulario de configuración de campos y visibilidad de KPIs.
    * @returns {string} HTML del formulario de configuración.
    */
@@ -570,6 +616,14 @@ const KPIsView = {
     document.getElementById('kpi-export-pdf').addEventListener('click', () => {
       this.exportPDF();
     });
+
+    const openBtn = document.getElementById('open-kpi-admin');
+    if (openBtn) {
+      openBtn.addEventListener('click', () => {
+        const modalEl = document.getElementById('kpiAdminModal');
+        if (modalEl) new bootstrap.Modal(modalEl).show();
+      });
+    }
 
     const configForm = document.getElementById('kpi-config-form');
     if (configForm) {
@@ -737,6 +791,7 @@ const KPIsView = {
     // y destruir charts si es necesario.
     this.renderCharts(records);
     this.renderComparison(records);
+    this.renderInsights(records);
   },
 
   /**
