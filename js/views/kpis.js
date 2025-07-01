@@ -27,7 +27,8 @@ const KPIsView = {
     filters: {},
     comparison: { period: 'auto' },
     lineRange: {},
-    visibleKPIs: [] // Se llenará en loadConfig a partir de availableKPIs y StorageService
+    visibleKPIs: [], // Se llenará en loadConfig a partir de availableKPIs y StorageService
+    insightFields: []
   },
 
   charts: {}, // Almacena instancias de Chart.js { bar: Chart, line: Chart, pie: Chart, entityPrev: Chart }
@@ -85,7 +86,8 @@ const KPIsView = {
         filters: {},
         comparison: { period: 'auto' },
         lineRange: {},
-        visibleKPIs: this.availableKPIs.filter(kpi => kpi.defaultVisible).map(kpi => kpi.id)
+        visibleKPIs: this.availableKPIs.filter(kpi => kpi.defaultVisible).map(kpi => kpi.id),
+        insightFields: []
     };
 
     if (storedConfig.kpiConfig) {
@@ -102,7 +104,8 @@ const KPIsView = {
         lineRange: { ...defaultConfigValues.lineRange, ...(saved.lineRange || {}) },
         // Si visibleKPIs está en saved y es un array, se usará; si no, se mantiene el de defaultConfigValues.
         // Esto previene errores si visibleKPIs es null o undefined en la config guardada.
-        visibleKPIs: Array.isArray(saved.visibleKPIs) ? saved.visibleKPIs : defaultConfigValues.visibleKPIs
+        visibleKPIs: Array.isArray(saved.visibleKPIs) ? saved.visibleKPIs : defaultConfigValues.visibleKPIs,
+        insightFields: Array.isArray(saved.insightFields) ? saved.insightFields : defaultConfigValues.insightFields
       };
       // Asegurar que los KPIs nuevos con defaultVisible=true se incluyan
       this.availableKPIs.forEach(kpi => {
@@ -496,6 +499,16 @@ const KPIsView = {
             ${kpiVisibilityCheckboxesHTML}
           </div>
 
+          <h5 class="mt-4">Campos para Datos Interesantes</h5>
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mb-3">
+            ${allFields.map(f => `
+              <div class="form-check col">
+                <input class="form-check-input kpi-insight-checkbox" type="checkbox" value="${f.id}" id="cfg-insight-${f.id}" ${this.config.insightFields.includes(f.id) ? 'checked' : ''}>
+                <label class="form-check-label" for="cfg-insight-${f.id}">${f.name}</label>
+              </div>
+            `).join('')}
+          </div>
+
           <div class="col-12 mt-3">
             <button class="btn btn-primary" type="submit">Guardar Configuración</button>
           </div>
@@ -575,6 +588,13 @@ const KPIsView = {
                 newVisibleKPIs.push(checkbox.value);
             });
             this.config.visibleKPIs = newVisibleKPIs;
+
+            // Guardar campos para Datos Interesantes
+            const newInsightFields = [];
+            document.querySelectorAll('.kpi-insight-checkbox:checked').forEach(cb => {
+                newInsightFields.push(cb.value);
+            });
+            this.config.insightFields = newInsightFields;
 
             this.saveConfig();
             this.populateFilterSelects(); // Actualizar filtros por si cambiaron los campos
@@ -776,6 +796,67 @@ const KPIsView = {
       result[entityName] += val;
     });
     return result;
+  },
+
+  /** Cuenta ocurrencias por valor de un campo. */
+  countValues(records, fieldId) {
+    const result = {};
+    if (!fieldId) return result;
+    records.forEach(r => {
+      const val = r.data[fieldId] ?? 'N/D';
+      result[val] = (result[val] || 0) + 1;
+    });
+    return result;
+  },
+
+  /** Renderiza tablas con datos interesantes. */
+  renderInsights(records) {
+    const container = document.getElementById('kpi-insights');
+    const kpi = this.availableKPIs.find(k => k.id === 'insightsTable');
+    if (!container || !this.config.visibleKPIs.includes(kpi.id)) return;
+
+    if (!this.config.insightFields.length) {
+      container.innerHTML = '<p class="text-muted">Seleccione campos en la configuración.</p>';
+      return;
+    }
+
+    const filters = this.getFilters();
+    const prevRange = KpiUtils.previousRange(filters.fromDate, filters.toDate, this.config.comparison.period);
+    let prevRecords = RecordModel.filterMultiple({ fromDate: prevRange.from, toDate: prevRange.to });
+    const map = this.config.mapping;
+    prevRecords = prevRecords.filter(rec => {
+      const d = rec.data || {};
+      if (map.shiftFieldId && filters.shift && d[map.shiftFieldId] !== filters.shift) return false;
+      if (map.operatorFieldId && filters.operator && d[map.operatorFieldId] !== filters.operator) return false;
+      if (map.machineFieldId && filters.machine && d[map.machineFieldId] !== filters.machine) return false;
+      return true;
+    });
+
+    container.innerHTML = '';
+    this.config.insightFields.forEach(fid => {
+      const field = FieldModel.getById(fid);
+      if (!field) return;
+      const currentCounts = this.countValues(records, fid);
+      const prevCounts = this.countValues(prevRecords, fid);
+      const values = Array.from(new Set([...Object.keys(currentCounts), ...Object.keys(prevCounts)]));
+      const rows = values.map(v => {
+        const cur = currentCounts[v] || 0;
+        const prev = prevCounts[v] || 0;
+        const diff = cur - prev;
+        const perc = prev ? ((diff / prev) * 100).toFixed(1) + '%' : 'N/A';
+        return `<tr><td>${v}</td><td>${cur}</td><td>${prev}</td><td>${diff}</td><td>${perc}</td></tr>`;
+      }).join('');
+      container.insertAdjacentHTML('beforeend', `
+        <div class="mb-3">
+          <h6>${field.name}</h6>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead><tr><th>Valor</th><th>Actual</th><th>Anterior</th><th>Diferencia</th><th>Variación %</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`);
+    });
   },
 
   /**
