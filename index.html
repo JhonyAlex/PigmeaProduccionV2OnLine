@@ -81,6 +81,10 @@
                             <label class="form-check-label" for="entity-daily-progress-ref">Usar como referencia de progreso diario</label>
                         </div>
                         <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="entity-mass-edit">
+                            <label class="form-check-label" for="entity-mass-edit">Habilitar para cambios masivos</label>
+                        </div>
+                        <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" id="entity-active" checked>
                             <label class="form-check-label" for="entity-active">Activo</label>
                         </div>
@@ -190,6 +194,10 @@
             <div class="form-check mt-2">
                 <input class="form-check-input" type="checkbox" id="field-daily-progress-ref">
                 <label class="form-check-label" for="field-daily-progress-ref">Usar como referencia de progreso diario</label>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="field-mass-edit">
+                <label class="form-check-label" for="field-mass-edit">Habilitar para cambios masivos</label>
             </div>
             <div class="form-check mt-2">
                 <input class="form-check-input" type="checkbox" id="field-active" checked>
@@ -338,6 +346,25 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="saveBulkEdit">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cambio masivo de campo -->
+<div class="modal fade" id="bulkFieldEditModal" tabindex="-1" aria-labelledby="bulkFieldEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkFieldEditModalLabel">Editar Campo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="bulk-field-edit-input"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveBulkFieldEdit">Guardar Cambios</button>
             </div>
         </div>
     </div>

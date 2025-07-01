@@ -86,6 +86,7 @@ const FieldModel = {
 
             dailySum: !!fieldData.dailySum,
             dailyProgressRef: !!fieldData.dailyProgressRef,
+            massEdit: !!fieldData.massEdit,
             active: fieldData.hasOwnProperty('active') ? !!fieldData.active : true,
             options: fieldData.type === 'select'
                 ? this._normalizeOptions(fieldData.options)
@@ -130,6 +131,7 @@ const FieldModel = {
 
             dailySum: !!fieldData.dailySum,
             dailyProgressRef: !!fieldData.dailyProgressRef,
+            massEdit: !!fieldData.massEdit,
             active: fieldData.hasOwnProperty('active') ? !!fieldData.active : data.fields[fieldIndex].active !== false
         };
         
@@ -201,6 +203,15 @@ const FieldModel = {
     getDailyProgressRefField() {
         const fields = this.getAll() || [];
         return fields.find(f => f.dailyProgressRef && f.active !== false) || null;
+    },
+
+    /**
+     * Devuelve el campo habilitado para cambios masivos
+     * @returns {Object|null} Campo con massEdit activo
+     */
+    getMassEditField() {
+        const fields = this.getAll() || [];
+        return fields.find(f => f.massEdit && f.active !== false) || null;
 
     }
 };
