@@ -336,3 +336,15 @@ body {
 #kpi-config-form .form-check.col { /* Ensure good spacing for checkboxes */
     margin-bottom: 0.5rem;
 }
+
+/* Insights Table Styling */
+#kpi-insights table thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+#kpi-insights table tbody tr:nth-child(odd) {
+    background-color: rgba(0,0,0,0.02);
+}
+#kpi-insights table tbody tr:hover {
+    background-color: rgba(0,0,0,0.04);
+}
