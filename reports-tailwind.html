@@ -3,29 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Vista de Reportes - Tailwind</title>
+    <title>Nueva Vista de Reportes - Sistema Modular</title>
     <link rel="stylesheet" href="css/tailwind-output.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <link rel="icon" href="https://jhonyalex.github.io/PigmeaProduccionV2/logo1x1.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-secondary-50 font-sans">
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    
     <div id="app-container" class="flex flex-col min-h-screen">
-
-        <!-- Navbar (similar al existente pero con Tailwind) -->
-        <nav class="bg-blue-600 text-white p-4 shadow-md">
+        <!-- Navbar with new design system -->
+        <nav class="navbar">
             <div class="container mx-auto flex justify-between items-center">
-                <a class="text-xl font-bold" href="index.html">Sistema de Registro Avanzado</a>
-                <div class="hidden md:flex space-x-4">
-                    <a href="index.html#register" class="hover:bg-blue-700 px-3 py-2 rounded">Registro</a>
-                    <a href="index.html#reports" class="hover:bg-blue-700 px-3 py-2 rounded">Reportes (Actual)</a>
-                    <a href="reports-tailwind.html" class="bg-blue-700 px-3 py-2 rounded">Reportes (Nuevo)</a>
-                    <a href="index.html#kpis" class="hover:bg-blue-700 px-3 py-2 rounded">KPIs</a>
-                    <a href="index.html#admin" class="hover:bg-blue-700 px-3 py-2 rounded">Administración</a>
+                <a class="navbar-brand" href="index.html" aria-label="Volver al Sistema de Registro">
+                    <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>
+                    Sistema de Registro Avanzado
+                </a>
+                <div class="navbar-nav hidden md:flex">
+                    <a href="index.html#register" class="nav-link">
+                        <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>
+                        Registro
+                    </a>
+                    <a href="index.html#reports" class="nav-link">
+                        <i class="bi bi-bar-chart me-2" aria-hidden="true"></i>
+                        Reportes (Actual)
+                    </a>
+                    <a href="reports-tailwind.html" class="nav-link active">
+                        <i class="bi bi-graph-up me-2" aria-hidden="true"></i>
+                        Reportes (Nuevo)
+                    </a>
+                    <a href="index.html#admin" class="nav-link">
+                        <i class="bi bi-gear me-2" aria-hidden="true"></i>
+                        Administración
+                    </a>
                 </div>
                 <div class="md:hidden">
-                    <button id="mobile-menu-button" class="text-white focus:outline-none">
-                        <i class="bi bi-list text-2xl"></i>
+                    <button id="mobile-menu-button" class="navbar-toggler" aria-label="Alternar menú móvil" aria-expanded="false">
+                        <span class="navbar-toggler-icon"></span>
                     </button>
                 </div>
             </div>

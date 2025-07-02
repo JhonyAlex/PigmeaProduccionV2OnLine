@@ -1,0 +1,5 @@
+node_modules/
+css/tailwind-output.css
+.npm/
+*.log
+.DS_Store
