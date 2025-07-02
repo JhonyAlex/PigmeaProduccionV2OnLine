@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Vista de Reportes - Tailwind</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <link rel="icon" href="https://jhonyalex.github.io/PigmeaProduccionV2/logo1x1.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-gray-100 font-sans">
+    <div id="app-container" class="flex flex-col min-h-screen">
+
+        <!-- Navbar (similar al existente pero con Tailwind) -->
+        <nav class="bg-blue-600 text-white p-4 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <a class="text-xl font-bold" href="index.html">Sistema de Registro Avanzado</a>
+                <div class="hidden md:flex space-x-4">
+                    <a href="index.html#register" class="hover:bg-blue-700 px-3 py-2 rounded">Registro</a>
+                    <a href="index.html#reports" class="hover:bg-blue-700 px-3 py-2 rounded">Reportes (Actual)</a>
+                    <a href="reports-tailwind.html" class="bg-blue-700 px-3 py-2 rounded">Reportes (Nuevo)</a>
+                    <a href="index.html#kpis" class="hover:bg-blue-700 px-3 py-2 rounded">KPIs</a>
+                    <a href="index.html#admin" class="hover:bg-blue-700 px-3 py-2 rounded">Administración</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-white focus:outline-none">
+                        <i class="bi bi-list text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden mt-2">
+                <a href="index.html#register" class="block hover:bg-blue-700 px-3 py-2 rounded">Registro</a>
+                <a href="index.html#reports" class="block hover:bg-blue-700 px-3 py-2 rounded">Reportes (Actual)</a>
+                <a href="reports-tailwind.html" class="block bg-blue-700 px-3 py-2 rounded">Reportes (Nuevo)</a>
+                <a href="index.html#kpis" class="block hover:bg-blue-700 px-3 py-2 rounded">KPIs</a>
+                <a href="index.html#admin" class="block hover:bg-blue-700 px-3 py-2 rounded">Administración</a>
+                <a href="index.html" class="block hover:bg-blue-700 px-3 py-2 rounded mt-2 border-t border-blue-500">Volver al Dashboard Principal</a>
+            </div>
+        </nav>
+
+        <!-- Contenido principal -->
+        <main id="main-content" class="flex-grow container mx-auto p-4">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Dashboard de Reportes y KPIs</h1>
+            </header>
+
+            <!-- Sección de KPIs -->
+            <section id="kpi-section" class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Indicadores Clave (KPIs)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- KPI Card 1: Total Metros -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-semibold text-gray-700">Total Metros</h3>
+                            <i class="bi bi-rulers text-2xl text-blue-500"></i>
+                        </div>
+                        <p class="text-4xl font-bold text-blue-600">1,234 <span class="text-xl">m</span></p>
+                        <p class="text-sm text-gray-500 mt-1">+5% vs mes anterior</p>
+                    </div>
+
+                    <!-- KPI Card 2: Nº Pedidos -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-semibold text-gray-700">Nº Pedidos</h3>
+                            <i class="bi bi-box-seam text-2xl text-green-500"></i>
+                        </div>
+                        <p class="text-4xl font-bold text-green-600">56</p>
+                        <p class="text-sm text-gray-500 mt-1">-2% vs mes anterior</p>
+                    </div>
+
+                    <!-- KPI Card 3: % Tipos Laminado -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-semibold text-gray-700">% Tipos Laminado</h3>
+                            <i class="bi bi-pie-chart-fill text-2xl text-yellow-500"></i>
+                        </div>
+                        <div class="mt-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Laminado Brillante:</span>
+                                <span class="font-semibold text-yellow-700">60%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                                <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 60%"></div>
+                            </div>
+                            <div class="flex justify-between text-sm mt-2">
+                                <span class="text-gray-600">Laminado Mate:</span>
+                                <span class="font-semibold text-yellow-700">40%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                                <div class="bg-yellow-400 h-2.5 rounded-full" style="width: 40%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Card 4: Añadir Nuevo KPI -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-500 cursor-pointer">
+                        <i class="bi bi-plus-lg text-4xl text-gray-400 group-hover:text-blue-500"></i>
+                        <span class="mt-2 text-sm font-medium text-gray-500 group-hover:text-blue-500">Añadir Nuevo KPI</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Gráficos -->
+            <section id="charts-section" class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Gráficos Dinámicos</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Bar Chart Placeholder -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-medium text-gray-600 mb-3">Producción por Máquina/Turno</h3>
+                        <div class="h-64 md:h-80">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Pie Chart Placeholder -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-medium text-gray-600 mb-3">% Tipos de Laminado</h3>
+                        <div class="h-64 md:h-80 flex justify-center items-center">
+                            <div class="max-w-xs w-full">
+                               <canvas id="pieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Configuración Dinámica y Filtros -->
+            <section id="config-filters-section" class="mb-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Configuración Dinámica -->
+                    <div id="dynamic-config-module" class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Área de Configuración Dinámica</h3>
+
+                        <!-- Lista de Entidades Principales -->
+                        <div class="mb-6">
+                            <h4 class="text-md font-semibold text-gray-600 mb-2">Entidades Principales</h4>
+                            <ul id="entity-list-config" class="space-y-2">
+                                <!-- Las entidades se cargarán aquí por JS -->
+                                <li class="p-3 bg-gray-50 rounded-md shadow-sm">
+                                    <span class="text-gray-700">Cargando entidades...</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Selección de Campos para KPIs -->
+                        <div class="mb-6">
+                            <h4 class="text-md font-semibold text-gray-600 mb-2">Seleccionar Campos para KPIs</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="kpi-field-select" class="block text-sm font-medium text-gray-700">Campo disponible</label>
+                                    <select id="kpi-field-select" name="kpi-field-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <!-- Opciones de campos se cargarán aquí por JS -->
+                                        <option value="">Cargando campos...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="kpi-custom-name" class="block text-sm font-medium text-gray-700">Nombre Personalizado para KPI</label>
+                                    <input type="text" name="kpi-custom-name" id="kpi-custom-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Ej: Producción Total Neta">
+                                </div>
+                                <button id="add-kpi-field-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out">
+                                    <i class="bi bi-plus-circle mr-2"></i>Añadir Campo a KPI
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Creación de Nuevos Indicadores Calculados -->
+                        <div>
+                            <h4 class="text-md font-semibold text-gray-600 mb-2">Crear Indicador Calculado</h4>
+                            <p class="text-sm text-gray-500 mb-3">Ej: Producción / Hora, Eficiencia de Máquina, etc.</p>
+                            <button id="create-calculated-kpi-button" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out">
+                                <i class="bi bi-calculator mr-2"></i>Crear Nuevo Indicador
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Filtros Avanzados -->
+                    <div id="advanced-filters-module" class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Filtros Avanzados</h3>
+                        <form id="advanced-filters-form" class="space-y-4">
+                            <!-- Fila 1: Fechas -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="filter-date-from" class="block text-sm font-medium text-gray-700">Desde</label>
+                                    <input type="date" name="filter-date-from" id="filter-date-from" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label for="filter-date-to" class="block text-sm font-medium text-gray-700">Hasta</label>
+                                    <input type="date" name="filter-date-to" id="filter-date-to" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </div>
+                            </div>
+                            <!-- Atajos de Fecha -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Atajos de Fecha</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" data-range="today" class="date-shortcut-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md">Hoy</button>
+                                    <button type="button" data-range="yesterday" class="date-shortcut-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md">Ayer</button>
+                                    <button type="button" data-range="thisWeek" class="date-shortcut-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md">Esta Semana</button>
+                                    <button type="button" data-range="lastWeek" class="date-shortcut-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md">Semana Pasada</button>
+                                    <button type="button" data-range="thisMonth" class="date-shortcut-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md">Este Mes</button>
+                                    <button type="button" data-range="lastMonth" class="date-shortcut-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md">Mes Pasado</button>
+                                </div>
+                            </div>
+
+                            <!-- Fila 2: Máquina y Operario -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="filter-machine" class="block text-sm font-medium text-gray-700">Máquina</label>
+                                    <select id="filter-machine" name="filter-machine" multiple class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <!-- Opciones de máquinas se cargarán aquí -->
+                                        <option value="m1">Máquina 1</option>
+                                        <option value="m2">Máquina 2</option>
+                                        <option value="m3">Máquina 3</option>
+                                    </select>
+                                     <p class="text-xs text-gray-500 mt-1">Ctrl+Click para múltiple selección.</p>
+                                </div>
+                                <div>
+                                    <label for="filter-operator" class="block text-sm font-medium text-gray-700">Operario</label>
+                                    <select id="filter-operator" name="filter-operator" multiple class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <!-- Opciones de operarios se cargarán aquí -->
+                                        <option value="op1">Operario Alpha</option>
+                                        <option value="op2">Operario Beta</option>
+                                        <option value="op3">Operario Gamma</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">Ctrl+Click para múltiple selección.</p>
+                                </div>
+                            </div>
+
+                            <!-- Fila 3: Turno -->
+                            <div>
+                                <label for="filter-shift" class="block text-sm font-medium text-gray-700">Turno</label>
+                                <select id="filter-shift" name="filter-shift" multiple class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <!-- Opciones de turnos se cargarán aquí -->
+                                    <option value="t_morn">Mañana</option>
+                                    <option value="t_aft">Tarde</option>
+                                    <option value="t_night">Noche</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Ctrl+Click para múltiple selección.</p>
+                            </div>
+
+                            <!-- Botones de Acción -->
+                            <div class="flex justify-end space-x-3 pt-2">
+                                <button type="button" id="reset-filters-button" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Limpiar Filtros
+                                </button>
+                                <button type="submit" id="apply-filters-button" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    <i class="bi bi-funnel-fill mr-2"></i>Aplicar Filtros
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Exportaciones -->
+            <section id="export-section" class="mb-8">
+                 <h2 class="text-2xl font-semibold text-gray-700 mb-4">Exportaciones</h2>
+                 <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <p class="text-gray-600 mb-4">Exportar los datos actualmente visualizados o una selección de reportes.</p>
+                    <div class="flex flex-wrap gap-4">
+                        <button id="export-pdf-button" class="flex items-center bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out">
+                            <i class="bi bi-file-earmark-pdf-fill mr-2"></i>Exportar Vista a PDF
+                        </button>
+                        <button id="export-excel-button" class="flex items-center bg-green-700 hover:bg-green-800 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out">
+                            <i class="bi bi-file-earmark-excel-fill mr-2"></i>Exportar Datos a Excel
+                        </button>
+                    </div>
+                    <div class="mt-4">
+                        <label for="export-options-select" class="block text-sm font-medium text-gray-700">Opciones de Exportación Específica (Próximamente)</label>
+                        <select id="export-options-select" name="export-options-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" disabled>
+                            <option>Seleccionar reporte específico para exportar...</option>
+                            <option>KPIs Resumidos</option>
+                            <option>Gráfico de Producción</option>
+                            <option>Gráfico de Laminados</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white text-center p-4 mt-auto">
+            <p>&copy; 2023 Sistema de Registro Avanzado. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+
+    <script src="js/models/storage.js"></script>
+    <script src="js/models/entity.js"></script>
+    <script src="js/models/field.js"></script>
+    <script src="js/models/record.js"></script>
+    <script src="js/utils/validation.js"></script>
+    <script src="js/utils/ui.js"></script>
+    <script src="js/utils/export.js"></script>
+    <script src="js/utils/charts.js"></script>
+    <script src="js/utils/kpi-utils.js"></script>
+    <script src="js/views/reports-tailwind.js"></script>
+    <script src="js/config/firebase-config.js"></script>
+    <script src="js/utils/dom-utils.js"></script>
+</body>
+</html>
