@@ -29,7 +29,8 @@ const KPIsView = {
     comparison: { period: 'auto' },
     lineRange: {},
     visibleKPIs: [], // Se llenará en loadConfig a partir de availableKPIs y StorageService
-    insightFields: []
+    insightFields: [],
+    comparisonFields: [] // Nuevos campos para la tabla de comparación
   },
 
   charts: {}, // Almacena instancias de Chart.js { bar: Chart, line: Chart, pie: Chart, entityPrev: Chart }
@@ -40,10 +41,98 @@ const KPIsView = {
    */
   init() {
     this.loadConfig();
-    this.render();
-    this.attachEvents();
-    this.refresh();
+    // this.render(); // Original render call
+    this.renderMainLayout(); // Nueva función para decidir qué renderizar
+    this.attachEvents(); // Los eventos generales se pueden atachar aquí
+    // this.refresh(); // Refresh se llamará dentro de renderDashboard o después de la configuración
     this.setupRealtime();
+  },
+
+  /**
+   * Decide si renderizar la guía de configuración o el dashboard de KPIs.
+   */
+  renderMainLayout() {
+    const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
+    if (!container) return;
+
+    // Comprobar si la configuración esencial (ej. campo de métrica principal) está hecha.
+    // Esto es un ejemplo, la condición real podría ser más compleja.
+    const isConfigured = this.config.mapping.metersFieldId && this.config.insightFields && this.config.insightFields.length > 0;
+
+    if (!isConfigured) {
+      this.renderConfigurationGuide();
+    } else {
+      this.renderDashboard();
+    }
+  },
+
+  /**
+   * Renderiza la vista del dashboard de KPIs (anteriormente this.render y this.refresh).
+   */
+  renderDashboard() {
+    const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
+    if (!container) return;
+
+    container.innerHTML = this._renderDashboardLayout(); // Renombrado de _renderLayout
+
+    // Inicializar selects con buscador que son parte del dashboard
+    UIUtils.setupSearchableSelect('#kpi-shift');
+    UIUtils.setupSearchableSelect('#kpi-operator');
+    UIUtils.setupSearchableSelect('#kpi-machine');
+    UIUtils.setupSearchableSelect('#kpi-compare-period');
+    // Los selects de configuración del modal se inicializan cuando se muestra el modal o en _renderAdminModalHTML
+
+    this.populateFilterSelects();
+    this.attachDashboardEvents(); // Eventos específicos del dashboard
+    this.refresh(); // Carga los datos en los componentes del dashboard
+  },
+
+  /**
+   * Renderiza la guía de configuración inicial para los KPIs.
+   */
+  renderConfigurationGuide() {
+    const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
+    if (!container) return;
+
+    // El HTML del formulario de configuración se reutiliza desde _renderConfigFormHTML
+    // pero lo envolvemos en una estructura de "guía" o "paso inicial".
+    container.innerHTML = `
+      <div class="container mt-4" id="kpi-configuration-guide">
+        <div class="row">
+          <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+              <div class="card-header bg-primary text-white">
+                <h4><i class="bi bi-tools"></i> Configuración Inicial de KPIs</h4>
+              </div>
+              <div class="card-body">
+                <p class="card-text">
+                  Bienvenido a la sección de KPIs. Antes de comenzar, necesitamos que configures algunos campos clave
+                  para personalizar tu experiencia y asegurar que los cálculos sean precisos.
+                </p>
+                <hr>
+                ${this._renderConfigFormHTML()}
+                <!-- _renderConfigFormHTML ya incluye un botón de submit -->
+                <!-- Se podría añadir un botón específico "Guardar y Ver KPIs" si el del form no es suficiente -->
+              </div>
+              <div class="card-footer text-muted">
+                Una vez guardada la configuración, podrás acceder al dashboard de KPIs.
+                Podrás modificar esta configuración más tarde desde el panel de KPIs.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Inicializar TomSelects para los campos del formulario de configuración
+    UIUtils.setupSearchableSelect('#cfg-meters');
+    UIUtils.setupSearchableSelect('#cfg-operator');
+    UIUtils.setupSearchableSelect('#cfg-shift');
+    UIUtils.setupSearchableSelect('#cfg-machine');
+    UIUtils.setupSearchableSelect('#cfg-time');
+
+    // Adjuntar eventos al formulario de configuración que acabamos de renderizar
+    this.attachConfigFormEvents();
   },
 
   /**
@@ -88,7 +177,8 @@ const KPIsView = {
         comparison: { period: 'auto' },
         lineRange: {},
         visibleKPIs: this.availableKPIs.filter(kpi => kpi.defaultVisible).map(kpi => kpi.id),
-        insightFields: []
+        insightFields: [],
+        comparisonFields: [] // Asegurar que comparisonFields tenga un default
     };
 
     if (storedConfig.kpiConfig) {
@@ -103,10 +193,9 @@ const KPIsView = {
         filters: { ...defaultConfigValues.filters, ...(saved.filters || {}) },
         comparison: { ...defaultConfigValues.comparison, ...(saved.comparison || {}) },
         lineRange: { ...defaultConfigValues.lineRange, ...(saved.lineRange || {}) },
-        // Si visibleKPIs está en saved y es un array, se usará; si no, se mantiene el de defaultConfigValues.
-        // Esto previene errores si visibleKPIs es null o undefined en la config guardada.
         visibleKPIs: Array.isArray(saved.visibleKPIs) ? saved.visibleKPIs : defaultConfigValues.visibleKPIs,
-        insightFields: Array.isArray(saved.insightFields) ? saved.insightFields : defaultConfigValues.insightFields
+        insightFields: Array.isArray(saved.insightFields) ? saved.insightFields : defaultConfigValues.insightFields,
+        comparisonFields: Array.isArray(saved.comparisonFields) ? saved.comparisonFields : defaultConfigValues.comparisonFields // Cargar comparisonFields
       };
       // Asegurar que los KPIs nuevos con defaultVisible=true se incluyan
       this.availableKPIs.forEach(kpi => {
@@ -144,35 +233,34 @@ const KPIsView = {
   /**
    * Crea el HTML base de la vista.
    */
-  render() {
-    const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
-    if (!container) return;
+  // render() { // Esta función será reemplazada por renderMainLayout, renderDashboard y renderConfigurationGuide
+  //   const container = Router.getActiveViewContainer() || document.querySelector('.main-content');
+  //   if (!container) return;
 
-    container.innerHTML = this._renderLayout();
+  //   container.innerHTML = this._renderDashboardLayout(); // Anteriormente _renderLayout
 
-    // Inicializar selects con buscador
-    // Filters
-    UIUtils.setupSearchableSelect('#kpi-shift');
-    UIUtils.setupSearchableSelect('#kpi-operator');
-    UIUtils.setupSearchableSelect('#kpi-machine');
-    UIUtils.setupSearchableSelect('#kpi-compare-period');
-    // Config
-    UIUtils.setupSearchableSelect('#cfg-meters');
-    UIUtils.setupSearchableSelect('#cfg-operator');
-    UIUtils.setupSearchableSelect('#cfg-shift');
-    UIUtils.setupSearchableSelect('#cfg-machine');
-    UIUtils.setupSearchableSelect('#cfg-time');
+  //   // Inicializar selects con buscador
+  //   // Filters
+  //   UIUtils.setupSearchableSelect('#kpi-shift');
+  //   UIUtils.setupSearchableSelect('#kpi-operator');
+  //   UIUtils.setupSearchableSelect('#kpi-machine');
+  //   UIUtils.setupSearchableSelect('#kpi-compare-period');
+  //   // Config (estos ahora podrían estar en el modal o en la guía de configuración)
+  //   // UIUtils.setupSearchableSelect('#cfg-meters');
+  //   // UIUtils.setupSearchableSelect('#cfg-operator');
+  //   // UIUtils.setupSearchableSelect('#cfg-shift');
+  //   // UIUtils.setupSearchableSelect('#cfg-machine');
+  //   // UIUtils.setupSearchableSelect('#cfg-time');
 
-
-    // Rellenar selects de filtros con opciones si los campos están definidos
-    this.populateFilterSelects();
-  },
+  //   // Rellenar selects de filtros con opciones si los campos están definidos
+  //   this.populateFilterSelects();
+  // },
 
   /**
-   * Genera el HTML principal de la vista de KPIs.
+   * Genera el HTML principal de la vista de KPIs (Dashboard).
    * @returns {string} HTML de la vista.
    */
-  _renderLayout() {
+  _renderDashboardLayout() {
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 86400000);
     const fmt = d => d.toISOString().split('T')[0];
@@ -555,6 +643,16 @@ const KPIsView = {
             `).join('')}
           </div>
 
+          <h5 class="mt-4">Campos para Tabla de Comparación</h5>
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mb-3">
+            ${FieldModel.getActive().filter(f => f.type === 'number' || f.type === 'select').map(f => `
+              <div class="form-check col">
+                <input class="form-check-input kpi-comparison-checkbox" type="checkbox" value="${f.id}" id="cfg-compare-${f.id}" ${this.config.comparisonFields.includes(f.id) ? 'checked' : ''}>
+                <label class="form-check-label" for="cfg-compare-${f.id}">${f.name} (${f.type === 'number' ? 'Numérico' : 'Selección'})</label>
+              </div>
+            `).join('')}
+          </div>
+
           <div class="col-12 mt-3">
             <button class="btn btn-primary" type="submit">Guardar Configuración</button>
           </div>
@@ -597,107 +695,71 @@ const KPIsView = {
   /**
    * Configura los listeners de la interfaz.
    */
-  attachEvents() {
+  /**
+   * Configura los listeners de la interfaz para el dashboard de KPIs.
+   * Se llama después de renderizar el dashboard.
+   */
+  attachDashboardEvents() {
     const form = document.getElementById('kpi-filter-form');
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      this.config.filters.fromDate = document.getElementById('kpi-from').value;
-      this.config.filters.toDate = document.getElementById('kpi-to').value;
-      this.config.filters.shift = document.getElementById('kpi-shift').value;
-      this.config.filters.operator = document.getElementById('kpi-operator').value;
-      this.config.filters.machine = document.getElementById('kpi-machine').value;
-      this.saveConfig();
-      this.refresh();
-    });
-
-    document.getElementById('kpi-export-excel').addEventListener('click', () => {
-      this.exportExcel();
-    });
-    document.getElementById('kpi-export-pdf').addEventListener('click', () => {
-      this.exportPDF();
-    });
-
-    const openBtn = document.getElementById('open-kpi-admin');
-    if (openBtn) {
-      openBtn.addEventListener('click', () => {
-        const modalEl = document.getElementById('kpiAdminModal');
-        if (modalEl) new bootstrap.Modal(modalEl).show();
+    if (form) { // Verificar que el formulario exista antes de añadir listener
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        this.config.filters.fromDate = document.getElementById('kpi-from').value;
+        this.config.filters.toDate = document.getElementById('kpi-to').value;
+        this.config.filters.shift = document.getElementById('kpi-shift').value;
+        this.config.filters.operator = document.getElementById('kpi-operator').value;
+        this.config.filters.machine = document.getElementById('kpi-machine').value;
+        this.saveConfig();
+        this.refresh();
       });
     }
 
-    const configForm = document.getElementById('kpi-config-form');
-    if (configForm) {
-        configForm.addEventListener('submit', e => {
-            e.preventDefault();
-            // Guardar mapeo de campos
-            const mappingIds = ['metersFieldId', 'operatorFieldId', 'shiftFieldId', 'machineFieldId', 'timeFieldId'];
-            mappingIds.forEach(id => {
-                const input = document.getElementById(`cfg-${id.replace('FieldId','')}`);
-                if (input) this.config.mapping[id] = input.value || null;
-            });
+    const exportExcelBtn = document.getElementById('kpi-export-excel');
+    if (exportExcelBtn) {
+      exportExcelBtn.addEventListener('click', () => this.exportExcel());
+    }
 
-            // Guardar visibilidad de KPIs
-            const newVisibleKPIs = [];
-            document.querySelectorAll('.kpi-visibility-checkbox:checked').forEach(checkbox => {
-                newVisibleKPIs.push(checkbox.value);
-            });
-            this.config.visibleKPIs = newVisibleKPIs;
+    const exportPdfBtn = document.getElementById('kpi-export-pdf');
+    if (exportPdfBtn) {
+      exportPdfBtn.addEventListener('click', () => this.exportPDF());
+    }
 
-            // Guardar campos para Datos Interesantes
-            const newInsightFields = [];
-            document.querySelectorAll('.kpi-insight-checkbox:checked').forEach(cb => {
-                newInsightFields.push(cb.value);
-            });
-            this.config.insightFields = newInsightFields;
-
-            this.saveConfig();
-            this.populateFilterSelects(); // Actualizar filtros por si cambiaron los campos
-
-            // Re-renderizar completamente la vista para aplicar cambios de visibilidad de placeholders
-            // y luego refrescar los datos/componentes para los KPIs que ahora son visibles.
-            this.render();
-            // NOTA: Es crucial re-atachar los eventos DESPUÉS de this.render() porque render() sobreescribe el DOM.
-            // Sin embargo, llamar a this.attachEvents() aquí crearía un bucle infinito si el propio
-            // listener del form está dentro de attachEvents.
-            // La solución correcta es que this.render() no llame a this.attachEvents() o
-            // que el listener del configForm se atache una sola vez fuera del ciclo render/attach.
-            // Por ahora, para evitar el bucle, no se re-atacharán todos los eventos aquí,
-            // asumiendo que los elementos principales (como el propio form) persisten o que
-            // los eventos delegados se usan (que no es el caso actual).
-            // Una mejor solución a largo plazo sería separar el attach del configForm.
-            // Para este paso, se omite la re-llamada a attachEvents() para evitar el bucle,
-            // pero se reconoce que esto podría dejar algunos eventos sin atachar si render() los destruye.
-            // Sin embargo, dado que this.render() está reconstruyendo los selects, SÍ necesitamos
-            // re-inicializarlos. Y el this.refresh() final se encargará de los datos.
-
-            // Re-setup de los selectores TomSelect dentro del formulario de configuración si fue re-renderizado.
-            // Esto es un workaround. Idealmente, this.render() debería manejar esto o no destruir y reconstruir el form.
+    const openAdminBtn = document.getElementById('open-kpi-admin');
+    if (openAdminBtn) {
+      openAdminBtn.addEventListener('click', () => {
+        const modalEl = document.getElementById('kpiAdminModal');
+        if (modalEl) {
+          const modalBody = modalEl.querySelector('.modal-body');
+          if (modalBody) {
+            modalBody.innerHTML = this._renderConfigFormHTML();
             UIUtils.setupSearchableSelect('#cfg-meters');
             UIUtils.setupSearchableSelect('#cfg-operator');
             UIUtils.setupSearchableSelect('#cfg-shift');
             UIUtils.setupSearchableSelect('#cfg-machine');
             UIUtils.setupSearchableSelect('#cfg-time');
-            // No es necesario re-atachar el listener del form porque el elemento form en sí no se elimina y recrea,
-            // solo su contenido. Si el propio <form> fuera recreado por render(), necesitaríamos re-atachar.
-
-            this.refresh(); // Recalcular y mostrar datos para KPIs visibles
-        });
+            this.attachConfigFormEvents();
+          }
+          new bootstrap.Modal(modalEl).show();
+        }
+      });
     }
 
     const comparePeriodSelect = document.getElementById('kpi-compare-period');
     if (comparePeriodSelect) {
-        comparePeriodSelect.addEventListener('change', e => {
-            this.config.comparison.period = e.target.value;
-            this.saveConfig();
-            this.refresh();
-        });
+      comparePeriodSelect.addEventListener('change', e => {
+        this.config.comparison.period = e.target.value;
+        this.saveConfig();
+        this.refresh();
+      });
     }
 
     document.querySelectorAll('#kpi-date-shortcuts button').forEach(btn => {
       btn.addEventListener('click', () => {
         const r = this.getShortcutRange(btn.dataset.range);
-        document.getElementById('kpi-from').value = r.from;
-        document.getElementById('kpi-to').value = r.to;
+        const kpiFrom = document.getElementById('kpi-from');
+        const kpiTo = document.getElementById('kpi-to');
+        if (kpiFrom) kpiFrom.value = r.from;
+        if (kpiTo) kpiTo.value = r.to;
         this.config.filters.fromDate = r.from;
         this.config.filters.toDate = r.to;
         this.saveConfig();
@@ -708,8 +770,10 @@ const KPIsView = {
     document.querySelectorAll('.line-shortcut').forEach(btn => {
       btn.addEventListener('click', () => {
         const r = this.getShortcutRange(btn.dataset.range);
-        document.getElementById('kpi-line-from').value = r.from;
-        document.getElementById('kpi-line-to').value = r.to;
+        const lineFrom = document.getElementById('kpi-line-from');
+        const lineTo = document.getElementById('kpi-line-to');
+        if (lineFrom) lineFrom.value = r.from;
+        if (lineTo) lineTo.value = r.to;
         this.config.lineRange.fromDate = r.from;
         this.config.lineRange.toDate = r.to;
         this.saveConfig();
@@ -719,12 +783,79 @@ const KPIsView = {
 
     ['kpi-line-from','kpi-line-to'].forEach(id => {
       const el = document.getElementById(id);
-      el.addEventListener('change', () => {
-        this.config.lineRange[id === 'kpi-line-from' ? 'fromDate' : 'toDate'] = el.value;
-        this.saveConfig();
-        this.refresh();
-      });
+      if (el) {
+        el.addEventListener('change', () => {
+          this.config.lineRange[id === 'kpi-line-from' ? 'fromDate' : 'toDate'] = el.value;
+          this.saveConfig();
+          this.refresh();
+        });
+      }
     });
+  },
+
+  /**
+   * Adjunta eventos al formulario de configuración (modal o guía).
+   */
+  attachConfigFormEvents() {
+    const configForm = document.getElementById('kpi-config-form');
+    if (configForm) {
+        configForm.addEventListener('submit', e => {
+            e.preventDefault();
+            this.saveKpiConfigFromForm();
+
+            const isInitialSetup = !document.getElementById('kpi-filters-section');
+            if (isInitialSetup) {
+                this.renderDashboard();
+            } else {
+                const modalEl = document.getElementById('kpiAdminModal');
+                if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+                 // Re-render dashboard to apply visibility changes AND re-attach its events
+                this.renderDashboard(); // This will call attachDashboardEvents internally
+            }
+        });
+    }
+  },
+
+  /**
+   * Guarda la configuración de KPIs desde el formulario.
+   */
+  saveKpiConfigFromForm() {
+      const mappingIds = ['metersFieldId', 'operatorFieldId', 'shiftFieldId', 'machineFieldId', 'timeFieldId'];
+      mappingIds.forEach(id => {
+          const input = document.getElementById(`cfg-${id.replace('FieldId','')}`);
+          if (input) this.config.mapping[id] = input.value || null;
+      });
+
+      const newVisibleKPIs = [];
+      document.querySelectorAll('.kpi-visibility-checkbox:checked').forEach(checkbox => {
+          newVisibleKPIs.push(checkbox.value);
+      });
+      this.config.visibleKPIs = newVisibleKPIs;
+
+      const newInsightFields = [];
+      document.querySelectorAll('.kpi-insight-checkbox:checked').forEach(cb => {
+          newInsightFields.push(cb.value);
+      });
+      this.config.insightFields = newInsightFields;
+
+      // Guardar campos para Tabla de Comparación
+      const newComparisonFields = [];
+      document.querySelectorAll('.kpi-comparison-checkbox:checked').forEach(cb => {
+          newComparisonFields.push(cb.value);
+      });
+      this.config.comparisonFields = newComparisonFields;
+
+      this.saveConfig();
+      // No es necesario llamar a populateFilterSelects aquí si renderDashboard lo hace.
+  },
+
+  /**
+   * Configura los listeners de la interfaz generales de la vista KPIs.
+   */
+  attachEvents() {
+    // Esta función ahora está más vacía, ya que los eventos específicos
+    // se manejan en attachDashboardEvents y attachConfigFormEvents.
+    // Podría usarse para eventos globales de la vista si fuera necesario.
   },
 
   /**
@@ -778,17 +909,22 @@ const KPIsView = {
    * Actualiza la vista calculando métricas y gráficos para los KPIs visibles.
    */
   refresh() {
+    // Verificar si los elementos del dashboard existen antes de intentar actualizarlos
+    // Esto es importante porque refresh() podría ser llamado cuando la guía de configuración está activa.
+    if (!document.getElementById('kpi-filters-section')) { // Asume que 'kpi-filters-section' es exclusivo del dashboard
+        // console.log("Refresh skipped: Dashboard elements not present (likely in config guide).");
+        return;
+    }
+
     const records = this.getFilteredRecords();
 
     // Renderizar componentes KPI sólo si están visibles y sus placeholders existen
     if (this.config.visibleKPIs.includes('kpiCards') && document.getElementById('kpi-cards-container')) {
       this.renderCards(records);
-    } else if (document.getElementById('kpi-cards')) { // si el placeholder interno existe pero el contenedor no (o kpi no visible)
-      document.getElementById('kpi-cards').innerHTML = ''; // Limpiar
+    } else if (document.getElementById('kpi-cards')) {
+      document.getElementById('kpi-cards').innerHTML = '';
     }
 
-    // renderCharts y renderComparison ahora tienen lógica interna para verificar visibilidad
-    // y destruir charts si es necesario.
     this.renderCharts(records);
     this.renderComparison(records);
     this.renderInsights(records);
@@ -1406,68 +1542,10 @@ const KPIsView = {
     });
 
     // 4. Calcular todas las métricas relevantes (totalMetros, timeAvg, etc.) para ambos conjuntos de registros.
-    const currentMetrics = this.computeMetrics(currentPeriodRecords);
-    const previousMetrics = this.computeMetrics(previousPeriodRecords);
+    const metricsToCompare = [];
+    let tableHTML = '';
 
-    const metricsToCompare = []; // Array para almacenar los objetos de métrica a mostrar en la tabla.
-
-    // --- Definición y Cálculo de Métricas para Comparación ---
-
-    // Métrica 1: Total de la Métrica Primaria (e.g., Metros Impresos)
-    // Se muestra solo si el campo de metros está mapeado.
-    if (map.metersFieldId) {
-        const currentVal = currentMetrics.totalMeters;
-        const prevVal = previousMetrics.totalMeters;
-        const diff = currentVal - prevVal;
-        // Cálculo del porcentaje: si el valor previo es 0, un aumento se considera 100% (o 0% si el actual también es 0).
-        const perc = prevVal !== 0 ? (diff / prevVal) * 100 : (currentVal !== 0 ? 100 : 0);
-        metricsToCompare.push({
-            name: FieldModel.getById(map.metersFieldId)?.name || 'Total Métrica Primaria', // Nombre dinámico del campo
-            current: ChartUtils.formatNumber(currentVal), // Valor actual formateado
-            previous: ChartUtils.formatNumber(prevVal), // Valor anterior formateado
-            diff: ChartUtils.formatNumber(diff), // Diferencia absoluta formateada
-            perc: perc.toFixed(1) + '%', // Porcentaje con un decimal
-            isPositive: diff >= 0 // Para esta métrica, un aumento (o ninguna diferencia) se considera positivo.
-        });
-    } else {
-        // Si el campo de metros no está mapeado, se muestra N/A para esta métrica.
-        metricsToCompare.push({ name: 'Total Métrica Primaria', current: 'N/A', previous: 'N/A', diff: 'N/A', perc: 'N/A', isPositive: true });
-    }
-
-    // Métrica 2: Tiempo Promedio (si el campo de tiempo está mapeado)
-    if (map.timeFieldId) {
-        const currentVal = currentMetrics.timeAvg;
-        const prevVal = previousMetrics.timeAvg;
-        const diff = currentVal - prevVal;
-        const perc = prevVal !== 0 ? (diff / prevVal) * 100 : (currentVal !== 0 ? 100 : 0);
-        metricsToCompare.push({
-            name: FieldModel.getById(map.timeFieldId)?.name || 'Tiempo Promedio',
-            current: ChartUtils.formatNumber(currentVal),
-            previous: ChartUtils.formatNumber(prevVal),
-            diff: ChartUtils.formatNumber(diff),
-            perc: perc.toFixed(1) + '%',
-            isPositive: diff <= 0 // Para tiempo promedio, una disminución (diff <= 0) es positiva/mejor.
-        });
-    }
-
-    // Métrica 3: Número de Máquinas Únicas Utilizadas (si el campo de máquina está mapeado)
-     if (map.machineFieldId) {
-        const currentVal = currentMetrics.machinesUsed;
-        const prevVal = previousMetrics.machinesUsed;
-        const diff = currentVal - prevVal;
-        const perc = prevVal !== 0 ? (diff / prevVal) * 100 : (currentVal !== 0 ? 100 : 0);
-        metricsToCompare.push({
-            name: `Máquinas Únicas (${FieldModel.getById(map.machineFieldId)?.name || 'Máquina'})`,
-            current: currentVal.toString(), // Es un conteo, no necesita formateo numérico con decimales.
-            previous: prevVal.toString(),
-            diff: diff.toString(),
-            perc: perc.toFixed(1) + '%',
-            isPositive: diff >= 0 // Se asume que más máquinas usadas es neutral o positivo. Podría variar según el contexto del negocio.
-        });
-    }
-
-    // Métrica 4: Total de Registros (Pedidos/Eventos)
-    // Esta métrica siempre se calcula, ya que no depende de un campo mapeado específico más allá de la existencia de registros.
+    // 1. Total de Registros (siempre se muestra)
     const currentRecordCount = currentPeriodRecords.length;
     const previousRecordCount = previousPeriodRecords.length;
     const diffRecords = currentRecordCount - previousRecordCount;
@@ -1478,25 +1556,58 @@ const KPIsView = {
         previous: previousRecordCount.toString(),
         diff: diffRecords.toString(),
         perc: percRecords.toFixed(1) + '%',
-        isPositive: diffRecords >= 0 // Más registros generalmente se considera positivo.
+        isPositive: diffRecords >= 0
     });
 
+    // 2. Campos seleccionados por el usuario para comparación
+    if (this.config.comparisonFields && this.config.comparisonFields.length > 0) {
+        this.config.comparisonFields.forEach(fieldId => {
+            const field = FieldModel.getById(fieldId);
+            if (!field) return;
+
+            let currentVal, prevVal, diff, perc, isPositive, name;
+            name = field.name;
+
+            if (field.type === 'number') {
+                currentVal = KpiUtils.aggregateField(currentPeriodRecords, fieldId, 'sum');
+                prevVal = KpiUtils.aggregateField(previousPeriodRecords, fieldId, 'sum');
+                diff = currentVal - prevVal;
+                perc = prevVal !== 0 ? (diff / prevVal) * 100 : (currentVal !== 0 ? 100 : 0);
+                isPositive = diff >= 0; // Para sumas numéricas, mayor suele ser mejor.
+                metricsToCompare.push({
+                    name: name,
+                    current: ChartUtils.formatNumber(currentVal),
+                    previous: ChartUtils.formatNumber(prevVal),
+                    diff: ChartUtils.formatNumber(diff),
+                    perc: perc.toFixed(1) + '%',
+                    isPositive: isPositive
+                });
+            } else if (field.type === 'select') {
+                // Para campos 'select', contamos cuántos registros tienen un valor (no vacío)
+                currentVal = currentPeriodRecords.filter(r => r.data[fieldId] !== null && r.data[fieldId] !== undefined && r.data[fieldId] !== '').length;
+                prevVal = previousPeriodRecords.filter(r => r.data[fieldId] !== null && r.data[fieldId] !== undefined && r.data[fieldId] !== '').length;
+                diff = currentVal - prevVal;
+                perc = prevVal !== 0 ? (diff / prevVal) * 100 : (currentVal !== 0 ? 100 : 0);
+                isPositive = diff >= 0; // Más registros con una opción seleccionada suele ser mejor o indica más actividad.
+                metricsToCompare.push({
+                    name: `${name} (Conteo con valor)`,
+                    current: currentVal.toString(),
+                    previous: prevVal.toString(),
+                    diff: diff.toString(),
+                    perc: perc.toFixed(1) + '%',
+                    isPositive: isPositive
+                });
+            }
+        });
+    }
+
     // --- Renderizado de la Tabla HTML ---
-    let tableHTML = '';
-    // Si todas las métricas que podrían tener datos (excluyendo las que son N/A por falta de mapeo)
-    // efectivamente no tienen datos (e.g. current y previous son 0 o N/A), mostrar mensaje.
-    // O, más simple: si `metricsToCompare` está vacío o todas las métricas son N/A.
-    if (metricsToCompare.filter(m => m.current !== 'N/A').length === 0) {
-        tableHTML = '<tr><td colspan="5">No hay métricas configuradas o datos disponibles para comparación.</td></tr>';
+    if (metricsToCompare.length === 0) { // Solo debería ocurrir si comparisonFields está vacío y quitamos "Total Registros"
+        tableHTML = '<tr><td colspan="5">No hay campos configurados para comparación. Seleccione campos en la configuración de KPIs.</td></tr>';
     } else {
-        // Construir cada fila de la tabla.
         metricsToCompare.forEach(metric => {
-            // Determinar la clase CSS para el color del texto (verde para positivo, rojo para negativo).
-            // Si el porcentaje es "N/A" (por falta de datos previos), no se aplica clase de color.
             const textClass = metric.perc === 'N/A' ? '' : (metric.isPositive ? 'text-success' : 'text-danger');
-            // Determinar el ícono de flecha (arriba para positivo, abajo para negativo).
             const arrowIcon = metric.perc === 'N/A' ? '' : (metric.isPositive ? '<i class="bi bi-arrow-up-short"></i>' : '<i class="bi bi-arrow-down-short"></i>');
-            // Formatear el string del porcentaje con el ícono.
             const displayPerc = metric.perc === 'N/A' ? 'N/A' : `${arrowIcon} ${metric.perc}`;
 
             tableHTML += `
@@ -1510,7 +1621,7 @@ const KPIsView = {
             `;
         });
     }
-    comparisonTbody.innerHTML = tableHTML; // Actualizar el contenido del cuerpo de la tabla.
+    comparisonTbody.innerHTML = tableHTML;
   },
 
   /**
