@@ -9,8 +9,8 @@ const Router = {
     routes: {
         'register': RegisterView,
         'reports': ReportsView,
-        'kpis': KPIsView,
-        'kpis2': KPIs2View,
+        // 'kpis': KPIsView, // KPIsView is not defined as js/views/kpis.js is empty
+        // 'kpis2': KPIs2View, // Removed as it's causing 404 and link is commented out
         'admin': AdminView
     },
     
