@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event listeners for config buttons (placeholders for now) - REMAINS THE SAME
     const addKpiFieldButton = document.getElementById('add-kpi-field-button');
-    const addKpiFieldButton = document.getElementById('add-kpi-field-button');
+    // const addKpiFieldButton = document.getElementById('add-kpi-field-button'); // Removed duplicate declaration
     if (addKpiFieldButton) {
         addKpiFieldButton.addEventListener('click', () => {
             const selectedFieldId = kpiFieldSelect.value;
