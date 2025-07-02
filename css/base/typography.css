@@ -1,0 +1,237 @@
+/**
+ * Typography - Sistema tipográfico unificado
+ * Jerarquía clara y consistente para textos
+ */
+
+/* === Configuración base del body === */
+body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.6;
+  color: var(--theme-text-primary);
+  background-color: var(--theme-bg-secondary);
+}
+
+/* === Jerarquía de encabezados === */
+h1, .text-h1 {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  color: var(--theme-text-primary);
+  margin-bottom: var(--space-6);
+}
+
+h2, .text-h2 {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.3;
+  color: var(--theme-text-primary);
+  margin-bottom: var(--space-5);
+}
+
+h3, .text-h3 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  color: var(--theme-text-primary);
+  margin-bottom: var(--space-4);
+}
+
+h4, .text-h4 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  color: var(--theme-text-primary);
+  margin-bottom: var(--space-3);
+}
+
+h5, .text-h5 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  color: var(--theme-text-primary);
+  margin-bottom: var(--space-3);
+}
+
+h6, .text-h6 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  color: var(--theme-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+/* === Párrafos y texto base === */
+p, .text-body {
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  color: var(--theme-text-primary);
+  margin-bottom: var(--space-4);
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+/* === Texto secundario === */
+.text-secondary {
+  color: var(--theme-text-secondary);
+}
+
+.text-muted {
+  color: var(--theme-text-muted);
+}
+
+.text-tertiary {
+  color: var(--theme-text-tertiary);
+}
+
+/* === Tamaños de texto === */
+.text-xs {
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.text-sm {
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.text-lg {
+  font-size: var(--font-size-lg);
+  line-height: 1.6;
+}
+
+.text-xl {
+  font-size: var(--font-size-xl);
+  line-height: 1.6;
+}
+
+/* === Pesos de fuente === */
+.font-normal {
+  font-weight: var(--font-weight-normal);
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
+
+/* === Texto para código === */
+code, .text-code {
+  font-family: var(--font-family-mono);
+  font-size: 0.875em;
+  background-color: var(--color-secondary-100);
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-danger-700);
+}
+
+pre {
+  font-family: var(--font-family-mono);
+  background-color: var(--color-secondary-100);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* === Links === */
+a, .link {
+  color: var(--color-primary-600);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover, .link:hover {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+}
+
+a:focus-visible, .link:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* === Texto utilitario === */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-justify {
+  text-align: justify;
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.text-lowercase {
+  text-transform: lowercase;
+}
+
+.text-capitalize {
+  text-transform: capitalize;
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-break {
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* === Texto con estado === */
+.text-success {
+  color: var(--color-success);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+.text-info {
+  color: var(--color-info);
+}
+
+/* === Responsive typography === */
+@media (max-width: 640px) {
+  h1, .text-h1 {
+    font-size: var(--font-size-3xl);
+  }
+  
+  h2, .text-h2 {
+    font-size: var(--font-size-2xl);
+  }
+  
+  h3, .text-h3 {
+    font-size: var(--font-size-xl);
+  }
+}
