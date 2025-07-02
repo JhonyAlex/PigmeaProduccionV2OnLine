@@ -559,16 +559,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDashboard();
 
 
-    // Mobile menu toggle (already implemented, just ensuring it's here)
-    const menuButton = document.getElementById('mobile-menu-button');
-    const mobileMenu = document.getElementById('mobile-menu');
-
-    if (menuButton && mobileMenu) {
-        menuButton.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-    }
-
     // --- Export Functionality --- - REMAINS THE SAME
     const exportPdfButton = document.getElementById('export-pdf-button');
     const exportExcelButton = document.getElementById('export-excel-button');
