@@ -57,7 +57,7 @@ class KPIAdminPanel {
      */
     async loadModal() {
         try {
-            const response = await fetch('/components/kpi-admin-modal.html');
+            const response = await fetch('./components/kpi-admin-modal.html');
             const modalHTML = await response.text();
             
             // Insert modal into page if not already present

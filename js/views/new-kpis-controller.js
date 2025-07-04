@@ -70,7 +70,7 @@ class NewKPIsController {
             }
 
             // Load template
-            const response = await fetch('/components/new-kpis-view.html');
+            const response = await fetch('./components/new-kpis-view.html');
             const templateHTML = await response.text();
             this.container.innerHTML = templateHTML;
             
@@ -109,7 +109,7 @@ class NewKPIsController {
     async loadStyles() {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = '/css/kpis-responsive.css';
+        link.href = './css/kpis-responsive.css';
         document.head.appendChild(link);
     }
 
