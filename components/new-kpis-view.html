@@ -1,0 +1,267 @@
+<!-- New KPIs Dashboard View -->
+<div class="new-kpis-container">
+  <div class="container-fluid">
+    
+    <!-- Header with Configuration Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="fw-bold text-dark mb-1">Panel de KPIs</h2>
+        <p class="text-muted mb-0">Análisis inteligente de datos en tiempo real</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="openKPIAdmin">
+        <i class="bi bi-gear-fill me-2"></i>Configurar
+      </button>
+    </div>
+
+    <!-- Insights Section -->
+    <div class="kpi-insights-section" id="insightsSection">
+      <div class="row g-3 mb-4">
+        <div class="col-12">
+          <h3 class="text-white fw-bold mb-3">
+            <i class="bi bi-lightbulb me-2"></i>Insights Destacados
+          </h3>
+        </div>
+      </div>
+      <div class="row g-3" id="insightsContainer">
+        <!-- Insights cards will be dynamically generated here -->
+      </div>
+    </div>
+
+    <!-- Advanced Filters Section -->
+    <div class="kpi-filters-section" id="filtersSection">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-funnel me-2"></i>Filtros Avanzados
+        </h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="resetFilters">
+          <i class="bi bi-arrow-clockwise me-1"></i>Restablecer
+        </button>
+      </div>
+
+      <div class="row g-3">
+        <!-- Date Range -->
+        <div class="col-lg-3 col-md-6">
+          <div class="filter-group">
+            <label class="filter-label">Período de Análisis</label>
+            <div class="row g-2">
+              <div class="col-6">
+                <input type="date" class="kpi-form-control" id="dateFrom" placeholder="Desde">
+              </div>
+              <div class="col-6">
+                <input type="date" class="kpi-form-control" id="dateTo" placeholder="Hasta">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparison Type -->
+        <div class="col-lg-3 col-md-6">
+          <div class="filter-group">
+            <label class="filter-label">Comparar con</label>
+            <select class="kpi-form-select" id="comparisonType">
+              <option value="none">Sin comparación</option>
+              <option value="previous" selected>Período anterior</option>
+              <option value="lastWeek">Semana pasada</option>
+              <option value="lastMonth">Mes pasado</option>
+              <option value="lastYear">Año pasado</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Time Grouping -->
+        <div class="col-lg-3 col-md-6">
+          <div class="filter-group">
+            <label class="filter-label">Agrupar por</label>
+            <select class="kpi-form-select" id="timeGrouping">
+              <option value="day">Día</option>
+              <option value="week" selected>Semana</option>
+              <option value="month">Mes</option>
+              <option value="quarter">Trimestre</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dynamic Filters Container -->
+        <div class="col-lg-3 col-md-6">
+          <div class="filter-group">
+            <label class="filter-label">Filtros Dinámicos</label>
+            <div id="dynamicFiltersContainer">
+              <!-- Dynamic filters will be populated based on configured fields -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Filter Shortcuts -->
+      <div class="quick-filters mt-3">
+        <button type="button" class="quick-filter-btn" data-period="today">Hoy</button>
+        <button type="button" class="quick-filter-btn" data-period="yesterday">Ayer</button>
+        <button type="button" class="quick-filter-btn active" data-period="thisWeek">Esta Semana</button>
+        <button type="button" class="quick-filter-btn" data-period="lastWeek">Semana Pasada</button>
+        <button type="button" class="quick-filter-btn" data-period="thisMonth">Este Mes</button>
+        <button type="button" class="quick-filter-btn" data-period="lastMonth">Mes Pasado</button>
+        <button type="button" class="quick-filter-btn" data-period="thisYear">Este Año</button>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="kpi-charts-section" id="chartsSection">
+      <div class="row g-3">
+        
+        <!-- Trend Chart -->
+        <div class="col-lg-8 col-md-12">
+          <div class="chart-container">
+            <div class="chart-title">
+              <i class="bi bi-graph-up"></i>
+              Tendencia Temporal
+              <div class="ms-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-chart="trend">
+                  <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-canvas">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distribution Chart -->
+        <div class="col-lg-4 col-md-6">
+          <div class="chart-container">
+            <div class="chart-title">
+              <i class="bi bi-pie-chart"></i>
+              Distribución
+              <div class="ms-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-chart="distribution">
+                  <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-canvas">
+              <canvas id="distributionChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparison Chart -->
+        <div class="col-lg-6 col-md-6">
+          <div class="chart-container">
+            <div class="chart-title">
+              <i class="bi bi-bar-chart"></i>
+              Comparación de Períodos
+              <div class="ms-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-chart="comparison">
+                  <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-canvas">
+              <canvas id="comparisonChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Performance Chart -->
+        <div class="col-lg-6 col-md-6">
+          <div class="chart-container">
+            <div class="chart-title">
+              <i class="bi bi-speedometer2"></i>
+              Rendimiento
+              <div class="ms-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-chart="performance">
+                  <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-canvas">
+              <canvas id="performanceChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table Section -->
+    <div class="kpi-table-section" id="tableSection">
+      <div class="table-header">
+        <h5 class="table-title">
+          <i class="bi bi-table me-2"></i>Datos Detallados
+        </h5>
+        <div class="table-controls">
+          <input type="text" class="table-search" id="tableSearch" placeholder="Buscar en datos...">
+          <div class="export-buttons">
+            <button type="button" class="export-btn" id="exportCSV">
+              <i class="bi bi-filetype-csv me-1"></i>CSV
+            </button>
+            <button type="button" class="export-btn" id="exportExcel">
+              <i class="bi bi-filetype-xlsx me-1"></i>Excel
+            </button>
+            <button type="button" class="export-btn" id="exportPDF">
+              <i class="bi bi-filetype-pdf me-1"></i>PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="kpi-data-table" id="dataTable">
+          <thead>
+            <tr id="tableHeaders">
+              <!-- Table headers will be dynamically generated -->
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Table data will be dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-pagination">
+        <div class="pagination-info">
+          <span id="paginationInfo">Mostrando 0 - 0 de 0 registros</span>
+        </div>
+        <div class="pagination-controls">
+          <button type="button" class="pagination-btn" id="firstPage" disabled>
+            <i class="bi bi-chevron-double-left"></i>
+          </button>
+          <button type="button" class="pagination-btn" id="prevPage" disabled>
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <input type="number" class="page-input" id="currentPage" value="1" min="1">
+          <span class="mx-2">de <span id="totalPages">1</span></span>
+          <button type="button" class="pagination-btn" id="nextPage" disabled>
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <button type="button" class="pagination-btn" id="lastPage" disabled>
+            <i class="bi bi-chevron-double-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="kpi-loading d-none" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <span>Cargando datos...</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- Chart Full Screen Modal -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="chartModalTitle">Gráfico</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div style="height: 500px;">
+          <canvas id="modalChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -9,7 +9,7 @@ const Router = {
     routes: {
         'register': RegisterView,
         'reports': ReportsView,
-        'kpis': KPIsView,
+        'kpis': NewKPIsController,
         'admin': AdminView
     },
     
@@ -97,7 +97,15 @@ const Router = {
             
             // Inicializar la vista después de un pequeño retraso
             setTimeout(() => {
-                this.routes[route].init();
+                const ViewClass = this.routes[route];
+                if (typeof ViewClass === 'function' && ViewClass.prototype && ViewClass.prototype.constructor === ViewClass) {
+                    // Es una clase, instanciarla
+                    const viewInstance = new ViewClass();
+                    viewInstance.init();
+                } else {
+                    // Es un objeto con método init
+                    ViewClass.init();
+                }
             }, 10);
         } catch (error) {
             console.error(`Error al navegar a ${route}:`, error);

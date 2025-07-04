@@ -1,0 +1,388 @@
+<!-- KPI Admin Configuration Modal -->
+<div class="modal fade" id="kpiAdminModal" tabindex="-1" aria-labelledby="kpiAdminModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="kpiAdminModalLabel">
+          <i class="bi bi-gear-fill me-2"></i>
+          Configuración Avanzada de KPIs
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4" id="kpiAdminTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="fields-tab" data-bs-toggle="tab" data-bs-target="#fields-panel" 
+                    type="button" role="tab" aria-controls="fields-panel" aria-selected="true">
+              <i class="bi bi-list-ul me-2"></i>Campos Personalizados
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories-panel" 
+                    type="button" role="tab" aria-controls="categories-panel" aria-selected="false">
+              <i class="bi bi-folder me-2"></i>Categorías
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="layout-tab" data-bs-toggle="tab" data-bs-target="#layout-panel" 
+                    type="button" role="tab" aria-controls="layout-panel" aria-selected="false">
+              <i class="bi bi-grid-3x3-gap me-2"></i>Organización
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-panel" 
+                    type="button" role="tab" aria-controls="advanced-panel" aria-selected="false">
+              <i class="bi bi-sliders me-2"></i>Avanzado
+            </button>
+          </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="kpiAdminTabsContent">
+          
+          <!-- Fields Panel -->
+          <div class="tab-pane fade show active" id="fields-panel" role="tabpanel" aria-labelledby="fields-tab">
+            <div class="row">
+              <div class="col-lg-6">
+                <h6 class="fw-bold text-primary mb-3">
+                  <i class="bi bi-search me-2"></i>Campos Disponibles
+                </h6>
+                
+                <!-- Search Available Fields -->
+                <div class="mb-3">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchAvailableFields" 
+                           placeholder="Buscar campos disponibles...">
+                  </div>
+                </div>
+                
+                <!-- Available Fields List -->
+                <div class="border rounded p-3" style="min-height: 300px; max-height: 400px; overflow-y: auto;">
+                  <div id="availableFieldsList" class="field-items-container">
+                    <!-- Available fields will be populated here -->
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-lg-6">
+                <h6 class="fw-bold text-success mb-3">
+                  <i class="bi bi-check-circle me-2"></i>Campos Configurados
+                </h6>
+                
+                <!-- Configured Fields Actions -->
+                <div class="d-flex gap-2 mb-3">
+                  <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllFields">
+                    <i class="bi bi-check-all me-1"></i>Seleccionar Todo
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAllFields">
+                    <i class="bi bi-x-circle me-1"></i>Limpiar Todo
+                  </button>
+                </div>
+                
+                <!-- Configured Fields List -->
+                <div class="border rounded p-3" style="min-height: 300px; max-height: 400px; overflow-y: auto;">
+                  <div id="configuredFieldsList" class="field-items-container sortable-container">
+                    <!-- Configured fields will be populated here -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Categories Panel -->
+          <div class="tab-pane fade" id="categories-panel" role="tabpanel" aria-labelledby="categories-tab">
+            <div class="row">
+              <div class="col-lg-8">
+                <h6 class="fw-bold text-primary mb-3">Organización por Categorías</h6>
+                
+                <!-- Category Tabs -->
+                <ul class="nav nav-pills mb-3" id="categoryTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="metrics-category-tab" data-category="metrics">
+                      <i class="bi bi-graph-up me-1"></i>Métricas
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="dimensions-category-tab" data-category="dimensions">
+                      <i class="bi bi-pie-chart me-1"></i>Dimensiones
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="time-category-tab" data-category="time">
+                      <i class="bi bi-clock me-1"></i>Tiempo
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="custom-category-tab" data-category="custom">
+                      <i class="bi bi-puzzle me-1"></i>Personalizado
+                    </button>
+                  </li>
+                </ul>
+                
+                <!-- Category Content -->
+                <div class="card">
+                  <div class="card-body">
+                    <div id="categoryContent">
+                      <!-- Category-specific fields will be shown here -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-lg-4">
+                <h6 class="fw-bold text-info mb-3">Información de Categorías</h6>
+                <div class="alert alert-info">
+                  <h6 class="alert-heading">Tipos de Campos:</h6>
+                  <ul class="mb-0 small">
+                    <li><strong>Métricas:</strong> Campos numéricos para cálculos</li>
+                    <li><strong>Dimensiones:</strong> Campos categóricos para agrupación</li>
+                    <li><strong>Tiempo:</strong> Campos de fecha y tiempo</li>
+                    <li><strong>Personalizado:</strong> Campos específicos del usuario</li>
+                  </ul>
+                </div>
+                
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">Vista Previa</h6>
+                  </div>
+                  <div class="card-body">
+                    <div id="categoryPreview" class="text-muted small">
+                      Seleccione una categoría para ver la vista previa
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layout Panel -->
+          <div class="tab-pane fade" id="layout-panel" role="tabpanel" aria-labelledby="layout-tab">
+            <h6 class="fw-bold text-primary mb-3">Organización Visual</h6>
+            
+            <div class="row">
+              <div class="col-lg-8">
+                <!-- Drag & Drop Layout -->
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="bi bi-arrows-move me-2"></i>
+                      Organizar por Drag & Drop
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div id="layoutContainer" class="layout-grid">
+                      <!-- Layout items will be rendered here -->
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Layout Controls -->
+                <div class="d-flex gap-2 mt-3">
+                  <button type="button" class="btn btn-outline-primary" id="resetLayout">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Restablecer
+                  </button>
+                  <button type="button" class="btn btn-outline-info" id="previewLayout">
+                    <i class="bi bi-eye me-1"></i>Vista Previa
+                  </button>
+                </div>
+              </div>
+              
+              <div class="col-lg-4">
+                <!-- Layout Options -->
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">Opciones de Diseño</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label class="form-label small fw-bold">Columnas por Fila</label>
+                      <select class="form-select form-select-sm" id="layoutColumns">
+                        <option value="1">1 Columna</option>
+                        <option value="2" selected>2 Columnas</option>
+                        <option value="3">3 Columnas</option>
+                        <option value="4">4 Columnas</option>
+                      </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label small fw-bold">Espaciado</label>
+                      <select class="form-select form-select-sm" id="layoutSpacing">
+                        <option value="compact">Compacto</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="spacious">Espacioso</option>
+                      </select>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                      <input class="form-check-input" type="checkbox" id="showFieldIcons" checked>
+                      <label class="form-check-label small" for="showFieldIcons">
+                        Mostrar iconos de campo
+                      </label>
+                    </div>
+                    
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="enableGrouping" checked>
+                      <label class="form-check-label small" for="enableGrouping">
+                        Habilitar agrupación visual
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Advanced Panel -->
+          <div class="tab-pane fade" id="advanced-panel" role="tabpanel" aria-labelledby="advanced-tab">
+            <div class="row">
+              <div class="col-lg-6">
+                <h6 class="fw-bold text-primary mb-3">Configuración de Datos</h6>
+                
+                <div class="card">
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Actualización Automática</label>
+                      <select class="form-select" id="autoRefreshInterval">
+                        <option value="0">Deshabilitada</option>
+                        <option value="30">Cada 30 segundos</option>
+                        <option value="60" selected>Cada minuto</option>
+                        <option value="300">Cada 5 minutos</option>
+                        <option value="900">Cada 15 minutos</option>
+                      </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Período de Datos por Defecto</label>
+                      <select class="form-select" id="defaultDataPeriod">
+                        <option value="today">Hoy</option>
+                        <option value="week" selected>Esta semana</option>
+                        <option value="month">Este mes</option>
+                        <option value="quarter">Este trimestre</option>
+                        <option value="year">Este año</option>
+                      </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Comparación por Defecto</label>
+                      <select class="form-select" id="defaultComparison">
+                        <option value="none">Sin comparación</option>
+                        <option value="previous" selected>Período anterior</option>
+                        <option value="year">Año anterior</option>
+                      </select>
+                    </div>
+                    
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="enableCaching" checked>
+                      <label class="form-check-label" for="enableCaching">
+                        Habilitar caché de datos
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-lg-6">
+                <h6 class="fw-bold text-success mb-3">Configuración de Exportación</h6>
+                
+                <div class="card">
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Formatos Habilitados</label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enableCSV" checked>
+                        <label class="form-check-label" for="enableCSV">
+                          <i class="bi bi-filetype-csv me-1"></i>CSV
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enableExcel" checked>
+                        <label class="form-check-label" for="enableExcel">
+                          <i class="bi bi-filetype-xlsx me-1"></i>Excel
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enablePDF" checked>
+                        <label class="form-check-label" for="enablePDF">
+                          <i class="bi bi-filetype-pdf me-1"></i>PDF
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Incluir en Exportación</label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeCharts" checked>
+                        <label class="form-check-label" for="includeCharts">
+                          Gráficos
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeFilters" checked>
+                        <label class="form-check-label" for="includeFilters">
+                          Filtros aplicados
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeTimestamp" checked>
+                        <label class="form-check-label" for="includeTimestamp">
+                          Fecha y hora de generación
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Import/Export Config -->
+                <div class="card mt-3">
+                  <div class="card-header">
+                    <h6 class="mb-0">Configuración Persistente</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="d-grid gap-2">
+                      <button type="button" class="btn btn-outline-primary" id="exportConfig">
+                        <i class="bi bi-download me-2"></i>Exportar Configuración
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary" id="importConfig">
+                        <i class="bi bi-upload me-2"></i>Importar Configuración
+                      </button>
+                      <input type="file" id="configFileInput" class="d-none" accept=".json">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-2"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-outline-info" id="previewChanges">
+          <i class="bi bi-eye me-2"></i>Vista Previa
+        </button>
+        <button type="button" class="btn btn-primary" id="saveKPIConfig">
+          <i class="bi bi-check-lg me-2"></i>Guardar Configuración
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast for notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="kpiConfigToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <i class="bi bi-info-circle-fill text-primary me-2"></i>
+      <strong class="me-auto">Configuración KPIs</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body">
+      <!-- Toast message will be inserted here -->
+    </div>
+  </div>
+</div>
