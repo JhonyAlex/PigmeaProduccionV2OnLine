@@ -1291,6 +1291,7 @@ const ReportsView = {
         // Obtener nombre personalizado de la entidad
         const config = StorageService.getConfig();
         const entityName = config.entityName || 'Entidad';
+        const entities = EntityModel.getActive();
 
         // Usar UIUtils para obtener o crear el modal
         const modalElement = document.getElementById('viewRecordModal');
@@ -1305,7 +1306,10 @@ const ReportsView = {
             <div class="mb-3 row">
                 <strong class="col-sm-3 col-form-label">${entityName}:</strong>
                 <div class="col-sm-9">
-                    <input type="text" readonly class="form-control-plaintext" value="${entity.name}">
+                    <span id="record-entity-display">${entity.name}</span>
+                    <select id="record-entity-edit" class="form-select form-select-sm" style="display:none;">
+                        ${entities.map(ent => `<option value="${ent.id}" ${ent.id === entity.id ? 'selected' : ''}>${ent.name}</option>`).join('')}
+                    </select>
                 </div>
             </div>
             <div class="mb-3 row">
@@ -1458,6 +1462,11 @@ const ReportsView = {
             if (timestampDisplay) timestampDisplay.style.display = 'none';
             if (timestampEdit) timestampEdit.style.display = 'block';
 
+            const entityDisplay = modalElement.querySelector('#record-entity-display');
+            const entityEdit = modalElement.querySelector('#record-entity-edit');
+            if (entityDisplay) entityDisplay.style.display = 'none';
+            if (entityEdit) entityEdit.style.display = 'block';
+
             const allFields = FieldModel.getActive();
 
             modalElement.querySelectorAll('#record-fields-container tbody tr').forEach(row => {
@@ -1525,10 +1534,15 @@ const ReportsView = {
          if (recordId) {
               this.showRecordDetails(recordId);
          } else {
-              const timestampDisplay = modalElement.querySelector('#record-timestamp-display');
-              const timestampEdit = modalElement.querySelector('#record-timestamp-edit');
-              if(timestampDisplay) timestampDisplay.style.display = 'inline';
-              if(timestampEdit) timestampEdit.style.display = 'none';
+             const timestampDisplay = modalElement.querySelector('#record-timestamp-display');
+             const timestampEdit = modalElement.querySelector('#record-timestamp-edit');
+             if(timestampDisplay) timestampDisplay.style.display = 'inline';
+             if(timestampEdit) timestampEdit.style.display = 'none';
+
+             const entityDisplay = modalElement.querySelector('#record-entity-display');
+             const entityEdit = modalElement.querySelector('#record-entity-edit');
+             if(entityDisplay) entityDisplay.style.display = 'inline';
+             if(entityEdit) entityEdit.style.display = 'none';
 
               modalElement.querySelectorAll('#record-fields-container tbody tr').forEach(row => {
                   const displayCell = row.querySelector('.field-value-display');
@@ -1611,8 +1625,12 @@ const ReportsView = {
         // Convertir a formato ISO
         const newDate = new Date(newTimestamp).toISOString();
 
+        // Obtener la nueva entidad
+        const entitySelect = document.getElementById('record-entity-edit');
+        const newEntityId = entitySelect ? entitySelect.value : null;
+
         // Actualizar el registro
-        const success = RecordModel.update(recordId, fieldsData, newDate);
+        const success = RecordModel.update(recordId, fieldsData, newDate, newEntityId);
 
         if (success) {
             // Salir del modo edición y mostrar los datos actualizados
