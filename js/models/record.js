@@ -474,7 +474,7 @@ const RecordModel = {
      * @param {string} newDate Nueva fecha (en formato ISO)
      * @returns {boolean} true si se actualizó correctamente, false si no
      */
-    update(id, newData, newDate) {
+    update(id, newData, newDate, newEntityId = null) {
         const data = StorageService.getData();
         const recordIndex = data.records.findIndex(record => record.id === id);
         
@@ -488,6 +488,11 @@ const RecordModel = {
         // Actualizar la fecha si se proporciona
         if (newDate) {
             data.records[recordIndex].timestamp = newDate;
+        }
+
+        // Actualizar la entidad si se proporciona
+        if (newEntityId) {
+            data.records[recordIndex].entityId = newEntityId;
         }
         
         // Guardar los cambios
