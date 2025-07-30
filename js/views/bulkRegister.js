@@ -33,7 +33,7 @@ const BulkRegisterView = {
         if (!container) return;
 
         const entities = EntityModel.getActive();
-        const entityOptions = entities.map(ent => `<option value="${ent.id}">${ent.name}</option>`).join('');
+        const entityOptions = entities.map(ent => `<option value="${ent.id}">${ent.name.name || ent.name}</option>`).join('');
 
         container.innerHTML = `
             <div class="container-fluid">
