@@ -8,6 +8,7 @@ const Router = {
     // Rutas disponibles
     routes: {
         'register': RegisterView,
+        'bulk': BulkRegisterView,
         'reports': ReportsView,
         'kpis': KPIsView,
         'admin': AdminView
