@@ -49,7 +49,7 @@ const BulkRegisterView = {
                             <div class="card-body">
                                 <!-- Controles de configuración -->
                                 <div class="row mb-4">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <label for="bulk-entity-select" class="form-label">
                                             <i class="bi bi-building"></i> ${this.entityName} *
                                         </label>
@@ -58,14 +58,32 @@ const BulkRegisterView = {
                                             ${entityOptions}
                                         </select>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <label for="bulk-date-input" class="form-label">
                                             <i class="bi bi-calendar"></i> Fecha y Hora (común)
                                         </label>
                                         <input type="datetime-local" class="form-control" id="bulk-date-input">
                                         <small class="text-muted">Se aplicará a todos los registros si no especifica fechas en los datos</small>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-2">
+                                        <label for="bulk-operario-select" class="form-label">
+                                            <i class="bi bi-person"></i> Operario
+                                        </label>
+                                        <select class="form-select" id="bulk-operario-select">
+                                            <option value="">Seleccionar operario</option>
+                                        </select>
+                                        <small class="text-muted">Se aplicará a todos los registros</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="bulk-turno-select" class="form-label">
+                                            <i class="bi bi-clock"></i> Turno
+                                        </label>
+                                        <select class="form-select" id="bulk-turno-select">
+                                            <option value="">Seleccionar turno</option>
+                                        </select>
+                                        <small class="text-muted">Se aplicará a todos los registros</small>
+                                    </div>
+                                    <div class="col-md-2">
                                         <label for="bulk-separator" class="form-label">
                                             <i class="bi bi-list"></i> Separador de datos
                                         </label>
@@ -164,12 +182,96 @@ La primera fila debe contener los nombres de los campos."
     },
 
     /**
+     * Encuentra un campo por tipo/nombre para operario y turno
+     */
+    findFieldByName(fieldNamePattern) {
+        const allFields = FieldModel.getActive();
+        return allFields.find(field => 
+            field.name.toLowerCase().includes(fieldNamePattern.toLowerCase()) &&
+            field.type === 'select' &&
+            field.options && field.options.length > 0
+        );
+    },
+
+    /**
+     * Actualiza las opciones de operario y turno basado en la entidad seleccionada
+     */
+    updateOperarioTurnoOptions() {
+        const entityId = document.getElementById('bulk-entity-select').value;
+        
+        if (!entityId) {
+            // Limpiar opciones si no hay entidad seleccionada
+            document.getElementById('bulk-operario-select').innerHTML = '<option value="">Seleccionar operario</option>';
+            document.getElementById('bulk-turno-select').innerHTML = '<option value="">Seleccionar turno</option>';
+            return;
+        }
+
+        const entity = EntityModel.getById(entityId);
+        if (!entity || !entity.fields) return;
+
+        const entityFields = FieldModel.getByIds(entity.fields);
+        
+        // Buscar campo de operario
+        const operarioField = entityFields.find(field => 
+            (field.name.toLowerCase().includes('oper') || field.name.toLowerCase().includes('operario')) &&
+            field.type === 'select' && field.options && field.options.length > 0
+        ) || this.findFieldByName('oper');
+
+        // Buscar campo de turno
+        const turnoField = entityFields.find(field => 
+            field.name.toLowerCase().includes('turno') &&
+            field.type === 'select' && field.options && field.options.length > 0
+        ) || this.findFieldByName('turno');
+
+        // Actualizar opciones de operario
+        const operarioSelect = document.getElementById('bulk-operario-select');
+        operarioSelect.innerHTML = '<option value="">Seleccionar operario</option>';
+        if (operarioField && operarioField.options) {
+            const activeOptions = operarioField.options.filter(opt => 
+                typeof opt === 'object' ? opt.active !== false : true
+            );
+            activeOptions.forEach(option => {
+                const value = typeof option === 'object' ? option.value : option;
+                const optionElement = document.createElement('option');
+                optionElement.value = value;
+                optionElement.textContent = value;
+                operarioSelect.appendChild(optionElement);
+            });
+        }
+
+        // Actualizar opciones de turno
+        const turnoSelect = document.getElementById('bulk-turno-select');
+        turnoSelect.innerHTML = '<option value="">Seleccionar turno</option>';
+        if (turnoField && turnoField.options) {
+            const activeOptions = turnoField.options.filter(opt => 
+                typeof opt === 'object' ? opt.active !== false : true
+            );
+            activeOptions.forEach(option => {
+                const value = typeof option === 'object' ? option.value : option;
+                const optionElement = document.createElement('option');
+                optionElement.value = value;
+                optionElement.textContent = value;
+                turnoSelect.appendChild(optionElement);
+            });
+        }
+
+        // Almacenar los IDs de los campos para uso posterior
+        this.operarioFieldId = operarioField ? operarioField.id : null;
+        this.turnoFieldId = turnoField ? turnoField.id : null;
+    },
+
+    /**
      * Configura los event listeners
      */
     setupEventListeners() {
         document.getElementById('parse-data-btn').addEventListener('click', () => this.parseData());
         document.getElementById('import-data-btn').addEventListener('click', () => this.importData());
         document.getElementById('clear-data-btn').addEventListener('click', () => this.clearData());
+        
+        // Actualizar opciones de operario y turno cuando cambie la entidad
+        document.getElementById('bulk-entity-select').addEventListener('change', () => {
+            this.updateOperarioTurnoOptions();
+        });
         
         // Re-parsear cuando cambie el separador
         document.getElementById('bulk-separator').addEventListener('change', () => {
@@ -421,12 +523,27 @@ La primera fila debe contener los nombres de los campos."
         try {
             const { entityId, processedData } = this.parsedData;
             const defaultDate = document.getElementById('bulk-date-input').value;
+            const selectedOperario = document.getElementById('bulk-operario-select').value;
+            const selectedTurno = document.getElementById('bulk-turno-select').value;
             let importedCount = 0;
 
             processedData.forEach(item => {
                 try {
-                    // Crear el registro
-                    const newRecord = RecordModel.create(entityId, item.data);
+                    // Crear copia de los datos del item para añadir operario y turno
+                    const enhancedData = { ...item.data };
+                    
+                    // Aplicar operario seleccionado si existe y se seleccionó uno
+                    if (this.operarioFieldId && selectedOperario) {
+                        enhancedData[this.operarioFieldId] = selectedOperario;
+                    }
+                    
+                    // Aplicar turno seleccionado si existe y se seleccionó uno
+                    if (this.turnoFieldId && selectedTurno) {
+                        enhancedData[this.turnoFieldId] = selectedTurno;
+                    }
+                    
+                    // Crear el registro con los datos mejorados
+                    const newRecord = RecordModel.create(entityId, enhancedData);
                     
                     if (newRecord && defaultDate) {
                         // Actualizar fecha si se especificó
@@ -440,7 +557,9 @@ La primera fila debe contener los nombres de los campos."
             });
 
             if (importedCount > 0) {
-                UIUtils.showAlert(`Se importaron correctamente ${importedCount} registros`, 'success');
+                const operarioText = selectedOperario ? ` con operario "${selectedOperario}"` : '';
+                const turnoText = selectedTurno ? ` en turno "${selectedTurno}"` : '';
+                UIUtils.showAlert(`Se importaron correctamente ${importedCount} registros${operarioText}${turnoText}`, 'success');
                 this.clearData();
             } else {
                 UIUtils.showAlert('No se pudo importar ningún registro', 'danger');
@@ -457,9 +576,13 @@ La primera fila debe contener los nombres de los campos."
      */
     clearData() {
         document.getElementById('bulk-data-textarea').value = '';
+        document.getElementById('bulk-operario-select').selectedIndex = 0;
+        document.getElementById('bulk-turno-select').selectedIndex = 0;
         document.getElementById('preview-section').style.display = 'none';
         document.getElementById('import-data-btn').disabled = true;
         this.parsedData = null;
+        this.operarioFieldId = null;
+        this.turnoFieldId = null;
     }
 };
 
