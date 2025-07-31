@@ -352,6 +352,17 @@ La primera fila debe contener los nombres de los campos."
         const entityFields = FieldModel.getByIds(entity.fields || []);
         const errors = [];
         const processedData = [];
+        
+        // Obtener valores de campos pre-tabulares
+        const preTabularValues = this.getPreTabularValues();
+        
+        // Validar que los campos pre-tabulares requeridos tengan valores
+        const preTabularFields = entityFields.filter(f => f.isPreTabular);
+        preTabularFields.forEach(field => {
+            if (field.required && (!preTabularValues[field.id] || preTabularValues[field.id].trim() === '')) {
+                errors.push(`El campo pre-tabular requerido "${field.name}" debe tener un valor`);
+            }
+        });
 
         dataRows.forEach((row, index) => {
             const rowNum = index + 2; // +2 porque empezamos desde 1 y saltamos header
@@ -391,13 +402,16 @@ La primera fila debe contener los nombres de los campos."
                                 return;
                             }
                         }
-                    } else if (field.required) {
+                    } else if (field.required && !field.isPreTabular) {
+                        // Solo mostrar error si el campo es requerido pero NO es pre-tabular
                         errors.push(`Fila ${rowNum}: El campo ${field.name} es requerido`);
                         return;
                     }
 
                     fieldsData[field.id] = value || null;
-                } else if (field.required) {
+                } else if (field.required && !field.isPreTabular) {
+                    // Solo mostrar error si el campo es requerido pero NO es pre-tabular
+                    // Los campos pre-tabulares se llenarán automáticamente con los valores del formulario
                     errors.push(`Fila ${rowNum}: Falta el campo requerido ${field.name}`);
                     return;
                 }
