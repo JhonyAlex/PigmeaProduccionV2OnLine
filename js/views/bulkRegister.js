@@ -34,6 +34,9 @@ const BulkRegisterView = {
 
         const entities = EntityModel.getActive();
         const entityOptions = entities.map(ent => `<option value="${ent.id}">${ent.name.name || ent.name}</option>`).join('');
+        
+        // Obtener campos pre-tabulares globales (no dependientes de entidad)
+        const preTabularFields = FieldModel.getPreTabularFields();
 
         container.innerHTML = `
             <div class="container-fluid">
@@ -65,24 +68,7 @@ const BulkRegisterView = {
                                         <input type="datetime-local" class="form-control" id="bulk-date-input">
                                         <small class="text-muted">Se aplicará a todos los registros si no especifica fechas en los datos</small>
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="bulk-operario-select" class="form-label">
-                                            <i class="bi bi-person"></i> Operario
-                                        </label>
-                                        <select class="form-select" id="bulk-operario-select">
-                                            <option value="">Seleccionar operario</option>
-                                        </select>
-                                        <small class="text-muted">Se aplicará a todos los registros</small>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label for="bulk-turno-select" class="form-label">
-                                            <i class="bi bi-clock"></i> Turno
-                                        </label>
-                                        <select class="form-select" id="bulk-turno-select">
-                                            <option value="">Seleccionar turno</option>
-                                        </select>
-                                        <small class="text-muted">Se aplicará a todos los registros</small>
-                                    </div>
+                                    ${this.renderPreTabularFields(preTabularFields)}
                                     <div class="col-md-2">
                                         <label for="bulk-separator" class="form-label">
                                             <i class="bi bi-list"></i> Separador de datos
@@ -179,85 +165,106 @@ La primera fila debe contener los nombres de los campos."
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('bulk-date-input').value = now.toISOString().slice(0, 16);
-    },
-
-    /**
-     * Encuentra un campo por tipo/nombre para operario y turno
-     */
-    findFieldByName(fieldNamePattern) {
-        const allFields = FieldModel.getActive();
-        return allFields.find(field => 
-            field.name.toLowerCase().includes(fieldNamePattern.toLowerCase()) &&
-            field.type === 'select' &&
-            field.options && field.options.length > 0
-        );
-    },
-
-    /**
-     * Actualiza las opciones de operario y turno basado en la entidad seleccionada
-     */
-    updateOperarioTurnoOptions() {
-        const entityId = document.getElementById('bulk-entity-select').value;
         
-        if (!entityId) {
-            // Limpiar opciones si no hay entidad seleccionada
-            document.getElementById('bulk-operario-select').innerHTML = '<option value="">Seleccionar operario</option>';
-            document.getElementById('bulk-turno-select').innerHTML = '<option value="">Seleccionar turno</option>';
+        // Configurar campos pre-tabulares después de renderizar
+        this.setupPreTabularFields(preTabularFields);
+    },
+
+    /**
+     * Renderiza los campos pre-tabulares dinámicamente
+     * @param {Array} preTabularFields Lista de campos pre-tabulares
+     * @returns {string} HTML de los campos pre-tabulares
+     */
+    renderPreTabularFields(preTabularFields) {
+        if (!preTabularFields || preTabularFields.length === 0) {
+            return '';
+        }
+
+        const fieldsHtml = preTabularFields.map(field => {
+            const fieldId = `bulk-pretab-${field.id}`;
+            let inputHtml = '';
+
+            switch (field.type) {
+                case 'text':
+                    inputHtml = `<input type="text" class="form-control" id="${fieldId}" name="${fieldId}">`;
+                    break;
+                case 'number':
+                    inputHtml = `<input type="number" class="form-control" id="${fieldId}" name="${fieldId}">`;
+                    break;
+                case 'select':
+                    const options = (field.options || [])
+                        .filter(opt => (typeof opt === 'object' ? opt.active !== false : true))
+                        .map(opt => {
+                            const value = typeof opt === 'object' ? opt.value : opt;
+                            return `<option value="${value}">${value}</option>`;
+                        }).join('');
+                    inputHtml = `
+                        <select class="form-select" id="${fieldId}" name="${fieldId}">
+                            <option value="">Seleccionar ${field.name.toLowerCase()}</option>
+                            ${options}
+                        </select>
+                    `;
+                    break;
+                default:
+                    inputHtml = `<input type="text" class="form-control" id="${fieldId}" name="${fieldId}">`;
+            }
+
+            return `
+                <div class="col-md-2">
+                    <label for="${fieldId}" class="form-label">
+                        <i class="bi bi-tag"></i> ${field.name}
+                    </label>
+                    ${inputHtml}
+                    <small class="text-muted">Se aplicará a todos los registros</small>
+                </div>
+            `;
+        }).join('');
+
+        return fieldsHtml;
+    },
+
+    /**
+     * Configura los campos pre-tabulares después del renderizado
+     * @param {Array} preTabularFields Lista de campos pre-tabulares
+     */
+    setupPreTabularFields(preTabularFields) {
+        if (!preTabularFields || preTabularFields.length === 0) {
             return;
         }
 
-        const entity = EntityModel.getById(entityId);
-        if (!entity || !entity.fields) return;
+        // Configurar selects con búsqueda para campos de tipo select
+        preTabularFields.forEach(field => {
+            if (field.type === 'select') {
+                const fieldId = `bulk-pretab-${field.id}`;
+                // Intentar configurar el select con búsqueda si está disponible
+                if (typeof UIUtils !== 'undefined' && UIUtils.setupSearchableSelect) {
+                    try {
+                        UIUtils.setupSearchableSelect(`#${fieldId}`);
+                    } catch (error) {
+                        console.warn(`No se pudo configurar búsqueda para el campo ${field.name}:`, error);
+                    }
+                }
+            }
+        });
+    },
 
-        const entityFields = FieldModel.getByIds(entity.fields);
-        
-        // Buscar campo de operario
-        const operarioField = entityFields.find(field => 
-            (field.name.toLowerCase().includes('oper') || field.name.toLowerCase().includes('operario')) &&
-            field.type === 'select' && field.options && field.options.length > 0
-        ) || this.findFieldByName('oper');
+    /**
+     * Obtiene los valores de los campos pre-tabulares
+     * @returns {Object} Objeto con los valores de los campos pre-tabulares
+     */
+    getPreTabularValues() {
+        const preTabularFields = FieldModel.getPreTabularFields();
+        const values = {};
 
-        // Buscar campo de turno
-        const turnoField = entityFields.find(field => 
-            field.name.toLowerCase().includes('turno') &&
-            field.type === 'select' && field.options && field.options.length > 0
-        ) || this.findFieldByName('turno');
+        preTabularFields.forEach(field => {
+            const fieldId = `bulk-pretab-${field.id}`;
+            const element = document.getElementById(fieldId);
+            if (element && element.value) {
+                values[field.id] = element.value;
+            }
+        });
 
-        // Actualizar opciones de operario
-        const operarioSelect = document.getElementById('bulk-operario-select');
-        operarioSelect.innerHTML = '<option value="">Seleccionar operario</option>';
-        if (operarioField && operarioField.options) {
-            const activeOptions = operarioField.options.filter(opt => 
-                typeof opt === 'object' ? opt.active !== false : true
-            );
-            activeOptions.forEach(option => {
-                const value = typeof option === 'object' ? option.value : option;
-                const optionElement = document.createElement('option');
-                optionElement.value = value;
-                optionElement.textContent = value;
-                operarioSelect.appendChild(optionElement);
-            });
-        }
-
-        // Actualizar opciones de turno
-        const turnoSelect = document.getElementById('bulk-turno-select');
-        turnoSelect.innerHTML = '<option value="">Seleccionar turno</option>';
-        if (turnoField && turnoField.options) {
-            const activeOptions = turnoField.options.filter(opt => 
-                typeof opt === 'object' ? opt.active !== false : true
-            );
-            activeOptions.forEach(option => {
-                const value = typeof option === 'object' ? option.value : option;
-                const optionElement = document.createElement('option');
-                optionElement.value = value;
-                optionElement.textContent = value;
-                turnoSelect.appendChild(optionElement);
-            });
-        }
-
-        // Almacenar los IDs de los campos para uso posterior
-        this.operarioFieldId = operarioField ? operarioField.id : null;
-        this.turnoFieldId = turnoField ? turnoField.id : null;
+        return values;
     },
 
     /**
@@ -267,11 +274,6 @@ La primera fila debe contener los nombres de los campos."
         document.getElementById('parse-data-btn').addEventListener('click', () => this.parseData());
         document.getElementById('import-data-btn').addEventListener('click', () => this.importData());
         document.getElementById('clear-data-btn').addEventListener('click', () => this.clearData());
-        
-        // Actualizar opciones de operario y turno cuando cambie la entidad
-        document.getElementById('bulk-entity-select').addEventListener('change', () => {
-            this.updateOperarioTurnoOptions();
-        });
         
         // Re-parsear cuando cambie el separador
         document.getElementById('bulk-separator').addEventListener('change', () => {
@@ -523,24 +525,18 @@ La primera fila debe contener los nombres de los campos."
         try {
             const { entityId, processedData } = this.parsedData;
             const defaultDate = document.getElementById('bulk-date-input').value;
-            const selectedOperario = document.getElementById('bulk-operario-select').value;
-            const selectedTurno = document.getElementById('bulk-turno-select').value;
+            const preTabularValues = this.getPreTabularValues();
             let importedCount = 0;
 
             processedData.forEach(item => {
                 try {
-                    // Crear copia de los datos del item para añadir operario y turno
+                    // Crear copia de los datos del item para añadir valores pre-tabulares
                     const enhancedData = { ...item.data };
                     
-                    // Aplicar operario seleccionado si existe y se seleccionó uno
-                    if (this.operarioFieldId && selectedOperario) {
-                        enhancedData[this.operarioFieldId] = selectedOperario;
-                    }
-                    
-                    // Aplicar turno seleccionado si existe y se seleccionó uno
-                    if (this.turnoFieldId && selectedTurno) {
-                        enhancedData[this.turnoFieldId] = selectedTurno;
-                    }
+                    // Aplicar valores de campos pre-tabulares
+                    Object.keys(preTabularValues).forEach(fieldId => {
+                        enhancedData[fieldId] = preTabularValues[fieldId];
+                    });
                     
                     // Crear el registro con los datos mejorados
                     const newRecord = RecordModel.create(entityId, enhancedData);
@@ -557,9 +553,11 @@ La primera fila debe contener los nombres de los campos."
             });
 
             if (importedCount > 0) {
-                const operarioText = selectedOperario ? ` con operario "${selectedOperario}"` : '';
-                const turnoText = selectedTurno ? ` en turno "${selectedTurno}"` : '';
-                UIUtils.showAlert(`Se importaron correctamente ${importedCount} registros${operarioText}${turnoText}`, 'success');
+                // Crear texto informativo sobre los campos pre-tabulares aplicados
+                const preTabularText = Object.keys(preTabularValues).length > 0 
+                    ? ` con valores comunes aplicados` 
+                    : '';
+                UIUtils.showAlert(`Se importaron correctamente ${importedCount} registros${preTabularText}`, 'success');
                 this.clearData();
             } else {
                 UIUtils.showAlert('No se pudo importar ningún registro', 'danger');
@@ -576,13 +574,23 @@ La primera fila debe contener los nombres de los campos."
      */
     clearData() {
         document.getElementById('bulk-data-textarea').value = '';
-        document.getElementById('bulk-operario-select').selectedIndex = 0;
-        document.getElementById('bulk-turno-select').selectedIndex = 0;
+        
+        // Limpiar campos pre-tabulares
+        const preTabularFields = FieldModel.getPreTabularFields();
+        preTabularFields.forEach(field => {
+            const fieldId = `bulk-pretab-${field.id}`;
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.value = '';
+                if (element.selectedIndex !== undefined) {
+                    element.selectedIndex = 0;
+                }
+            }
+        });
+        
         document.getElementById('preview-section').style.display = 'none';
         document.getElementById('import-data-btn').disabled = true;
         this.parsedData = null;
-        this.operarioFieldId = null;
-        this.turnoFieldId = null;
     }
 };
 
