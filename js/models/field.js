@@ -127,6 +127,7 @@ const FieldModel = {
             useForComparativeReports: !!fieldData.useForComparativeReports,
             isHorizontalAxis: !!fieldData.isHorizontalAxis,
             isCompareField: !!fieldData.isCompareField,
+            isPreTabular: !!fieldData.isPreTabular,
 
             dailySum: !!fieldData.dailySum,
             dailyProgressRef: !!fieldData.dailyProgressRef,
@@ -201,6 +202,14 @@ const FieldModel = {
     getDailyProgressRefField() {
         const fields = this.getAll() || [];
         return fields.find(f => f.dailyProgressRef && f.active !== false) || null;
+    },
 
+    /**
+     * Obtiene campos configurados para mostrar antes de datos tabulares
+     * @returns {Array} Lista de campos pre-tabulares activos
+     */
+    getPreTabularFields() {
+        const fields = this.getAll() || [];
+        return fields.filter(f => f.isPreTabular && f.active !== false);
     }
 };

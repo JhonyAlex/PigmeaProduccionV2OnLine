@@ -219,6 +219,7 @@ const AdminView = {
                                                 <th>Para Tabla</th>
                                                <th>Suma Diaria</th>
                                                <th>Ref. Progreso</th>
+                                               <th>Pre-Tabular</th>
                                                 <th>Activo</th>
                                                <th>Acciones</th>
                                             </tr>
@@ -519,6 +520,7 @@ const AdminView = {
 
             const dailySumIndicator = field.dailySum ? '<span class="badge bg-primary">Sí</span>' : '-';
             const progressRefIndicator = field.dailyProgressRef ? '<span class="badge bg-primary">Sí</span>' : '-';
+            const preTabularIndicator = field.isPreTabular ? '<span class="badge bg-info">Sí</span>' : '-';
 
             const activeIndicator = field.active !== false ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>';
             row.innerHTML = `
@@ -530,6 +532,7 @@ const AdminView = {
                 <td class="text-center">${tableIndicator}</td>
                 <td class="text-center">${dailySumIndicator}</td>
                 <td class="text-center">${progressRefIndicator}</td>
+                <td class="text-center">${preTabularIndicator}</td>
                 <td class="text-center">${activeIndicator}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-outline-primary edit-field" data-field-id="${field.id}">
@@ -798,6 +801,7 @@ const AdminView = {
         const isCompareFieldCheck = document.getElementById('field-is-compare-field');
         const dailySumCheck = document.getElementById('field-daily-sum');
         const dailyProgressRefCheck = document.getElementById('field-daily-progress-ref');
+        const isPreTabularCheck = document.getElementById('field-pre-tabular');
         const fieldActiveCheck = document.getElementById('field-active');
         
         // Limpiar formulario
@@ -903,6 +907,11 @@ const AdminView = {
             if (dailyProgressRefCheck) {
                 dailyProgressRefCheck.checked = field.dailyProgressRef || false;
             }
+            
+            if (isPreTabularCheck) {
+                isPreTabularCheck.checked = field.isPreTabular || false;
+            }
+            
             if (fieldActiveCheck) fieldActiveCheck.checked = field.active !== false;
         } else {
             // Modo creación
@@ -912,6 +921,7 @@ const AdminView = {
             if (dailySumCheck) dailySumCheck.checked = false;
 
             if (dailyProgressRefCheck) dailyProgressRefCheck.checked = false;
+            if (isPreTabularCheck) isPreTabularCheck.checked = false;
             if (fieldActiveCheck) fieldActiveCheck.checked = true;
 
         }
@@ -1022,6 +1032,7 @@ const AdminView = {
         const dailySum = document.getElementById('field-daily-sum').checked;
 
         const dailyProgressRef = document.getElementById('field-daily-progress-ref').checked;
+        const isPreTabular = document.getElementById('field-pre-tabular').checked;
         const fieldActive = document.getElementById('field-active').checked;
 
     
@@ -1117,6 +1128,7 @@ const AdminView = {
             isCompareField: isCompareField,
             dailySum: dailySum,
             dailyProgressRef: dailyProgressRef,
+            isPreTabular: isPreTabular,
             active: fieldActive
 
         };
