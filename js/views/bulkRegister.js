@@ -60,6 +60,12 @@ const BulkRegisterView = {
                                             <option value="">Seleccione una ${this.entityName.toLowerCase()}</option>
                                             ${entityOptions}
                                         </select>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="include-entity-in-tabular">
+                                            <label class="form-check-label" for="include-entity-in-tabular">
+                                                <small>Incluir ${this.entityName.toLowerCase()} en datos tabulares</small>
+                                            </label>
+                                        </div>
                                     </div>
                                     <div class="col-md-3">
                                         <label for="bulk-date-input" class="form-label">
@@ -67,6 +73,12 @@ const BulkRegisterView = {
                                         </label>
                                         <input type="datetime-local" class="form-control" id="bulk-date-input">
                                         <small class="text-muted">Se aplicará a todos los registros si no especifica fechas en los datos</small>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="include-date-in-tabular">
+                                            <label class="form-check-label" for="include-date-in-tabular">
+                                                <small>Incluir fecha en datos tabulares</small>
+                                            </label>
+                                        </div>
                                     </div>
                                     ${this.renderPreTabularFields(preTabularFields)}
                                     <div class="col-md-2">
@@ -168,6 +180,9 @@ La primera fila debe contener los nombres de los campos."
         
         // Configurar campos pre-tabulares después de renderizar
         this.setupPreTabularFields(preTabularFields);
+        
+        // Cargar preferencias guardadas
+        this.loadSavedPreferences(preTabularFields);
     },
 
     /**
@@ -182,6 +197,7 @@ La primera fila debe contener los nombres de los campos."
 
         const fieldsHtml = preTabularFields.map(field => {
             const fieldId = `bulk-pretab-${field.id}`;
+            const checkboxId = `include-${field.id}-in-tabular`;
             let inputHtml = '';
 
             switch (field.type) {
@@ -216,6 +232,12 @@ La primera fila debe contener los nombres de los campos."
                     </label>
                     ${inputHtml}
                     <small class="text-muted">Se aplicará a todos los registros</small>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="${checkboxId}" data-field-id="${field.id}">
+                        <label class="form-check-label" for="${checkboxId}">
+                            <small>Incluir en datos tabulares</small>
+                        </label>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -249,6 +271,159 @@ La primera fila debe contener los nombres de los campos."
     },
 
     /**
+     * Carga las preferencias guardadas del usuario
+     * @param {Array} preTabularFields Lista de campos pre-tabulares
+     */
+    loadSavedPreferences(preTabularFields) {
+        const preferences = BulkPreferencesUtils.getPreferences();
+        
+        // Cargar estado de inclusión para entidad
+        const includeEntityCheckbox = document.getElementById('include-entity-in-tabular');
+        if (includeEntityCheckbox) {
+            includeEntityCheckbox.checked = preferences.includeEntityInTabular || false;
+        }
+        
+        // Cargar estado de inclusión para fecha
+        const includeDateCheckbox = document.getElementById('include-date-in-tabular');
+        if (includeDateCheckbox) {
+            includeDateCheckbox.checked = preferences.includeDateInTabular || false;
+        }
+        
+        // Cargar última selección de entidad
+        const entitySelect = document.getElementById('bulk-entity-select');
+        if (entitySelect && preferences.lastEntitySelection) {
+            entitySelect.value = preferences.lastEntitySelection;
+        }
+        
+        // Cargar último valor de fecha
+        const dateInput = document.getElementById('bulk-date-input');
+        if (dateInput && preferences.lastDateValue) {
+            dateInput.value = preferences.lastDateValue;
+        }
+        
+        // Cargar preferencias de campos personalizados
+        preTabularFields.forEach(field => {
+            const checkboxId = `include-${field.id}-in-tabular`;
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.checked = BulkPreferencesUtils.getCustomFieldInclusion(field.id);
+            }
+            
+            // Cargar último valor del campo
+            const fieldInput = document.getElementById(`bulk-pretab-${field.id}`);
+            if (fieldInput) {
+                const lastValue = BulkPreferencesUtils.getPreTabularValue(field.id);
+                if (lastValue !== undefined && lastValue !== null) {
+                    fieldInput.value = lastValue;
+                }
+            }
+        });
+        
+        // Configurar visibilidad inicial basada en las preferencias
+        this.updateFieldVisibility();
+    },
+
+    /**
+     * Guarda las preferencias actuales del usuario
+     */
+    saveCurrentPreferences() {
+        const preferences = BulkPreferencesUtils.getPreferences();
+        
+        // Guardar estado de inclusión para entidad
+        const includeEntityCheckbox = document.getElementById('include-entity-in-tabular');
+        if (includeEntityCheckbox) {
+            preferences.includeEntityInTabular = includeEntityCheckbox.checked;
+        }
+        
+        // Guardar estado de inclusión para fecha
+        const includeDateCheckbox = document.getElementById('include-date-in-tabular');
+        if (includeDateCheckbox) {
+            preferences.includeDateInTabular = includeDateCheckbox.checked;
+        }
+        
+        // Guardar selección de entidad
+        const entitySelect = document.getElementById('bulk-entity-select');
+        if (entitySelect && entitySelect.value) {
+            preferences.lastEntitySelection = entitySelect.value;
+        }
+        
+        // Guardar valor de fecha
+        const dateInput = document.getElementById('bulk-date-input');
+        if (dateInput && dateInput.value) {
+            preferences.lastDateValue = dateInput.value;
+        }
+        
+        // Guardar preferencias de campos personalizados
+        const preTabularFields = FieldModel.getPreTabularFields();
+        preTabularFields.forEach(field => {
+            const checkboxId = `include-${field.id}-in-tabular`;
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                BulkPreferencesUtils.updateCustomFieldInclusion(field.id, checkbox.checked);
+            }
+            
+            // Guardar valor del campo
+            const fieldInput = document.getElementById(`bulk-pretab-${field.id}`);
+            if (fieldInput && fieldInput.value) {
+                BulkPreferencesUtils.updatePreTabularValue(field.id, fieldInput.value);
+            }
+        });
+        
+        BulkPreferencesUtils.savePreferences(preferences);
+    },
+
+    /**
+     * Actualiza la visibilidad de los campos según las preferencias de inclusión
+     */
+    updateFieldVisibility() {
+        // Actualizar visibilidad del campo entidad
+        const includeEntityCheckbox = document.getElementById('include-entity-in-tabular');
+        const entitySelect = document.getElementById('bulk-entity-select');
+        if (includeEntityCheckbox && entitySelect) {
+            entitySelect.style.display = includeEntityCheckbox.checked ? 'none' : 'block';
+            const entityLabel = entitySelect.previousElementSibling;
+            if (entityLabel && entityLabel.tagName === 'LABEL') {
+                entityLabel.style.display = includeEntityCheckbox.checked ? 'none' : 'block';
+            }
+        }
+        
+        // Actualizar visibilidad del campo fecha
+        const includeDateCheckbox = document.getElementById('include-date-in-tabular');
+        const dateInput = document.getElementById('bulk-date-input');
+        if (includeDateCheckbox && dateInput) {
+            dateInput.style.display = includeDateCheckbox.checked ? 'none' : 'block';
+            const dateLabel = dateInput.previousElementSibling;
+            if (dateLabel && dateLabel.tagName === 'LABEL') {
+                dateLabel.style.display = includeDateCheckbox.checked ? 'none' : 'block';
+            }
+            const dateHelp = dateInput.nextElementSibling;
+            if (dateHelp && dateHelp.classList.contains('text-muted')) {
+                dateHelp.style.display = includeDateCheckbox.checked ? 'none' : 'block';
+            }
+        }
+        
+        // Actualizar visibilidad de campos personalizados
+        const preTabularFields = FieldModel.getPreTabularFields();
+        preTabularFields.forEach(field => {
+            const checkboxId = `include-${field.id}-in-tabular`;
+            const checkbox = document.getElementById(checkboxId);
+            const fieldInput = document.getElementById(`bulk-pretab-${field.id}`);
+            
+            if (checkbox && fieldInput) {
+                fieldInput.style.display = checkbox.checked ? 'none' : 'block';
+                const fieldLabel = fieldInput.previousElementSibling;
+                if (fieldLabel && fieldLabel.tagName === 'LABEL') {
+                    fieldLabel.style.display = checkbox.checked ? 'none' : 'block';
+                }
+                const fieldHelp = fieldInput.nextElementSibling;
+                if (fieldHelp && fieldHelp.classList.contains('text-muted')) {
+                    fieldHelp.style.display = checkbox.checked ? 'none' : 'block';
+                }
+            }
+        });
+    },
+
+    /**
      * Obtiene los valores de los campos pre-tabulares
      * @returns {Object} Objeto con los valores de los campos pre-tabulares
      */
@@ -257,10 +432,16 @@ La primera fila debe contener los nombres de los campos."
         const values = {};
 
         preTabularFields.forEach(field => {
-            const fieldId = `bulk-pretab-${field.id}`;
-            const element = document.getElementById(fieldId);
-            if (element && element.value) {
-                values[field.id] = element.value;
+            // Solo incluir si NO está marcado para inclusión en datos tabulares
+            const checkbox = document.getElementById(`include-${field.id}-in-tabular`);
+            const shouldIncludeInTabular = checkbox && checkbox.checked;
+            
+            if (!shouldIncludeInTabular) {
+                const fieldId = `bulk-pretab-${field.id}`;
+                const element = document.getElementById(fieldId);
+                if (element && element.value) {
+                    values[field.id] = element.value;
+                }
             }
         });
 
@@ -281,19 +462,74 @@ La primera fila debe contener los nombres de los campos."
                 this.parseData();
             }
         });
+
+        // Event listeners para checkboxes de inclusión
+        const includeEntityCheckbox = document.getElementById('include-entity-in-tabular');
+        if (includeEntityCheckbox) {
+            includeEntityCheckbox.addEventListener('change', () => {
+                this.updateFieldVisibility();
+                this.saveCurrentPreferences();
+            });
+        }
+
+        const includeDateCheckbox = document.getElementById('include-date-in-tabular');
+        if (includeDateCheckbox) {
+            includeDateCheckbox.addEventListener('change', () => {
+                this.updateFieldVisibility();
+                this.saveCurrentPreferences();
+            });
+        }
+
+        // Event listeners para campos personalizados
+        const preTabularFields = FieldModel.getPreTabularFields();
+        preTabularFields.forEach(field => {
+            const checkboxId = `include-${field.id}-in-tabular`;
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    this.updateFieldVisibility();
+                    this.saveCurrentPreferences();
+                });
+            }
+
+            // Guardar valores cuando cambien
+            const fieldInput = document.getElementById(`bulk-pretab-${field.id}`);
+            if (fieldInput) {
+                fieldInput.addEventListener('change', () => {
+                    this.saveCurrentPreferences();
+                });
+            }
+        });
+
+        // Guardar preferencias cuando cambien los valores principales
+        const entitySelect = document.getElementById('bulk-entity-select');
+        if (entitySelect) {
+            entitySelect.addEventListener('change', () => {
+                this.saveCurrentPreferences();
+            });
+        }
+
+        const dateInput = document.getElementById('bulk-date-input');
+        if (dateInput) {
+            dateInput.addEventListener('change', () => {
+                this.saveCurrentPreferences();
+            });
+        }
     },
 
     /**
      * Parsea los datos ingresados en el textarea
      */
     parseData() {
-        const entityId = document.getElementById('bulk-entity-select').value;
+        const entityIdElement = document.getElementById('bulk-entity-select');
+        const includeEntityInTabular = document.getElementById('include-entity-in-tabular').checked;
+        const entityId = entityIdElement ? entityIdElement.value : null;
         const dataText = document.getElementById('bulk-data-textarea').value.trim();
         const separator = document.getElementById('bulk-separator').value;
 
         // Validaciones básicas
-        if (!entityId) {
-            UIUtils.showAlert('Por favor seleccione una entidad', 'warning');
+        if (!includeEntityInTabular && !entityId) {
+            UIUtils.showAlert('Por favor seleccione una entidad o márquela para inclusión en datos tabulares', 'warning');
             return;
         }
 
@@ -331,7 +567,7 @@ La primera fila debe contener los nombres de los campos."
             });
 
             // Procesar y validar datos
-            this.parsedData = this.processTableData(entityId, dataRows, headers);
+            this.parsedData = this.processTableData(entityId, dataRows, headers, includeEntityInTabular);
             this.showPreview();
 
         } catch (error) {
@@ -343,23 +579,66 @@ La primera fila debe contener los nombres de los campos."
     /**
      * Procesa y valida los datos de la tabla
      */
-    processTableData(entityId, dataRows, headers) {
-        const entity = EntityModel.getById(entityId);
-        if (!entity) {
-            throw new Error('Entidad no encontrada');
+    processTableData(entityId, dataRows, headers, includeEntityInTabular = false) {
+        let entity = null;
+        let entityFields = [];
+        
+        if (!includeEntityInTabular) {
+            // Modo tradicional: entidad seleccionada previamente
+            entity = EntityModel.getById(entityId);
+            if (!entity) {
+                throw new Error('Entidad no encontrada');
+            }
+            entityFields = FieldModel.getByIds(entity.fields || []);
+        } else {
+            // Modo nuevo: entidad incluida en datos tabulares
+            // Necesitamos determinar las entidades desde los datos
+            const entityHeader = this.findEntityHeaderInData(headers);
+            if (!entityHeader) {
+                throw new Error('No se encontró columna de entidad en los datos tabulares. Asegúrese de incluir una columna que contenga los nombres de las entidades.');
+            }
+            
+            // Obtener todas las entidades únicas de los datos
+            const entityNames = [...new Set(dataRows.map(row => row[entityHeader]).filter(name => name && name.trim()))];
+            const entities = EntityModel.getActive();
+            
+            // Validar que todas las entidades existen
+            const validEntities = [];
+            const invalidEntities = [];
+            
+            entityNames.forEach(name => {
+                const foundEntity = entities.find(e => e.name === name || e.name.name === name);
+                if (foundEntity) {
+                    validEntities.push(foundEntity);
+                } else {
+                    invalidEntities.push(name);
+                }
+            });
+            
+            if (invalidEntities.length > 0) {
+                throw new Error(`Entidades no encontradas: ${invalidEntities.join(', ')}`);
+            }
+            
+            // Para el procesamiento, usaremos todos los campos de todas las entidades válidas
+            const allFieldIds = [...new Set(validEntities.flatMap(e => e.fields || []))];
+            entityFields = FieldModel.getByIds(allFieldIds);
         }
 
-        const entityFields = FieldModel.getByIds(entity.fields || []);
         const errors = [];
         const processedData = [];
         
-        // Obtener valores de campos pre-tabulares
+        // Obtener valores de campos pre-tabulares (solo los que NO están marcados para inclusión en tabular)
         const preTabularValues = this.getPreTabularValues();
+        
+        // Obtener preferencias de inclusión
+        const includeDateInTabular = document.getElementById('include-date-in-tabular').checked;
         
         // Validar que los campos pre-tabulares requeridos tengan valores
         const preTabularFields = entityFields.filter(f => f.isPreTabular);
         preTabularFields.forEach(field => {
-            if (field.required && (!preTabularValues[field.id] || preTabularValues[field.id].trim() === '')) {
+            // Solo validar si el campo NO está marcado para inclusión en tabular
+            const isIncludedInTabular = BulkPreferencesUtils.getCustomFieldInclusion(field.id);
+            if (field.required && !isIncludedInTabular && (!preTabularValues[field.id] || preTabularValues[field.id].trim() === '')) {
                 errors.push(`El campo pre-tabular requerido "${field.name}" debe tener un valor`);
             }
         });
@@ -368,6 +647,42 @@ La primera fila debe contener los nombres de los campos."
             const rowNum = index + 2; // +2 porque empezamos desde 1 y saltamos header
             const fieldsData = {};
             let hasData = false;
+            let rowEntityId = entityId; // Por defecto usar la entidad seleccionada
+
+            // Si la entidad está incluida en tabular, determinar la entidad para esta fila
+            if (includeEntityInTabular) {
+                const entityHeader = this.findEntityHeaderInData(headers);
+                const entityName = row[entityHeader];
+                const entities = EntityModel.getActive();
+                const rowEntity = entities.find(e => e.name === entityName || e.name.name === entityName);
+                
+                if (!rowEntity) {
+                    errors.push(`Fila ${rowNum}: Entidad "${entityName}" no encontrada`);
+                    return;
+                }
+                rowEntityId = rowEntity.id;
+                
+                // Actualizar campos para esta entidad específica
+                entityFields = FieldModel.getByIds(rowEntity.fields || []);
+            }
+
+            // Si la fecha está incluida en tabular, buscarla en los datos
+            let rowDate = null;
+            if (includeDateInTabular) {
+                const dateHeader = this.findDateHeaderInData(headers);
+                if (dateHeader && row[dateHeader]) {
+                    try {
+                        rowDate = new Date(row[dateHeader]);
+                        if (isNaN(rowDate.getTime())) {
+                            errors.push(`Fila ${rowNum}: Fecha "${row[dateHeader]}" no es válida`);
+                            return;
+                        }
+                    } catch (e) {
+                        errors.push(`Fila ${rowNum}: Error al procesar fecha "${row[dateHeader]}"`);
+                        return;
+                    }
+                }
+            }
 
             // Mapear campos de la entidad con los headers
             entityFields.forEach(field => {
@@ -422,20 +737,52 @@ La primera fila debe contener los nombres de los campos."
                 processedData.push({
                     rowNumber: rowNum,
                     data: fieldsData,
-                    original: row
+                    original: row,
+                    entityId: rowEntityId,
+                    customDate: rowDate
                 });
             }
         });
 
         return {
-            entityId,
-            entity,
+            entityId: includeEntityInTabular ? null : entityId, // null si entities son mixtas
+            entity: includeEntityInTabular ? null : entity,
             headers,
             processedData,
             errors,
             totalRows: dataRows.length,
-            validRows: processedData.length
+            validRows: processedData.length,
+            includeEntityInTabular,
+            includeDateInTabular
         };
+    },
+
+    /**
+     * Busca el header que corresponde a la entidad en los datos tabulares
+     * @param {Array} headers Lista de headers
+     * @returns {string|null} Nombre del header de entidad
+     */
+    findEntityHeaderInData(headers) {
+        const entityKeywords = ['entidad', 'entity', this.entityName.toLowerCase()];
+        return headers.find(header => 
+            entityKeywords.some(keyword => 
+                header.toLowerCase().includes(keyword) || keyword.includes(header.toLowerCase())
+            )
+        );
+    },
+
+    /**
+     * Busca el header que corresponde a la fecha en los datos tabulares
+     * @param {Array} headers Lista de headers
+     * @returns {string|null} Nombre del header de fecha
+     */
+    findDateHeaderInData(headers) {
+        const dateKeywords = ['fecha', 'date', 'timestamp', 'time'];
+        return headers.find(header => 
+            dateKeywords.some(keyword => 
+                header.toLowerCase().includes(keyword) || keyword.includes(header.toLowerCase())
+            )
+        );
     },
 
     /**
@@ -444,8 +791,23 @@ La primera fila debe contener los nombres de los campos."
     showPreview() {
         if (!this.parsedData) return;
 
-        const { entity, headers, processedData, errors, totalRows, validRows } = this.parsedData;
-        const entityFields = FieldModel.getByIds(entity.fields || []);
+        const { headers, processedData, errors, totalRows, validRows, includeEntityInTabular, includeDateInTabular } = this.parsedData;
+        
+        // Determinar campos para mostrar
+        let entityFields = [];
+        if (includeEntityInTabular) {
+            // Si hay entidades múltiples, obtener todos los campos únicos
+            const allEntityIds = [...new Set(processedData.map(item => item.entityId))];
+            const allFieldIds = [...new Set(allEntityIds.flatMap(entityId => {
+                const entity = EntityModel.getById(entityId);
+                return entity ? entity.fields || [] : [];
+            }))];
+            entityFields = FieldModel.getByIds(allFieldIds);
+        } else {
+            // Entidad única
+            const entity = this.parsedData.entity;
+            entityFields = FieldModel.getByIds(entity.fields || []);
+        }
 
         // Mostrar sección de preview
         document.getElementById('preview-section').style.display = 'block';
@@ -498,29 +860,52 @@ La primera fila debe contener los nombres de los campos."
         }
 
         // Crear tabla de preview
-        const headerHtml = `
-            <tr>
-                <th>#</th>
-                ${entityFields.map(field => `<th>${field.name}</th>`).join('')}
-                <th>Estado</th>
-            </tr>
-        `;
+        let headerHtml = '<tr><th>#</th>';
+        
+        // Agregar columna de entidad si está incluida en tabular
+        if (includeEntityInTabular) {
+            headerHtml += `<th>${this.entityName}</th>`;
+        }
+        
+        // Agregar columna de fecha si está incluida en tabular
+        if (includeDateInTabular) {
+            headerHtml += '<th>Fecha</th>';
+        }
+        
+        // Agregar columnas de campos
+        headerHtml += entityFields.map(field => `<th>${field.name}</th>`).join('');
+        headerHtml += '<th>Estado</th></tr>';
+        
         document.getElementById('preview-header').innerHTML = headerHtml;
 
         const bodyHtml = processedData.map(item => {
+            let rowHtml = `<td>${item.rowNumber - 1}</td>`;
+            
+            // Agregar entidad si está incluida en tabular
+            if (includeEntityInTabular) {
+                const entity = EntityModel.getById(item.entityId);
+                const entityName = entity ? (entity.name.name || entity.name) : 'Desconocida';
+                rowHtml += `<td>${entityName}</td>`;
+            }
+            
+            // Agregar fecha si está incluida en tabular
+            if (includeDateInTabular) {
+                const dateStr = item.customDate ? item.customDate.toLocaleString() : '<span class="text-muted">-</span>';
+                rowHtml += `<td>${dateStr}</td>`;
+            }
+            
+            // Agregar campos
             const fieldsHtml = entityFields.map(field => {
                 const value = item.data[field.id];
                 return `<td>${value !== null && value !== undefined ? value : '<span class="text-muted">-</span>'}</td>`;
             }).join('');
             
-            return `
-                <tr>
-                    <td>${item.rowNumber - 1}</td>
-                    ${fieldsHtml}
-                    <td><span class="badge bg-success">Válido</span></td>
-                </tr>
-            `;
+            rowHtml += fieldsHtml;
+            rowHtml += '<td><span class="badge bg-success">Válido</span></td>';
+            
+            return `<tr>${rowHtml}</tr>`;
         }).join('');
+        
         document.getElementById('preview-body').innerHTML = bodyHtml;
 
         // Habilitar botón de importar si no hay errores
@@ -537,13 +922,16 @@ La primera fila debe contener los nombres de los campos."
         }
 
         try {
-            const { entityId, processedData } = this.parsedData;
+            const { processedData, includeEntityInTabular, includeDateInTabular } = this.parsedData;
             const defaultDate = document.getElementById('bulk-date-input').value;
             const preTabularValues = this.getPreTabularValues();
             let importedCount = 0;
 
             processedData.forEach(item => {
                 try {
+                    // Usar la entidad de la fila si está incluida en tabular, o la seleccionada
+                    const recordEntityId = includeEntityInTabular ? item.entityId : this.parsedData.entityId;
+                    
                     // Crear copia de los datos del item para añadir valores pre-tabulares
                     const enhancedData = { ...item.data };
                     
@@ -553,11 +941,23 @@ La primera fila debe contener los nombres de los campos."
                     });
                     
                     // Crear el registro con los datos mejorados
-                    const newRecord = RecordModel.create(entityId, enhancedData);
+                    const newRecord = RecordModel.create(recordEntityId, enhancedData);
                     
-                    if (newRecord && defaultDate) {
-                        // Actualizar fecha si se especificó
-                        RecordModel.updateDate(newRecord.id, new Date(defaultDate).toISOString());
+                    if (newRecord) {
+                        // Determinar qué fecha usar
+                        let recordDate = null;
+                        
+                        if (includeDateInTabular && item.customDate) {
+                            // Usar fecha de los datos tabulares
+                            recordDate = item.customDate.toISOString();
+                        } else if (!includeDateInTabular && defaultDate) {
+                            // Usar fecha común especificada
+                            recordDate = new Date(defaultDate).toISOString();
+                        }
+                        
+                        if (recordDate) {
+                            RecordModel.updateDate(newRecord.id, recordDate);
+                        }
                     }
                     
                     importedCount++;
@@ -571,7 +971,16 @@ La primera fila debe contener los nombres de los campos."
                 const preTabularText = Object.keys(preTabularValues).length > 0 
                     ? ` con valores comunes aplicados` 
                     : '';
-                UIUtils.showAlert(`Se importaron correctamente ${importedCount} registros${preTabularText}`, 'success');
+                    
+                const entityText = includeEntityInTabular 
+                    ? ' para múltiples entidades' 
+                    : '';
+                    
+                const dateText = includeDateInTabular 
+                    ? ' con fechas individuales' 
+                    : '';
+                    
+                UIUtils.showAlert(`Se importaron correctamente ${importedCount} registros${entityText}${dateText}${preTabularText}`, 'success');
                 this.clearData();
             } else {
                 UIUtils.showAlert('No se pudo importar ningún registro', 'danger');
